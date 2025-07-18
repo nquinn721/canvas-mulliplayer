@@ -10,6 +10,7 @@ export interface PowerUpData {
 export enum PowerUpType {
   BOOST_UPGRADE = "boost_upgrade",
   LASER_UPGRADE = "laser_upgrade",
+  MISSILE_UPGRADE = "missile_upgrade",
 }
 
 export class PowerUp {

@@ -1,9 +1,11 @@
 import { KeyState } from "../../../shared";
 import { GameStore } from "../stores/GameStore";
+import { soundService } from "./SoundService";
 
 export class InputService {
   private gameStore: GameStore;
   private canvas: HTMLCanvasElement;
+  private previousBoostState: boolean = false;
 
   constructor(gameStore: GameStore, canvas: HTMLCanvasElement) {
     this.gameStore = gameStore;
@@ -39,9 +41,10 @@ export class InputService {
       this.gameStore.setKeyState("shift", true);
     }
 
-    // Missile ability (key 1)
-    if (e.key === "1") {
+    // Missile ability (key 1 or spacebar)
+    if (e.key === "1" || e.key === " ") {
       this.gameStore.shootMissile();
+      soundService.playSound("missile", 0.8);
     }
 
     // Prevent default for game keys
@@ -53,6 +56,7 @@ export class InputService {
         "d",
         "shift",
         "1",
+        " ",
         "arrowup",
         "arrowdown",
         "arrowleft",
@@ -92,6 +96,7 @@ export class InputService {
     e.preventDefault();
     this.gameStore.setMouseDown(true);
     this.gameStore.shoot(); // Fire immediately on first click
+    soundService.playSound("laser", 0.3); // Reduced volume
   };
 
   private handleMouseUp = (e: MouseEvent) => {
@@ -107,8 +112,29 @@ export class InputService {
     this.gameStore.setMouseDown(false);
   };
 
+  // Check for boost state changes and play sound
+  updateBoostSound() {
+    const currentPlayer = this.gameStore.currentPlayer;
+    if (currentPlayer) {
+      const currentBoostState = currentPlayer.isBoostActive;
+      
+      if (currentBoostState && !soundService.isContinuousSoundPlaying("jet")) {
+        // Boost just activated - start continuous jet sound
+        soundService.startContinuousSound("jet", 0.4);
+      } else if (!currentBoostState && soundService.isContinuousSoundPlaying("jet")) {
+        // Boost deactivated - stop jet sound
+        soundService.stopContinuousSound("jet");
+      }
+      
+      this.previousBoostState = currentBoostState;
+    }
+  }
+
   // Cleanup method to remove event listeners
   cleanup() {
+    // Stop any continuous sounds
+    soundService.stopContinuousSound("jet");
+    
     window.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("keyup", this.handleKeyUp);
     this.canvas.removeEventListener("mousemove", this.handleMouseMove);

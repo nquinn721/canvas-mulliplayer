@@ -186,7 +186,124 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const projectileId = `proj_${this.projectileIdCounter++}`;
 
     if (data.weapon === "missile") {
-      projectile = new Missile(data.x, data.y, data.angle, client.id);
+      // Get missile stats based on player upgrades
+      const missileStats = player.getMissileStats();
+      
+      // Create missiles based on upgrade level
+      if (missileStats.missileCount === 1) {
+        // Single missile (levels 1-2)
+        projectile = new Missile(
+          data.x,
+          data.y,
+          data.angle,
+          client.id,
+          missileStats.speed,
+          missileStats.damage,
+          missileStats.distance,
+          missileStats.trackingRange,
+          missileStats.turnRate
+        );
+      } else if (missileStats.missileCount === 2) {
+        // Dual shot (level 3) - left and right wing missiles
+        const wingOffset = 15; // Distance from center to wing
+        const wingAngle = data.angle + Math.PI / 2; // Perpendicular to ship direction
+        
+        // Left wing missile
+        const leftWingX = data.x + Math.cos(wingAngle) * wingOffset;
+        const leftWingY = data.y + Math.sin(wingAngle) * wingOffset;
+        const leftAngleOffset = -0.2; // Angle away from nose (left)
+
+        projectile = new Missile(
+          leftWingX,
+          leftWingY,
+          data.angle + leftAngleOffset,
+          client.id,
+          missileStats.speed,
+          missileStats.damage,
+          missileStats.distance,
+          missileStats.trackingRange,
+          missileStats.turnRate
+        );
+
+        // Right wing missile
+        const rightWingX = data.x + Math.cos(wingAngle) * -wingOffset;
+        const rightWingY = data.y + Math.sin(wingAngle) * -wingOffset;
+        const rightAngleOffset = 0.2; // Angle away from nose (right)
+
+        const rightMissileId = `proj_${this.projectileIdCounter++}`;
+        const rightMissile = new Missile(
+          rightWingX,
+          rightWingY,
+          data.angle + rightAngleOffset,
+          client.id,
+          missileStats.speed,
+          missileStats.damage,
+          missileStats.distance,
+          missileStats.trackingRange,
+          missileStats.turnRate
+        );
+        rightMissile.id = rightMissileId;
+        this.projectiles.set(rightMissileId, rightMissile);
+
+      } else if (missileStats.missileCount === 3) {
+        // Triple shot (level 5) - center, left wing, and right wing missiles
+        
+        // Center missile (main)
+        projectile = new Missile(
+          data.x,
+          data.y,
+          data.angle,
+          client.id,
+          missileStats.speed,
+          missileStats.damage,
+          missileStats.distance,
+          missileStats.trackingRange,
+          missileStats.turnRate
+        );
+        
+        const wingOffset = 15; // Distance from center to wing
+        const wingAngle = data.angle + Math.PI / 2; // Perpendicular to ship direction
+        
+        // Left wing missile
+        const leftWingX = data.x + Math.cos(wingAngle) * wingOffset;
+        const leftWingY = data.y + Math.sin(wingAngle) * wingOffset;
+        const leftAngleOffset = -0.15; // Slightly less spread for triple shot
+
+        const leftMissileId = `proj_${this.projectileIdCounter++}`;
+        const leftMissile = new Missile(
+          leftWingX,
+          leftWingY,
+          data.angle + leftAngleOffset,
+          client.id,
+          missileStats.speed,
+          missileStats.damage,
+          missileStats.distance,
+          missileStats.trackingRange,
+          missileStats.turnRate
+        );
+        leftMissile.id = leftMissileId;
+        this.projectiles.set(leftMissileId, leftMissile);
+
+        // Right wing missile
+        const rightWingX = data.x + Math.cos(wingAngle) * -wingOffset;
+        const rightWingY = data.y + Math.sin(wingAngle) * -wingOffset;
+        const rightAngleOffset = 0.15; // Slightly less spread for triple shot
+
+        const rightMissileId = `proj_${this.projectileIdCounter++}`;
+        const rightMissile = new Missile(
+          rightWingX,
+          rightWingY,
+          data.angle + rightAngleOffset,
+          client.id,
+          missileStats.speed,
+          missileStats.damage,
+          missileStats.distance,
+          missileStats.trackingRange,
+          missileStats.turnRate
+        );
+        rightMissile.id = rightMissileId;
+        this.projectiles.set(rightMissileId, rightMissile);
+      }
     } else {
       // Get laser stats based on player upgrades
       const laserStats = player.getLaserStats();
@@ -200,7 +317,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         laserStats.distance
       );
 
-      // If dual shot is enabled (level 5), create a second laser
+      // If dual shot is enabled (level 3+), create a second laser
       if (laserStats.dualShot) {
         const secondProjectileId = `proj_${this.projectileIdCounter++}`;
         const angleOffset = 0.1; // Small angle offset for dual shot
@@ -215,6 +332,23 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         );
         secondProjectile.id = secondProjectileId;
         this.projectiles.set(secondProjectileId, secondProjectile);
+      }
+
+      // If backward laser is enabled (level 5+), create a backward laser
+      if (laserStats.hasBackwardLaser) {
+        const backwardProjectileId = `proj_${this.projectileIdCounter++}`;
+        const backwardAngle = data.angle + Math.PI; // 180 degrees opposite
+        const backwardProjectile = new Laser(
+          data.x,
+          data.y,
+          backwardAngle,
+          client.id,
+          laserStats.speed,
+          laserStats.damage,
+          laserStats.distance
+        );
+        backwardProjectile.id = backwardProjectileId;
+        this.projectiles.set(backwardProjectileId, backwardProjectile);
       }
     }
 
@@ -373,6 +507,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
             player.applyBoostUpgrade();
           } else if (powerUp.type === PowerUpType.LASER_UPGRADE) {
             player.applyLaserUpgrade();
+          } else if (powerUp.type === PowerUpType.MISSILE_UPGRADE) {
+            player.applyMissileUpgrade();
           }
 
           this.server.emit("powerUpCollected", {
@@ -518,11 +654,16 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
 
     const powerUpId = `powerup_${this.powerUpIdCounter++}`;
-    // Randomly choose between boost and laser upgrades (50/50 split)
-    const powerUpType =
-      Math.random() < 0.5
-        ? PowerUpType.BOOST_UPGRADE
-        : PowerUpType.LASER_UPGRADE;
+    // Randomly choose between boost, laser, and missile upgrades (33/33/33 split)
+    const randomValue = Math.random();
+    let powerUpType: PowerUpType;
+    if (randomValue < 0.33) {
+      powerUpType = PowerUpType.BOOST_UPGRADE;
+    } else if (randomValue < 0.66) {
+      powerUpType = PowerUpType.LASER_UPGRADE;
+    } else {
+      powerUpType = PowerUpType.MISSILE_UPGRADE;
+    }
     const powerUp = new PowerUp(powerUpId, x, y, powerUpType);
     this.powerUps.set(powerUpId, powerUp);
   }

@@ -1,6 +1,7 @@
 import { makeAutoObservable } from "mobx";
 import { Socket } from "socket.io-client";
 import { Camera, GameState, KeyState, Projectile } from "../../../shared";
+import { soundService } from "../services/SoundService";
 import { ParticleSystem } from "../utils/ParticleSystem";
 
 export class GameStore {
@@ -206,6 +207,7 @@ export class GameStore {
       if (currentTime - this.lastLaserTime >= this.laserFireRate) {
         this.shoot();
         this.lastLaserTime = currentTime;
+        soundService.playSound("laser", 0.2); // Reduced volume for continuous shooting
       }
     }
   }

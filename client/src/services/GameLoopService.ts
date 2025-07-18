@@ -1,7 +1,9 @@
 import { GameStore } from "../stores/GameStore";
+import { InputService } from "./InputService";
 
 export class GameLoopService {
   private gameStore: GameStore;
+  private inputService: InputService | null = null;
   private animationId: number | null = null;
   private lastUpdateTime = 0;
   private fpsCounter = 0;
@@ -10,6 +12,10 @@ export class GameLoopService {
 
   constructor(gameStore: GameStore) {
     this.gameStore = gameStore;
+  }
+
+  setInputService(inputService: InputService) {
+    this.inputService = inputService;
   }
 
   start() {
@@ -47,6 +53,11 @@ export class GameLoopService {
 
     // Update particle effects
     this.gameStore.updateParticles(deltaTime);
+
+    // Update input-related sounds
+    if (this.inputService) {
+      this.inputService.updateBoostSound();
+    }
 
     // Calculate FPS
     this.fpsCounter++;

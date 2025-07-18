@@ -1,6 +1,7 @@
 import { io, Socket } from "socket.io-client";
 import { GameState } from "../../../shared";
 import { GameStore } from "../stores/GameStore";
+import { soundService } from "./SoundService";
 
 export class SocketService {
   private socket: Socket | null = null;
@@ -56,6 +57,30 @@ export class SocketService {
         wallHit?: boolean;
       }) => {
         this.gameStore.handleProjectileHit(data);
+
+        // Play explosion sound
+        if (data.targetId) {
+          // Hit a player
+          soundService.playSound("explosion", 0.8);
+          if (data.targetId === this.gameStore.playerId) {
+            // Current player was hit
+            soundService.playSound("damage", 0.7);
+          }
+        } else if (data.wallHit) {
+          // Hit a wall
+          soundService.playSound("explosion", 0.6);
+        }
+      }
+    );
+
+    // Power-up collection event
+    this.socket.on(
+      "powerUpCollected",
+      (data: { powerUpId: string; playerId: string; type: string }) => {
+        if (data.playerId === this.gameStore.playerId) {
+          // Current player collected power-up
+          soundService.playSound("powerup", 0.8);
+        }
       }
     );
 

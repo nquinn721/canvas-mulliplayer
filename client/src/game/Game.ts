@@ -21,6 +21,9 @@ export class Game {
     this.gameLoopService = new GameLoopService(this.gameStore);
     this.rendererService = new RendererService(this.gameStore, canvas);
     this.inputService = new InputService(this.gameStore, canvas);
+
+    // Connect input service to game loop for sound updates
+    this.gameLoopService.setInputService(this.inputService);
   }
 
   // Start the game

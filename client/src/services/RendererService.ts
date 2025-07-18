@@ -117,8 +117,20 @@ export class RendererService {
 
     // Different colors based on power-up type
     const isLaserUpgrade = powerUp.type === "laser_upgrade";
-    const baseColor = isLaserUpgrade ? "255, 100, 100" : "0, 255, 255"; // Red for laser, cyan for boost
-    const hexColor = isLaserUpgrade ? "#ff6464" : "#00ffff";
+    const isMissileUpgrade = powerUp.type === "missile_upgrade";
+    let baseColor: string;
+    let hexColor: string;
+
+    if (isLaserUpgrade) {
+      baseColor = "255, 100, 100"; // Red for laser
+      hexColor = "#ff6464";
+    } else if (isMissileUpgrade) {
+      baseColor = "255, 165, 0"; // Orange for missile
+      hexColor = "#ffa500";
+    } else {
+      baseColor = "0, 255, 255"; // Cyan for boost
+      hexColor = "#00ffff";
+    }
 
     // Draw glow effect
     const glowGradient = this.ctx.createRadialGradient(
@@ -158,6 +170,19 @@ export class RendererService {
       this.ctx.lineTo(x + 2, y + 2);
       this.ctx.closePath();
       this.ctx.fill();
+    } else if (isMissileUpgrade) {
+      // Draw missile icon (rocket shape)
+      this.ctx.fillRect(x - 2, y - 10, 4, 14); // Body
+      // Nose cone
+      this.ctx.beginPath();
+      this.ctx.moveTo(x, y - 12);
+      this.ctx.lineTo(x - 3, y - 10);
+      this.ctx.lineTo(x + 3, y - 10);
+      this.ctx.closePath();
+      this.ctx.fill();
+      // Fins
+      this.ctx.fillRect(x - 4, y + 2, 2, 4); // Left fin
+      this.ctx.fillRect(x + 2, y + 2, 2, 4); // Right fin
     } else {
       // Draw boost icon (arrow pointing up)
       this.ctx.beginPath();
@@ -501,21 +526,6 @@ export class RendererService {
   }
 
   private drawUI() {
-    // Controls indicator
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-    this.ctx.fillRect(10, 10, 200, 120);
-
-    this.ctx.fillStyle = "#fff";
-    this.ctx.font = "16px Arial";
-    this.ctx.textAlign = "left";
-    this.ctx.fillText("Controls:", 20, 30);
-    this.ctx.font = "12px Arial";
-    this.ctx.fillText("WASD - Move & Roll", 20, 50);
-    this.ctx.fillText("Left Click - Laser", 20, 65);
-    this.ctx.fillText("1 - Missile Ability", 20, 80);
-    this.ctx.fillText("Shift - Speed Boost", 20, 95);
-    this.ctx.fillText("A/D - Strafe & Roll", 20, 110);
-
     // Boost energy indicator (bottom center)
     this.drawBoostEnergyBar();
 
@@ -558,6 +568,54 @@ export class RendererService {
     const x = this.gameStore.CANVAS_WIDTH - iconSize - margin;
     const y = this.gameStore.CANVAS_HEIGHT - iconSize - margin;
 
+    // Missile icon drawing function
+    const drawMissileIcon = (centerX: number, centerY: number) => {
+      // Draw missile body
+      this.ctx.fillRect(centerX - 3, centerY - 8, 6, 16);
+
+      // Draw missile tip
+      this.ctx.beginPath();
+      this.ctx.moveTo(centerX, centerY - 12);
+      this.ctx.lineTo(centerX - 3, centerY - 8);
+      this.ctx.lineTo(centerX + 3, centerY - 8);
+      this.ctx.fill();
+
+      // Draw missile fins
+      this.ctx.fillRect(centerX - 5, centerY + 6, 2, 4);
+      this.ctx.fillRect(centerX + 3, centerY + 6, 2, 4);
+    };
+
+    this.drawWeaponIcon(
+      x,
+      y,
+      iconSize,
+      this.gameStore.isMissileReady,
+      "", // Remove key label
+      "rgba(255, 68, 68, 0.8)",
+      drawMissileIcon,
+      this.gameStore.missileCooldownPercent,
+      this.gameStore.missileCooldowRemaining
+    );
+
+    // Draw missile level indicator in top right corner
+    const player = this.gameStore.gameState.players[this.gameStore.playerId];
+    if (player) {
+      const missileLevel = player.missileUpgradeLevel || 1;
+      this.drawLevelIndicator(x, y, iconSize, missileLevel, "#FF9800"); // Orange color for missile
+    }
+  }
+
+  private drawWeaponIcon(
+    x: number,
+    y: number,
+    iconSize: number,
+    isReady: boolean,
+    keyLabel: string,
+    backgroundColor: string,
+    iconDrawFunction: (centerX: number, centerY: number) => void,
+    cooldownPercent?: number,
+    cooldownTimeLeft?: number
+  ) {
     // Background circle
     this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
     this.ctx.beginPath();
@@ -570,28 +628,24 @@ export class RendererService {
     );
     this.ctx.fill();
 
-    // Missile icon (simple rocket shape)
-    this.ctx.fillStyle = this.gameStore.isMissileReady ? "#ff4444" : "#666";
     const centerX = x + iconSize / 2;
     const centerY = y + iconSize / 2;
 
-    // Draw missile body
-    this.ctx.fillRect(centerX - 3, centerY - 10, 6, 20);
+    // Draw weapon icon background
+    this.ctx.fillStyle = isReady ? backgroundColor : "rgba(102, 102, 102, 0.8)";
+    this.ctx.fillRect(x + 5, y + 5, iconSize - 10, iconSize - 10);
 
-    // Draw missile tip
-    this.ctx.beginPath();
-    this.ctx.moveTo(centerX, centerY - 15);
-    this.ctx.lineTo(centerX - 4, centerY - 10);
-    this.ctx.lineTo(centerX + 4, centerY - 10);
-    this.ctx.fill();
+    // Draw weapon icon border
+    this.ctx.strokeStyle = "#fff";
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(x + 5, y + 5, iconSize - 10, iconSize - 10);
 
-    // Draw missile fins
-    this.ctx.fillRect(centerX - 6, centerY + 8, 3, 6);
-    this.ctx.fillRect(centerX + 3, centerY + 8, 3, 6);
+    // Draw weapon-specific icon
+    this.ctx.fillStyle = "#fff";
+    iconDrawFunction(centerX, centerY);
 
     // Cooldown overlay
-    if (!this.gameStore.isMissileReady) {
-      const cooldownPercent = this.gameStore.missileCooldownPercent;
+    if (!isReady && cooldownPercent !== undefined) {
       const angle = cooldownPercent * 2 * Math.PI - Math.PI / 2; // Start from top
 
       this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
@@ -601,18 +655,52 @@ export class RendererService {
       this.ctx.fill();
 
       // Cooldown text
-      const timeLeft = Math.ceil(this.gameStore.missileCooldowRemaining / 1000);
-      this.ctx.fillStyle = "#fff";
-      this.ctx.font = "14px Arial";
-      this.ctx.textAlign = "center";
-      this.ctx.fillText(timeLeft.toString(), centerX, centerY + 5);
+      if (cooldownTimeLeft !== undefined) {
+        const timeLeft = Math.ceil(cooldownTimeLeft / 1000);
+        this.ctx.fillStyle = "#fff";
+        this.ctx.font = "14px Arial";
+        this.ctx.textAlign = "center";
+        this.ctx.fillText(timeLeft.toString(), centerX, centerY + 5);
+      }
     }
 
     // Key indicator
     this.ctx.fillStyle = "#fff";
     this.ctx.font = "10px Arial";
     this.ctx.textAlign = "center";
-    this.ctx.fillText("1", centerX, y - 5);
+    this.ctx.fillText(keyLabel, centerX, y - 5);
+  }
+
+  private drawLevelIndicator(
+    x: number,
+    y: number,
+    iconSize: number,
+    level: number,
+    backgroundColor: string = "#4CAF50"
+  ) {
+    const circleRadius = 10;
+    const circleX = x + iconSize - circleRadius;
+    const circleY = y + circleRadius;
+
+    // Draw circle background
+    this.ctx.fillStyle = backgroundColor;
+    this.ctx.beginPath();
+    this.ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    // Draw circle border
+    this.ctx.strokeStyle = "#fff";
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
+    this.ctx.stroke();
+
+    // Draw level number
+    this.ctx.fillStyle = "#fff";
+    this.ctx.font = "12px Arial";
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "middle";
+    this.ctx.fillText(`${level}`, circleX, circleY);
   }
 
   private drawRollCooldown() {
@@ -700,42 +788,40 @@ export class RendererService {
     const x = this.gameStore.CANVAS_WIDTH - iconSize - margin - spacing;
     const y = this.gameStore.CANVAS_HEIGHT - iconSize - margin;
 
-    // Draw laser icon background
-    this.ctx.fillStyle = "rgba(255, 100, 100, 0.8)";
-    this.ctx.fillRect(x, y, iconSize, iconSize);
+    // Laser icon drawing function
+    const drawLaserIcon = (centerX: number, centerY: number) => {
+      // Draw laser lightning bolt icon
+      this.ctx.beginPath();
+      this.ctx.moveTo(centerX - 8, centerY - 12);
+      this.ctx.lineTo(centerX + 4, centerY - 2);
+      this.ctx.lineTo(centerX - 2, centerY - 2);
+      this.ctx.lineTo(centerX + 8, centerY + 12);
+      this.ctx.lineTo(centerX - 4, centerY + 2);
+      this.ctx.lineTo(centerX + 2, centerY + 2);
+      this.ctx.closePath();
+      this.ctx.fill();
+    };
 
-    // Draw laser icon border
-    this.ctx.strokeStyle = "#fff";
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(x, y, iconSize, iconSize);
+    // Use the same weapon icon template as missile
+    this.drawWeaponIcon(
+      x,
+      y,
+      iconSize,
+      true, // Always ready (no cooldown for laser)
+      "", // No key label - we'll draw level in corner
+      "rgba(255, 68, 68, 0.8)", // Same color as missile
+      drawLaserIcon
+    );
 
-    // Draw laser lightning bolt icon
-    const centerX = x + iconSize / 2;
-    const centerY = y + iconSize / 2;
-
-    this.ctx.fillStyle = "#fff";
-    this.ctx.beginPath();
-    this.ctx.moveTo(centerX - 8, centerY - 15);
-    this.ctx.lineTo(centerX + 4, centerY - 3);
-    this.ctx.lineTo(centerX - 2, centerY - 3);
-    this.ctx.lineTo(centerX + 8, centerY + 15);
-    this.ctx.lineTo(centerX - 4, centerY + 3);
-    this.ctx.lineTo(centerX + 2, centerY + 3);
-    this.ctx.closePath();
-    this.ctx.fill();
-
-    // Draw level indicator
+    // Draw laser level indicator in top right corner using template
     const laserLevel = player.laserUpgradeLevel || 0;
-    this.ctx.fillStyle = "#fff";
-    this.ctx.font = "12px Arial";
-    this.ctx.textAlign = "center";
-    this.ctx.fillText(`${laserLevel}`, centerX, y - 8);
+    this.drawLevelIndicator(x, y, iconSize, laserLevel, "#4CAF50"); // Green color for laser
 
-    // Special indicator for dual shot (level 5)
+    // Special indicator for dual shot + backward laser (level 5)
     if (laserLevel >= 5) {
       this.ctx.fillStyle = "#ffff00";
       this.ctx.font = "8px Arial";
-      this.ctx.fillText("DUAL", centerX, centerY + 20);
+      this.ctx.fillText("TRI-SHOT", x + iconSize / 2, y + iconSize + 15);
     }
 
     // Show tooltip on hover
@@ -779,6 +865,11 @@ export class RendererService {
       this.ctx.fillStyle = "#ffff00";
       this.ctx.fillText("DUAL SHOT!", x + 90, y + 40);
     }
+
+    if (laserStats.hasBackwardLaser) {
+      this.ctx.fillStyle = "#ff44ff";
+      this.ctx.fillText("REAR LASER!", x + 90, y + 55);
+    }
   }
 
   private getLaserStatsFromPlayer(player: any) {
@@ -795,6 +886,7 @@ export class RendererService {
         damage: baseDamage,
         distance: baseDistance,
         dualShot: false,
+        hasBackwardLaser: false,
       };
     }
 
@@ -809,7 +901,8 @@ export class RendererService {
       speed: Math.floor(baseSpeed * speedMultiplier),
       damage: Math.floor(baseDamage * damageMultiplier),
       distance: Math.floor(baseDistance * distanceMultiplier),
-      dualShot: level >= 5,
+      dualShot: level >= 3,
+      hasBackwardLaser: level >= 5,
     };
   }
 

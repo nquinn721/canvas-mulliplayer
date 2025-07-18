@@ -5,21 +5,31 @@ export class Missile extends Projectile {
   public turnRate: number; // How fast the missile can turn (radians per second)
   public targetId: string | null; // ID of the target being tracked
 
-  constructor(x: number, y: number, angle: number, ownerId: string) {
+  constructor(
+    x: number,
+    y: number,
+    angle: number,
+    ownerId: string,
+    speed?: number,
+    damage?: number,
+    maxDistance?: number,
+    trackingRange?: number,
+    turnRate?: number
+  ) {
     super(
       x,
       y,
       angle,
       ownerId,
-      400, // speed (pixels per second)
-      75, // damage
-      1500, // max distance
+      speed || 400, // speed (pixels per second)
+      damage || 75, // damage
+      maxDistance || 1500, // max distance
       2000, // cooldown (ms)
       "missile"
     );
 
-    this.trackingRange = 300; // Range within which missile will track enemies
-    this.turnRate = 3; // Radians per second turning rate
+    this.trackingRange = trackingRange || 300; // Range within which missile will track enemies
+    this.turnRate = turnRate || 3; // Radians per second turning rate
     this.targetId = null;
   }
 

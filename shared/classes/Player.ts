@@ -31,6 +31,7 @@ export class Player {
   public boostUpgradeLevel: number;
   public boostUpgradeExpiration: number;
   public laserUpgradeLevel: number;
+  public missileUpgradeLevel: number; // Missile upgrade level
   public rollAngle: number;
   public isRolling: boolean;
   public rollDirection: number; // -1 for left, 1 for right, 0 for none
@@ -67,6 +68,7 @@ export class Player {
     this.boostUpgradeLevel = 0;
     this.boostUpgradeExpiration = 0;
     this.laserUpgradeLevel = 1; // Start at level 1 instead of 0
+    this.missileUpgradeLevel = 1; // Start at level 1 instead of 0
     this.rollAngle = 0;
     this.isRolling = false;
     this.rollDirection = 0;
@@ -201,6 +203,17 @@ export class Player {
     return this.laserUpgradeLevel > 1; // Removed expiration check
   }
 
+  // Apply missile upgrade
+  applyMissileUpgrade(): void {
+    this.missileUpgradeLevel = Math.min(5, this.missileUpgradeLevel + 1); // Max level 5
+    // Removed expiration - upgrades are now permanent
+  }
+
+  // Check if player has missile upgrade active
+  hasMissileUpgrade(): boolean {
+    return this.missileUpgradeLevel > 1; // Removed expiration check
+  }
+
   // Update roll animation
   updateRoll(deltaTime: number): void {
     if (this.isRolling) {
@@ -276,6 +289,7 @@ export class Player {
     damage: number;
     distance: number;
     dualShot: boolean;
+    hasBackwardLaser: boolean;
   } {
     const baseSpeed = 400;
     const baseDamage = 12;
@@ -288,6 +302,7 @@ export class Player {
         damage: baseDamage,
         distance: baseDistance,
         dualShot: false,
+        hasBackwardLaser: false,
       };
     }
 
@@ -301,7 +316,64 @@ export class Player {
       speed: Math.floor(baseSpeed * speedMultiplier),
       damage: Math.floor(baseDamage * damageMultiplier),
       distance: Math.floor(baseDistance * distanceMultiplier),
-      dualShot: this.laserUpgradeLevel >= 5,
+      dualShot: this.laserUpgradeLevel >= 3,
+      hasBackwardLaser: this.laserUpgradeLevel >= 5,
+    };
+  }
+
+  // Get missile stats based on upgrade level
+  getMissileStats(): {
+    speed: number;
+    damage: number;
+    distance: number;
+    trackingRange: number;
+    turnRate: number;
+    dualShot: boolean;
+    missileCount: number;
+  } {
+    const baseSpeed = 400;
+    const baseDamage = 75;
+    const baseDistance = 1500;
+    const baseTrackingRange = 300;
+    const baseTurnRate = 3;
+
+    // Determine missile count based on upgrade level
+    let missileCount = 1; // Default single missile
+    if (this.missileUpgradeLevel >= 5) {
+      missileCount = 3; // Triple shot at level 5
+    } else if (this.missileUpgradeLevel >= 3) {
+      missileCount = 2; // Dual shot at level 3
+    }
+
+    // Level 1 is the base level with no multipliers
+    if (this.missileUpgradeLevel <= 1) {
+      return {
+        speed: baseSpeed,
+        damage: baseDamage,
+        distance: baseDistance,
+        trackingRange: baseTrackingRange,
+        turnRate: baseTurnRate,
+        dualShot: false,
+        missileCount: 1,
+      };
+    }
+
+    // For levels 2+, each level above 1 increases stats by 10%/15%/15%/10%/20%
+    const levelAboveBase = this.missileUpgradeLevel - 1;
+    const speedMultiplier = 1 + levelAboveBase * 0.1;
+    const damageMultiplier = 1 + levelAboveBase * 0.15;
+    const distanceMultiplier = 1 + levelAboveBase * 0.15;
+    const trackingRangeMultiplier = 1 + levelAboveBase * 0.1;
+    const turnRateMultiplier = 1 + levelAboveBase * 0.2;
+
+    return {
+      speed: Math.floor(baseSpeed * speedMultiplier),
+      damage: Math.floor(baseDamage * damageMultiplier),
+      distance: Math.floor(baseDistance * distanceMultiplier),
+      trackingRange: Math.floor(baseTrackingRange * trackingRangeMultiplier),
+      turnRate: baseTurnRate * turnRateMultiplier,
+      dualShot: this.missileUpgradeLevel >= 3, // Keep for backwards compatibility
+      missileCount: missileCount,
     };
   }
 
@@ -370,6 +442,7 @@ export class Player {
     boostUpgradeLevel: number;
     boostUpgradeExpiration: number;
     laserUpgradeLevel: number;
+    missileUpgradeLevel: number;
     rollAngle: number;
     isRolling: boolean;
     rollDirection: number;
@@ -392,6 +465,7 @@ export class Player {
       boostUpgradeLevel: this.boostUpgradeLevel,
       boostUpgradeExpiration: this.boostUpgradeExpiration,
       laserUpgradeLevel: this.laserUpgradeLevel,
+      missileUpgradeLevel: this.missileUpgradeLevel,
       rollAngle: this.rollAngle,
       isRolling: this.isRolling,
       rollDirection: this.rollDirection,
@@ -417,6 +491,7 @@ export class Player {
     boostUpgradeLevel?: number;
     boostUpgradeExpiration?: number;
     laserUpgradeLevel?: number;
+    missileUpgradeLevel?: number;
     rollAngle?: number;
     isRolling?: boolean;
     rollDirection?: number;
@@ -440,6 +515,7 @@ export class Player {
     player.boostUpgradeLevel = data.boostUpgradeLevel || 0;
     player.boostUpgradeExpiration = data.boostUpgradeExpiration || 0;
     player.laserUpgradeLevel = data.laserUpgradeLevel || 1; // Default to level 1
+    player.missileUpgradeLevel = data.missileUpgradeLevel || 1; // Default to level 1
     player.rollAngle = data.rollAngle || 0;
     player.isRolling = data.isRolling || false;
     player.rollDirection = data.rollDirection || 0;
