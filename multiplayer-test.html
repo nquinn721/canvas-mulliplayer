@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multiplayer Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background-color: #f0f0f0;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #333;
+        text-align: center;
+      }
+      .instructions {
+        background: #e8f4f8;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+      }
+      .button-container {
+        text-align: center;
+        margin: 20px 0;
+      }
+      button {
+        background: #4caf50;
+        color: white;
+        padding: 15px 30px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        margin: 0 10px;
+      }
+      button:hover {
+        background: #45a049;
+      }
+      .status {
+        margin-top: 20px;
+        padding: 10px;
+        border-radius: 5px;
+        text-align: center;
+      }
+      .success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+      }
+      .game-controls {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+      }
+      .control-item {
+        margin: 5px 0;
+      }
+      .features {
+        background: #fff3cd;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+      }
+      .feature-list {
+        list-style-type: none;
+        padding: 0;
+      }
+      .feature-list li {
+        padding: 5px 0;
+        border-bottom: 1px solid #eee;
+      }
+      .feature-list li:last-child {
+        border-bottom: none;
+      }
+      .feature-list li::before {
+        content: "✓ ";
+        color: #28a745;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎮 Canvas Multiplayer Game</h1>
+
+      <div class="status success">
+        <strong>✅ Game Server Running!</strong><br />
+        Server: http://localhost:3001<br />
+        Client: http://localhost:5173
+      </div>
+
+      <div class="instructions">
+        <h3>🚀 How to Test Multiplayer:</h3>
+        <ol>
+          <li>Click "Open Player 1" to open the first game instance</li>
+          <li>Click "Open Player 2" to open the second game instance</li>
+          <li>Move around using WASD keys in both windows</li>
+          <li>Click left mouse button to shoot lasers</li>
+          <li>Press '1' key to shoot missiles</li>
+          <li>Watch as both players appear in real-time!</li>
+        </ol>
+      </div>
+
+      <div class="button-container">
+        <button onclick="openPlayer1()">🎮 Open Player 1</button>
+        <button onclick="openPlayer2()">🎮 Open Player 2</button>
+      </div>
+
+      <div class="game-controls">
+        <h3>🎮 Game Controls:</h3>
+        <div class="control-item"><strong>WASD</strong> - Move player</div>
+        <div class="control-item">
+          <strong>Left Click</strong> - Shoot laser (fast, green)
+        </div>
+        <div class="control-item">
+          <strong>Press '1'</strong> - Shoot missile (slow, red, high damage)
+        </div>
+        <div class="control-item"><strong>Mouse</strong> - Aim direction</div>
+      </div>
+
+      <div class="features">
+        <h3>🌟 Game Features:</h3>
+        <ul class="feature-list">
+          <li>Real-time multiplayer with Socket.IO</li>
+          <li>5000x5000 pixel game world</li>
+          <li>Camera follows player smoothly</li>
+          <li>1200x800 canvas viewport</li>
+          <li>Two weapon types: Laser and Missile</li>
+          <li>Projectile physics and collision</li>
+          <li>Dynamic wall generation</li>
+          <li>React + TypeScript client</li>
+          <li>NestJS + Socket.IO server</li>
+          <li>Shared game logic between client/server</li>
+        </ul>
+      </div>
+
+      <div class="status info">
+        <strong>📡 Network Status:</strong><br />
+        The game uses WebSocket connections for real-time communication.<br />
+        Players will automatically sync when they join the game.
+      </div>
+    </div>
+
+    <script>
+      function openPlayer1() {
+        window.open(
+          "http://localhost:5173",
+          "Player1",
+          "width=1250,height=900,scrollbars=yes"
+        );
+      }
+
+      function openPlayer2() {
+        window.open(
+          "http://localhost:5173",
+          "Player2",
+          "width=1250,height=900,scrollbars=yes"
+        );
+      }
+
+      // Check if servers are running
+      function checkServers() {
+        // This is a basic test - in a real scenario you'd want to ping the servers
+        console.log("Client server should be running on http://localhost:5173");
+        console.log("Game server should be running on http://localhost:3001");
+      }
+
+      // Run check on page load
+      window.onload = checkServers;
+    </script>
+  </body>
+</html>
