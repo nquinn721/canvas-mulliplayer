@@ -272,7 +272,7 @@ export class AbilityIconRenderer extends CanvasComponent {
       iconSize,
       true, // Laser is always ready (unlimited ammo)
       "LEFT CLICK",
-      "rgba(34, 197, 94, 0.9)", // Green theme for laser
+      "rgba(255, 100, 100, 0.9)", // Red theme matching laser power-up
       drawLaserIcon,
       0, // No cooldown
       0, // No cooldown remaining
@@ -315,7 +315,7 @@ export class AbilityIconRenderer extends CanvasComponent {
       iconSize,
       this.gameStore.isMissileReady,
       "RIGHT CLICK",
-      "rgba(255, 140, 0, 0.9)", // Orange theme for missiles
+      "rgba(255, 165, 0, 0.9)", // Orange theme matching missile power-up
       drawMissileIcon,
       this.gameStore.missileCooldownPercent,
       this.gameStore.missileCooldowRemaining,
@@ -344,7 +344,7 @@ export class AbilityIconRenderer extends CanvasComponent {
       iconSize,
       this.gameStore.isFlashReady,
       "F",
-      "rgba(139, 92, 246, 0.9)", // Purple theme for flash
+      "rgba(255, 255, 0, 0.9)", // Yellow theme matching flash power-up
       drawFlashIcon,
       this.gameStore.flashCooldownPercent,
       this.gameStore.flashCooldownRemaining,

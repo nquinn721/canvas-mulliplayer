@@ -13,7 +13,6 @@ export class SocketService {
 
   connect(url?: string) {
     if (this.socket?.connected) {
-      console.log("Already connected to server");
       return;
     }
 
@@ -40,18 +39,15 @@ export class SocketService {
 
     // Connection events
     this.socket.on("connect", () => {
-      console.log("Connected to server");
       this.gameStore.setConnected(true);
     });
 
     this.socket.on("disconnect", () => {
-      console.log("Disconnected from server");
       this.gameStore.setConnected(false);
     });
 
     // Game events
     this.socket.on("playerId", (id: string) => {
-      console.log(`Received playerId: ${id}`);
       this.gameStore.setPlayerId(id);
     });
 
@@ -204,9 +200,6 @@ export class SocketService {
     this.socket.on(
       "aiDifficultyChanged",
       (data: { difficulty: string; affectedEnemies: number }) => {
-        console.log(
-          `AI difficulty changed to ${data.difficulty}, affected ${data.affectedEnemies} enemies`
-        );
         // You could add a toast notification here if desired
       }
     );
@@ -215,7 +208,6 @@ export class SocketService {
     this.socket.on(
       "starSpawned",
       (data: { starId: string; x: number; y: number; lifespan: number }) => {
-        console.log(`Star ${data.starId} spawned at (${data.x}, ${data.y})`);
         // Stars are handled through gameState updates, no need for special action
       }
     );
@@ -229,7 +221,6 @@ export class SocketService {
         radius: number;
         damage: number;
       }) => {
-        console.log(`Star ${data.starId} exploded with ${data.damage} damage!`);
         // Play explosion sound
         soundService.playSound("explosion", 0.6);
 
@@ -248,14 +239,12 @@ export class SocketService {
         y: number;
       }) => {
         if (data.playerId === this.gameStore.playerId) {
-          console.log(`You took ${data.damage} damage from star explosion!`);
           // Could add screen shake or damage indicator
         }
       }
     );
 
     this.socket.on("starExpired", (starId: string) => {
-      console.log(`Star ${starId} expired`);
       // Stars are removed through gameState updates
     });
 

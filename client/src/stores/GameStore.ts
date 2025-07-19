@@ -165,10 +165,8 @@ export class GameStore {
   sendInput() {
     if (!this.socket || !this.playerId) return;
 
-    const inputChanged = Object.values(this.keys).some((value) => value);
-    if (inputChanged) {
-      this.socket.emit("input", this.keys);
-    }
+    // Always send input state to ensure server has the latest state
+    this.socket.emit("input", this.keys);
   }
 
   // Shooting

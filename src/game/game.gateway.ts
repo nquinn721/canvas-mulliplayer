@@ -139,7 +139,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // Calculate move speed with boost multiplier
     const baseSpeed = player.speed * (deltaTime / 1000);
-    const boostMultiplier = player.isBoostActive ? 2.5 : 1.0;
+    const boostMultiplier = player.getBoostMultiplier();
     const moveSpeed = baseSpeed * boostMultiplier;
 
     let deltaX = strafeMovement.deltaX; // Start with strafe movement
@@ -670,13 +670,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
           if (powerUp.type === PowerUpType.HEALTH_PICKUP) {
             canCollect = player.canBeHealed();
+          } else if (powerUp.type === PowerUpType.SHIELD_PICKUP) {
+            canCollect = player.canPickupShield();
           }
 
           if (canCollect) {
-            // Power-up collected!
-            powerUp.collect();
+            // Apply upgrade to player based on type and check if successful
+            let powerUpApplied = true;
 
-            // Apply upgrade to player based on type
             if (powerUp.type === PowerUpType.BOOST_UPGRADE) {
               player.applyBoostUpgrade();
             } else if (powerUp.type === PowerUpType.LASER_UPGRADE) {
@@ -686,16 +687,21 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
             } else if (powerUp.type === PowerUpType.FLASH_UPGRADE) {
               player.applyFlashUpgrade();
             } else if (powerUp.type === PowerUpType.HEALTH_PICKUP) {
-              player.heal(50); // Heal 50 health points
+              powerUpApplied = player.applyHealthPickup();
             } else if (powerUp.type === PowerUpType.SHIELD_PICKUP) {
-              player.applyShield(); // Apply shield protection
+              powerUpApplied = player.applyShield();
             }
 
-            this.server.emit("powerUpCollected", {
-              powerUpId: powerUpId,
-              playerId: playerId,
-              type: powerUp.type,
-            });
+            // Only collect the power-up if it was successfully applied
+            if (powerUpApplied) {
+              powerUp.collect();
+
+              this.server.emit("powerUpCollected", {
+                powerUpId: powerUpId,
+                playerId: playerId,
+                type: powerUp.type,
+              });
+            }
           }
         }
       });
@@ -769,13 +775,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
           if (powerUp.type === PowerUpType.HEALTH_PICKUP) {
             canCollect = aiEnemy.canBeHealed();
+          } else if (powerUp.type === PowerUpType.SHIELD_PICKUP) {
+            canCollect = aiEnemy.canPickupShield();
           }
 
           if (canCollect) {
-            // Power-up collected by AI!
-            powerUp.collect();
+            // Apply upgrade to AI based on type and check if successful
+            let powerUpApplied = true;
 
-            // Apply upgrade to AI based on type
             if (powerUp.type === PowerUpType.BOOST_UPGRADE) {
               aiEnemy.applyBoostUpgrade();
             } else if (powerUp.type === PowerUpType.LASER_UPGRADE) {
@@ -785,16 +792,21 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
             } else if (powerUp.type === PowerUpType.FLASH_UPGRADE) {
               aiEnemy.applyFlashUpgrade();
             } else if (powerUp.type === PowerUpType.HEALTH_PICKUP) {
-              aiEnemy.heal(50); // Heal 50 health points
+              powerUpApplied = aiEnemy.applyHealthPickup();
             } else if (powerUp.type === PowerUpType.SHIELD_PICKUP) {
-              aiEnemy.applyShield(); // Apply shield protection
+              powerUpApplied = aiEnemy.applyShield();
             }
 
-            this.server.emit("powerUpCollected", {
-              powerUpId: powerUpId,
-              playerId: aiId,
-              type: powerUp.type,
-            });
+            // Only collect the power-up if it was successfully applied
+            if (powerUpApplied) {
+              powerUp.collect();
+
+              this.server.emit("powerUpCollected", {
+                powerUpId: powerUpId,
+                playerId: aiId,
+                type: powerUp.type,
+              });
+            }
           }
         }
       });

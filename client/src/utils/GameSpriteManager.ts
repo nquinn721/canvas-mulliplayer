@@ -13,9 +13,8 @@ export class GameSpriteManager {
       // Load trees (no parameters needed now)
       await this.treeManager.loadTrees();
       this.isInitialized = true;
-      console.log("Game sprites initialized successfully");
     } catch (error) {
-      console.error("Failed to initialize game sprites:", error);
+      // Silent error handling - trees are optional
     }
   }
 

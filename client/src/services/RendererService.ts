@@ -764,11 +764,6 @@ export class RendererService {
         !isFinite(player.y) ||
         !isFinite(playerRadius)
       ) {
-        console.warn("Invalid player position or radius for shield effect:", {
-          x: player.x,
-          y: player.y,
-          radius: playerRadius,
-        });
         return;
       }
 
@@ -785,10 +780,6 @@ export class RendererService {
 
       // Validate calculated values
       if (!isFinite(shieldRadius) || !isFinite(shieldAlpha)) {
-        console.warn("Invalid calculated shield values:", {
-          shieldRadius,
-          shieldAlpha,
-        });
         this.ctx.restore();
         return;
       }

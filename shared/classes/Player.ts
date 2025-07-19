@@ -14,6 +14,13 @@ export interface KeyState {
 }
 
 // Player class that manages all player logic
+import {
+  POWER_UP_CONFIG,
+  getBoostStats,
+  getLaserStats,
+  getMissileStats,
+} from "../config";
+
 export class Player {
   public id: string;
   public name: string;
@@ -160,10 +167,10 @@ export class Player {
       this.boostUpgradeExpiration = 0;
     }
 
-    // Calculate upgrade multipliers
-    const upgradeMultiplier = 1 + this.boostUpgradeLevel * 0.5; // Each level = 50% improvement
-    const drainRate = 35 / upgradeMultiplier; // Slower drain with upgrades (reduced from 50 to 35)
-    const regenRate = 55 * upgradeMultiplier; // Faster regen with upgrades (increased from 40 to 55)
+    // Calculate upgrade multipliers using config
+    const boostStats = getBoostStats(this.boostUpgradeLevel);
+    const drainRate = boostStats.drainRate;
+    const regenRate = boostStats.regenRate;
 
     if (this.isBoostActive && this.boostEnergy > 0) {
       // Drain boost energy when active
@@ -191,10 +198,21 @@ export class Player {
 
   // Apply boost upgrade
   applyBoostUpgrade(): void {
-    this.boostUpgradeLevel = Math.min(3, this.boostUpgradeLevel + 1); // Max level 3
-    this.boostUpgradeExpiration = Date.now() + 60000; // 1 minute duration
-    this.addExperience(10); // 10 XP for upgrade
-    this.replenishBoostEnergy(0.5); // Replenish 50% of boost energy
+    const config = POWER_UP_CONFIG.boostUpgrade;
+    this.boostUpgradeLevel = Math.min(
+      config.maxLevel,
+      this.boostUpgradeLevel + 1
+    );
+
+    // If durationMs is 0, make it permanent (no expiration)
+    if (config.durationMs === 0) {
+      this.boostUpgradeExpiration = 0; // 0 means permanent
+    } else {
+      this.boostUpgradeExpiration = Date.now() + config.durationMs;
+    }
+
+    this.addExperience(config.experienceReward);
+    this.replenishBoostEnergy(config.energyRefillPercentage);
   }
 
   // Replenish boost energy by a percentage of max energy
@@ -204,6 +222,27 @@ export class Player {
       this.maxBoostEnergy,
       this.boostEnergy + replenishAmount
     );
+  }
+
+  // Get boost speed multiplier based on upgrade level
+  getBoostMultiplier(): number {
+    if (!this.isBoostActive) {
+      return 1.0;
+    }
+
+    // Check if boost upgrade has expired (only if it's not permanent)
+    const currentTime = Date.now();
+    if (
+      this.boostUpgradeExpiration > 0 &&
+      currentTime > this.boostUpgradeExpiration
+    ) {
+      this.boostUpgradeLevel = 0;
+      this.boostUpgradeExpiration = 0;
+    }
+
+    // Use configuration to calculate multiplier
+    const boostStats = getBoostStats(this.boostUpgradeLevel);
+    return boostStats.speedMultiplier;
   }
 
   // Check if player can be healed (not at full health)
@@ -222,11 +261,23 @@ export class Player {
       return false; // Can't pickup shield if already at full shield
     }
 
-    this.shieldHealth = this.maxShieldHealth;
-    this.shieldExpiration = 0; // No time limit on shield
+    const config = POWER_UP_CONFIG.shieldPickup;
+    this.shieldHealth = config.shieldAmount;
+    this.maxShieldHealth = config.shieldAmount;
+    this.shieldExpiration = Date.now() + config.durationMs;
     this.hasShield = true;
-    this.addExperience(10); // 10 XP for shield pickup
+    this.addExperience(config.experienceReward);
     return true; // Successfully picked up shield
+  }
+
+  // Apply health pickup
+  applyHealthPickup(): boolean {
+    const config = POWER_UP_CONFIG.healthPickup;
+    const healed = this.heal(config.healAmount);
+    if (healed) {
+      this.addExperience(config.experienceReward);
+    }
+    return healed;
   }
 
   // Update shield status (call this regularly to check expiration)
@@ -282,14 +333,20 @@ export class Player {
   // Check if player has boost upgrade active
   hasBoostUpgrade(): boolean {
     return (
-      this.boostUpgradeLevel > 0 && Date.now() < this.boostUpgradeExpiration
+      this.boostUpgradeLevel > 0 &&
+      (this.boostUpgradeExpiration === 0 ||
+        Date.now() < this.boostUpgradeExpiration)
     );
   }
 
   // Apply laser upgrade
   applyLaserUpgrade(): void {
-    this.laserUpgradeLevel = Math.min(5, this.laserUpgradeLevel + 1); // Max level 5
-    this.addExperience(10); // 10 XP for upgrade
+    const config = POWER_UP_CONFIG.laserUpgrade;
+    this.laserUpgradeLevel = Math.min(
+      config.maxLevel,
+      this.laserUpgradeLevel + 1
+    );
+    this.addExperience(config.experienceReward);
     // Removed expiration - upgrades are now permanent
   }
 
@@ -300,8 +357,12 @@ export class Player {
 
   // Apply missile upgrade
   applyMissileUpgrade(): void {
-    this.missileUpgradeLevel = Math.min(5, this.missileUpgradeLevel + 1); // Max level 5
-    this.addExperience(10); // 10 XP for upgrade
+    const config = POWER_UP_CONFIG.missileUpgrade;
+    this.missileUpgradeLevel = Math.min(
+      config.maxLevel,
+      this.missileUpgradeLevel + 1
+    );
+    this.addExperience(config.experienceReward);
     // Removed expiration - upgrades are now permanent
   }
 
@@ -312,8 +373,12 @@ export class Player {
 
   // Apply flash upgrade
   applyFlashUpgrade(): void {
-    this.flashUpgradeLevel = Math.min(5, this.flashUpgradeLevel + 1); // Max level 5
-    this.addExperience(10); // 10 XP for upgrade
+    const config = POWER_UP_CONFIG.flashUpgrade;
+    this.flashUpgradeLevel = Math.min(
+      config.maxLevel,
+      this.flashUpgradeLevel + 1
+    );
+    this.addExperience(config.experienceReward);
   }
 
   // Check if player has flash upgrade active
@@ -537,34 +602,13 @@ export class Player {
     speed: number;
     damage: number;
     distance: number;
+    fireRate: number;
     dualShot: boolean;
     hasBackwardLaser: boolean;
   } {
-    const baseSpeed = 400;
-    const baseDamage = 12;
-    const baseDistance = 1200; // Increased from 500 for larger world
-
-    // Level 1 is the base level with no multipliers
-    if (this.laserUpgradeLevel <= 1) {
-      return {
-        speed: baseSpeed,
-        damage: baseDamage,
-        distance: baseDistance,
-        dualShot: false,
-        hasBackwardLaser: false,
-      };
-    }
-
-    // For levels 2+, each level above 1 increases stats by 15%/20%/20%
-    const levelAboveBase = this.laserUpgradeLevel - 1;
-    const speedMultiplier = 1 + levelAboveBase * 0.15;
-    const damageMultiplier = 1 + levelAboveBase * 0.2;
-    const distanceMultiplier = 1 + levelAboveBase * 0.2;
-
+    const stats = getLaserStats(this.laserUpgradeLevel);
     return {
-      speed: Math.floor(baseSpeed * speedMultiplier),
-      damage: Math.floor(baseDamage * damageMultiplier),
-      distance: Math.floor(baseDistance * distanceMultiplier),
+      ...stats,
       dualShot: this.laserUpgradeLevel >= 3,
       hasBackwardLaser: this.laserUpgradeLevel >= 5,
     };
@@ -580,50 +624,7 @@ export class Player {
     dualShot: boolean;
     missileCount: number;
   } {
-    const baseSpeed = 400;
-    const baseDamage = 75;
-    const baseDistance = 1200; // Increased from 800 for larger world
-    const baseTrackingRange = 300;
-    const baseTurnRate = 3;
-
-    // Determine missile count based on upgrade level
-    let missileCount = 1; // Default single missile
-    if (this.missileUpgradeLevel >= 5) {
-      missileCount = 3; // Triple shot at level 5
-    } else if (this.missileUpgradeLevel >= 3) {
-      missileCount = 2; // Dual shot at level 3
-    }
-
-    // Level 1 is the base level with no multipliers
-    if (this.missileUpgradeLevel <= 1) {
-      return {
-        speed: baseSpeed,
-        damage: baseDamage,
-        distance: baseDistance,
-        trackingRange: baseTrackingRange,
-        turnRate: baseTurnRate,
-        dualShot: false,
-        missileCount: 1,
-      };
-    }
-
-    // For levels 2+, each level above 1 increases stats by 10%/15%/15%/10%/20%
-    const levelAboveBase = this.missileUpgradeLevel - 1;
-    const speedMultiplier = 1 + levelAboveBase * 0.1;
-    const damageMultiplier = 1 + levelAboveBase * 0.15;
-    const distanceMultiplier = 1 + levelAboveBase * 0.15;
-    const trackingRangeMultiplier = 1 + levelAboveBase * 0.1;
-    const turnRateMultiplier = 1 + levelAboveBase * 0.2;
-
-    return {
-      speed: Math.floor(baseSpeed * speedMultiplier),
-      damage: Math.floor(baseDamage * damageMultiplier),
-      distance: Math.floor(baseDistance * distanceMultiplier),
-      trackingRange: Math.floor(baseTrackingRange * trackingRangeMultiplier),
-      turnRate: baseTurnRate * turnRateMultiplier,
-      dualShot: this.missileUpgradeLevel >= 3, // Keep for backwards compatibility
-      missileCount: missileCount,
-    };
+    return getMissileStats(this.missileUpgradeLevel);
   }
 
   // Take damage with shield protection

@@ -18,7 +18,6 @@ export class SoundService {
   constructor() {
     // Hot reload protection - cleanup previous instance
     if ((window as any).__soundService) {
-      console.log("🎵 Cleaning up previous sound service instance");
       const previousService = (window as any).__soundService;
       previousService.cleanup();
     }
@@ -139,7 +138,6 @@ export class SoundService {
     );
 
     await Promise.all(loadPromises);
-    console.log(`Loaded ${this.loadedSounds.size} sound files`);
 
     // Start background music if not muted
     if (!this.isMuted) {
@@ -307,8 +305,6 @@ export class SoundService {
       // Stop existing music if playing
       this.stopBackgroundMusic();
 
-      console.log("🎵 Starting background music");
-
       // Resume audio context if needed
       if (this.audioContext.state === "suspended") {
         this.audioContext.resume();
@@ -337,7 +333,6 @@ export class SoundService {
 
   stopBackgroundMusic(): void {
     if (this.backgroundMusicSource) {
-      console.log("🎵 Stopping background music");
       try {
         this.backgroundMusicSource.stop();
       } catch (error) {
@@ -415,14 +410,10 @@ export class SoundService {
 
   // Cleanup method for hot reload protection
   cleanup(): void {
-    console.log("🎵 Stopping background music");
     this.stopBackgroundMusic();
-
-    console.log("🎵 Stopping continuous sounds");
     this.stopAllContinuousSounds();
 
     if (this.audioContext) {
-      console.log("🎵 Closing audio context");
       this.audioContext.close();
       this.audioContext = null;
     }

@@ -10,10 +10,8 @@ export class TreeSpriteManager {
    */
   async loadTrees(): Promise<void> {
     try {
-      console.log("Loading tree sprites...");
       this.isLoaded = true;
     } catch (error) {
-      console.error("Error loading trees:", error);
       throw error;
     }
   }

@@ -617,9 +617,6 @@ export class EnhancedAIEnemy extends Player {
     const weapon = Math.random() < missileChance ? "missile" : "laser";
 
     this.lastShootTime = currentTime;
-    console.log(
-      `Enhanced AI ${this.id} shooting ${weapon} at distance ${distance.toFixed(1)} with LOS: ${hasLineOfSight}`
-    );
     return { angle, weapon };
   }
 

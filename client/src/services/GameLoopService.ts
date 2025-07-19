@@ -1,3 +1,4 @@
+import { getBoostStats } from "@shared/config";
 import { GameStore } from "../stores/GameStore";
 import { InputService } from "./InputService";
 
@@ -95,7 +96,25 @@ export class GameLoopService {
         let velocityX = 0;
         let velocityY = 0;
         const baseSpeed = 200;
-        const boostMultiplier = currentPlayer.isBoostActive ? 1.5 : 1;
+
+        // Calculate boost multiplier using the same logic as Player class
+        let boostMultiplier = 1.0;
+        if (currentPlayer.isBoostActive) {
+          // Check if boost upgrade has expired
+          const currentTime = Date.now();
+          let boostLevel = currentPlayer.boostUpgradeLevel || 0;
+
+          if (
+            currentPlayer.boostUpgradeExpiration > 0 &&
+            currentTime > currentPlayer.boostUpgradeExpiration
+          ) {
+            boostLevel = 0;
+          }
+
+          // Use configuration to calculate multiplier
+          const boostStats = getBoostStats(boostLevel);
+          boostMultiplier = boostStats.speedMultiplier;
+        }
 
         if (this.gameStore.keys.w || this.gameStore.keys.ArrowUp)
           velocityY -= baseSpeed;
