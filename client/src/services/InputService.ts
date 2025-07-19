@@ -43,15 +43,9 @@ export class InputService {
 
     // Flash ability (key F)
     if (e.key === "f" || e.key === "F") {
-      console.log("F key pressed - attempting Flash ability");
       const flashUsed = this.gameStore.useFlash();
       if (flashUsed) {
-        console.log("Flash used successfully!");
         // Could add flash sound effect here
-      } else {
-        console.log(
-          "Flash failed - either on cooldown or no socket connection"
-        );
       }
     }
 
