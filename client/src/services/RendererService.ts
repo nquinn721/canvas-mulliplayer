@@ -25,6 +25,7 @@ export class RendererService {
     this.drawWalls();
     this.drawPowerUps();
     this.drawPlayers();
+    this.drawAIEnemies();
     this.drawProjectiles();
     this.drawParticles();
     this.restoreCamera();
@@ -118,6 +119,8 @@ export class RendererService {
     // Different colors based on power-up type
     const isLaserUpgrade = powerUp.type === "laser_upgrade";
     const isMissileUpgrade = powerUp.type === "missile_upgrade";
+    const isHealthPickup = powerUp.type === "health_pickup";
+    const isShieldPickup = powerUp.type === "shield_pickup";
     let baseColor: string;
     let hexColor: string;
 
@@ -127,6 +130,12 @@ export class RendererService {
     } else if (isMissileUpgrade) {
       baseColor = "255, 165, 0"; // Orange for missile
       hexColor = "#ffa500";
+    } else if (isHealthPickup) {
+      baseColor = "0, 255, 0"; // Green for health
+      hexColor = "#00ff00";
+    } else if (isShieldPickup) {
+      baseColor = "0, 100, 255"; // Blue for shield
+      hexColor = "#0064ff";
     } else {
       baseColor = "0, 255, 255"; // Cyan for boost
       hexColor = "#00ffff";
@@ -183,6 +192,25 @@ export class RendererService {
       // Fins
       this.ctx.fillRect(x - 4, y + 2, 2, 4); // Left fin
       this.ctx.fillRect(x + 2, y + 2, 2, 4); // Right fin
+    } else if (isHealthPickup) {
+      // Draw health icon (cross/plus sign)
+      this.ctx.fillStyle = "#ffffff"; // White cross
+      this.ctx.fillRect(x - 8, y - 2, 16, 4); // Horizontal bar
+      this.ctx.fillRect(x - 2, y - 8, 4, 16); // Vertical bar
+    } else if (isShieldPickup) {
+      // Draw shield icon
+      this.ctx.fillStyle = "#ffffff"; // White shield
+      this.ctx.beginPath();
+      this.ctx.moveTo(x, y - 12); // Top point
+      this.ctx.lineTo(x - 8, y - 8); // Top left
+      this.ctx.lineTo(x - 10, y + 2); // Bottom left
+      this.ctx.lineTo(x - 4, y + 10); // Bottom left curve
+      this.ctx.lineTo(x, y + 8); // Bottom center
+      this.ctx.lineTo(x + 4, y + 10); // Bottom right curve
+      this.ctx.lineTo(x + 10, y + 2); // Bottom right
+      this.ctx.lineTo(x + 8, y - 8); // Top right
+      this.ctx.closePath();
+      this.ctx.fill();
     } else {
       // Draw boost icon (arrow pointing up)
       this.ctx.beginPath();
@@ -217,14 +245,47 @@ export class RendererService {
         // Name background/outline for better visibility
         this.ctx.strokeStyle = "#000";
         this.ctx.lineWidth = 3;
-        this.ctx.strokeText(player.name, player.x, player.y - 45);
+        this.ctx.strokeText(player.name, player.x, player.y - 60);
 
         // Name text
         this.ctx.fillStyle = "#fff";
-        this.ctx.fillText(player.name, player.x, player.y - 45);
+        this.ctx.fillText(player.name, player.x, player.y - 60);
 
         // Health bar
         this.drawHealthBar(player);
+
+        // Shield effect (if player has shield)
+        this.drawShieldEffect(player);
+      }
+    });
+  }
+
+  private drawAIEnemies() {
+    // Check if aiEnemies exists in gameState
+    if (!this.gameStore.gameState.aiEnemies) return;
+
+    Object.values(this.gameStore.gameState.aiEnemies).forEach((aiEnemy) => {
+      if (this.gameStore.isPlayerInView(aiEnemy)) {
+        this.drawAISpaceship(aiEnemy);
+
+        // AI name (above health bar)
+        this.ctx.font = "12px Arial";
+        this.ctx.textAlign = "center";
+
+        // Name background/outline for better visibility
+        this.ctx.strokeStyle = "#000";
+        this.ctx.lineWidth = 3;
+        this.ctx.strokeText(aiEnemy.name, aiEnemy.x, aiEnemy.y - 60);
+
+        // Name text with red color for AI
+        this.ctx.fillStyle = "#ff6666";
+        this.ctx.fillText(aiEnemy.name, aiEnemy.x, aiEnemy.y - 60);
+
+        // Health bar
+        this.drawHealthBar(aiEnemy);
+
+        // Shield effect (if AI has shield)
+        this.drawShieldEffect(aiEnemy);
       }
     });
   }
@@ -236,15 +297,7 @@ export class RendererService {
     this.ctx.translate(player.x, player.y);
     this.ctx.rotate(player.angle);
 
-    // Apply roll rotation if rolling
-    if (player.isRolling && player.rollAngle) {
-      // Roll is a rotation around the Z-axis (perpendicular to screen)
-      // We simulate this by scaling the Y-axis and skewing
-      const rollScale = Math.cos(player.rollAngle);
-      const rollSkew = Math.sin(player.rollAngle) * 0.3; // Subtle skew effect
-      this.ctx.scale(1, rollScale);
-      this.ctx.transform(1, 0, rollSkew, 1, 0, 0);
-    }
+    // Roll animation removed - ship just moves without visual rotation
 
     const isCurrentPlayer = player.id === this.gameStore.playerId;
     const shipColor = isCurrentPlayer ? "#4ade80" : "#f87171";
@@ -299,13 +352,72 @@ export class RendererService {
     this.ctx.restore();
   }
 
+  private drawAISpaceship(aiEnemy: any) {
+    this.ctx.save();
+
+    // Move to AI position and rotate to face direction
+    this.ctx.translate(aiEnemy.x, aiEnemy.y);
+    this.ctx.rotate(aiEnemy.angle);
+
+    const shipColor = "#ff4444"; // Red color for AI enemies
+    const accentColor = "#cc2222"; // Darker red accent
+
+    // Spaceship body (main triangle) - slightly different shape for AI
+    this.ctx.fillStyle = shipColor;
+    this.ctx.strokeStyle = "#fff";
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.moveTo(20, 0); // Nose (pointing right in local coords) - slightly longer
+    this.ctx.lineTo(-14, -10); // Top back - wider
+    this.ctx.lineTo(-10, 0); // Back center
+    this.ctx.lineTo(-14, 10); // Bottom back - wider
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.stroke();
+
+    // Wings/stabilizers - more angular for AI
+    this.ctx.fillStyle = accentColor;
+    this.ctx.beginPath();
+    this.ctx.moveTo(-4, -10);
+    this.ctx.lineTo(6, -14);
+    this.ctx.lineTo(14, -10);
+    this.ctx.lineTo(4, -8);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(-4, 10);
+    this.ctx.lineTo(6, 14);
+    this.ctx.lineTo(14, 10);
+    this.ctx.lineTo(4, 8);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    // AI indicator - small red dot in center
+    this.ctx.fillStyle = "#ffff00"; // Yellow for AI identifier
+    this.ctx.beginPath();
+    this.ctx.arc(4, 0, 4, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    // AI "eye" or sensor
+    this.ctx.fillStyle = "#ff0000";
+    this.ctx.beginPath();
+    this.ctx.arc(4, 0, 2, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    this.ctx.restore();
+  }
+
   private isPlayerMoving(): boolean {
-    // Check if movement keys are pressed or player is rolling
+    // Check if movement keys are pressed or player has strafe velocity
     const keys = this.gameStore.keys;
     const currentPlayer =
       this.gameStore.gameState.players[this.gameStore.playerId];
-    const isRolling = currentPlayer?.isRolling || false;
-    return keys.w || keys.s || isRolling;
+    const hasStrafing =
+      currentPlayer &&
+      (Math.abs(currentPlayer.strafeVelocityX) > 10 ||
+        Math.abs(currentPlayer.strafeVelocityY) > 10);
+    return keys.w || keys.s || keys.a || keys.d || hasStrafing;
   }
 
   private drawThrusters(isBoostActive: boolean, keys: any, player: any) {
@@ -356,14 +468,13 @@ export class RendererService {
       this.ctx.fill();
     }
 
-    // Side thrusters for rolling/strafing - only show during roll animation
-    if (player.isRolling) {
+    // Side thrusters for strafing (A/D keys)
+    if (keys.a || keys.d) {
       const sideLength = thrusterLength * 0.8;
       const sideWidth = thrusterWidth * 0.8;
 
-      // Determine which thruster to fire based on roll direction
-      if (player.rollDirection === 1) {
-        // Right roll (D key)
+      if (keys.d) {
+        // Right strafe (D key) - left thruster fires
         this.ctx.fillStyle = isBoostActive ? "#00bfff" : "#ff4500";
         this.ctx.beginPath();
         this.ctx.moveTo(2, -12);
@@ -382,8 +493,8 @@ export class RendererService {
         this.ctx.fill();
       }
 
-      if (player.rollDirection === -1) {
-        // Left roll (A key)
+      if (keys.a) {
+        // Left strafe (A key) - right thruster fires
         this.ctx.fillStyle = isBoostActive ? "#00bfff" : "#ff4500";
         this.ctx.beginPath();
         this.ctx.moveTo(2, 12);
@@ -411,7 +522,7 @@ export class RendererService {
 
     // Health bar background
     this.ctx.fillStyle = "#333";
-    this.ctx.fillRect(player.x - 20, player.y - 35, 40, 6);
+    this.ctx.fillRect(player.x - 20, player.y - 50, 40, 6);
 
     // Health bar fill
     this.ctx.fillStyle =
@@ -420,7 +531,85 @@ export class RendererService {
         : healthPercent > 0.25
           ? "#fbbf24"
           : "#f87171";
-    this.ctx.fillRect(player.x - 20, player.y - 35, 40 * healthPercent, 6);
+    this.ctx.fillRect(player.x - 20, player.y - 50, 40 * healthPercent, 6);
+  }
+
+  private drawShieldEffect(player: any) {
+    // Check if player has shield (assume shield info is in player object)
+    if (player.hasShield && player.shieldHealth > 0) {
+      // Provide fallback radius if not present
+      const playerRadius = player.radius || 15;
+
+      // Validate player position and radius to prevent non-finite values
+      if (
+        !isFinite(player.x) ||
+        !isFinite(player.y) ||
+        !isFinite(playerRadius)
+      ) {
+        console.warn("Invalid player position or radius for shield effect:", {
+          x: player.x,
+          y: player.y,
+          radius: playerRadius,
+        });
+        return;
+      }
+
+      const shieldPercent =
+        player.shieldHealth / (player.maxShieldHealth || 100);
+      const time = Date.now() * 0.003;
+
+      // Draw pulsing shield effect around player
+      this.ctx.save();
+
+      // Shield circle with pulsing effect
+      const shieldRadius = playerRadius + 8 + Math.sin(time) * 2;
+      const shieldAlpha = 0.3 + Math.sin(time * 2) * 0.1;
+
+      // Validate calculated values
+      if (!isFinite(shieldRadius) || !isFinite(shieldAlpha)) {
+        console.warn("Invalid calculated shield values:", {
+          shieldRadius,
+          shieldAlpha,
+        });
+        this.ctx.restore();
+        return;
+      }
+
+      // Outer shield glow
+      const gradient = this.ctx.createRadialGradient(
+        player.x,
+        player.y,
+        playerRadius,
+        player.x,
+        player.y,
+        shieldRadius + 5
+      );
+      gradient.addColorStop(0, `rgba(0, 100, 255, 0)`);
+      gradient.addColorStop(0.7, `rgba(0, 150, 255, ${shieldAlpha})`);
+      gradient.addColorStop(1, `rgba(0, 200, 255, 0)`);
+
+      this.ctx.fillStyle = gradient;
+      this.ctx.beginPath();
+      this.ctx.arc(player.x, player.y, shieldRadius + 5, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // Main shield ring
+      this.ctx.strokeStyle = `rgba(0, 150, 255, ${0.6 + shieldAlpha})`;
+      this.ctx.lineWidth = 3;
+      this.ctx.beginPath();
+      this.ctx.arc(player.x, player.y, shieldRadius, 0, Math.PI * 2);
+      this.ctx.stroke();
+
+      // Shield health bar (below main health bar)
+      this.ctx.fillStyle = "#222";
+      this.ctx.fillRect(player.x - 20, player.y - 42, 40, 4);
+
+      // Shield bar fill
+      this.ctx.fillStyle = "#0096ff";
+      this.ctx.fillRect(player.x - 20, player.y - 42, 40 * shieldPercent, 4);
+
+      this.ctx.restore();
+    }
   }
 
   private drawProjectiles() {
@@ -529,6 +718,9 @@ export class RendererService {
     // Boost energy indicator (bottom center)
     this.drawBoostEnergyBar();
 
+    // XP bar (below boost bar)
+    this.drawExperienceBar();
+
     // Missile cooldown indicator (bottom right)
     this.drawMissileCooldown();
 
@@ -538,28 +730,84 @@ export class RendererService {
     // Laser upgrade indicator (to the right of missile)
     this.drawLaserUpgrade();
 
-    // Stats
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-    this.ctx.fillRect(this.gameStore.CANVAS_WIDTH - 120, 10, 110, 80);
+    // Compact stats in top corner
+    this.drawCompactStats();
+  }
+
+  private drawCompactStats() {
+    const margin = 10;
+    const iconSize = 16;
+    const spacing = 25;
+
+    // FPS display
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    this.ctx.fillRect(margin, margin, 80, 24);
 
     this.ctx.fillStyle = "#fff";
     this.ctx.font = "12px Arial";
     this.ctx.textAlign = "left";
     this.ctx.fillText(
       `FPS: ${this.gameStore.stats.fps}`,
-      this.gameStore.CANVAS_WIDTH - 110,
-      30
+      margin + 5,
+      margin + 16
     );
+
+    // Player count with icon
+    const playerIconX = margin + 90;
+    const playerIconY = margin;
+
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    this.ctx.fillRect(playerIconX, playerIconY, 45, 24);
+
+    // Draw player icon (simple person silhouette)
+    this.ctx.fillStyle = "#4ade80";
+    this.ctx.beginPath();
+    this.ctx.arc(playerIconX + 8, playerIconY + 8, 3, 0, Math.PI * 2); // Head
+    this.ctx.fill();
+
+    this.ctx.fillRect(playerIconX + 6, playerIconY + 12, 4, 6); // Body
+    this.ctx.fillRect(playerIconX + 4, playerIconY + 18, 2, 4); // Left leg
+    this.ctx.fillRect(playerIconX + 10, playerIconY + 18, 2, 4); // Right leg
+
+    // Player count text
+    this.ctx.fillStyle = "#fff";
+    this.ctx.font = "11px Arial";
+    this.ctx.textAlign = "left";
     this.ctx.fillText(
-      `Players: ${this.gameStore.playerCount}`,
-      this.gameStore.CANVAS_WIDTH - 110,
-      50
+      `${this.gameStore.playerCount}`,
+      playerIconX + 18,
+      playerIconY + 16
     );
-    this.ctx.fillText(
-      `Connected: ${this.gameStore.isConnected ? "Yes" : "No"}`,
-      this.gameStore.CANVAS_WIDTH - 110,
-      70
-    );
+
+    // Connection status with icon
+    const connectionX = margin + 145;
+    const connectionY = margin;
+
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    this.ctx.fillRect(connectionX, connectionY, 24, 24);
+
+    const isConnected = this.gameStore.isConnected;
+
+    if (isConnected) {
+      // Green checkmark
+      this.ctx.strokeStyle = "#4ade80";
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.moveTo(connectionX + 6, connectionY + 12);
+      this.ctx.lineTo(connectionX + 10, connectionY + 16);
+      this.ctx.lineTo(connectionX + 18, connectionY + 8);
+      this.ctx.stroke();
+    } else {
+      // Red X
+      this.ctx.strokeStyle = "#f87171";
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.moveTo(connectionX + 6, connectionY + 6);
+      this.ctx.lineTo(connectionX + 18, connectionY + 18);
+      this.ctx.moveTo(connectionX + 18, connectionY + 6);
+      this.ctx.lineTo(connectionX + 6, connectionY + 18);
+      this.ctx.stroke();
+    }
   }
 
   private drawMissileCooldown() {
@@ -947,11 +1195,62 @@ export class RendererService {
     this.ctx.fillRect(x, y, fillWidth, barHeight);
     this.ctx.shadowBlur = 0;
 
-    // Small label above the bar
+    // Level number to the left of the bar (starting at 1)
     this.ctx.fillStyle = "#fff";
-    this.ctx.font = "9px Arial";
-    this.ctx.textAlign = "center";
-    this.ctx.fillText("BOOST", x + barWidth / 2, y - 3);
+    this.ctx.font = "10px Arial";
+    this.ctx.textAlign = "right";
+    this.ctx.fillText(
+      `${player.boostUpgradeLevel + 1}`,
+      x - 8,
+      y + barHeight - 1
+    );
+
+    // Boost icon to the right of the bar (simple arrow/lightning symbol)
+    this.ctx.fillStyle = player.isBoostActive ? "#00ffff" : "#fff";
+    this.ctx.font = "12px Arial";
+    this.ctx.textAlign = "left";
+    this.ctx.fillText("⚡", x + barWidth + 6, y + barHeight - 1);
+  }
+
+  private drawExperienceBar() {
+    const player = this.gameStore.gameState.players[this.gameStore.playerId];
+    if (!player) return;
+
+    // XP bar dimensions - smaller and positioned below boost bar
+    const barWidth = 100;
+    const barHeight = 4;
+    const x = (this.gameStore.CANVAS_WIDTH - barWidth) / 2;
+    const y = this.gameStore.CANVAS_HEIGHT - 18; // Below boost bar
+
+    // Background
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+    this.ctx.fillRect(x - 2, y - 2, barWidth + 4, barHeight + 4);
+
+    // Border
+    this.ctx.strokeStyle = "#555";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x, y, barWidth, barHeight);
+
+    // XP progress fill
+    const progress = player.getLevelProgress ? player.getLevelProgress() : 0;
+    const fillWidth = barWidth * progress;
+
+    this.ctx.fillStyle = "#ffd700"; // Gold color for XP
+    this.ctx.fillRect(x, y, fillWidth, barHeight);
+
+    // Level number to the left
+    this.ctx.fillStyle = "#fff";
+    this.ctx.font = "10px Arial";
+    this.ctx.textAlign = "right";
+    this.ctx.fillText(`LV ${player.level || 1}`, x - 8, y + barHeight - 1);
+
+    // XP to the right
+    this.ctx.textAlign = "left";
+    this.ctx.fillText(
+      `${player.experience || 0} XP`,
+      x + barWidth + 6,
+      y + barHeight - 1
+    );
   }
 
   private drawStarfield() {

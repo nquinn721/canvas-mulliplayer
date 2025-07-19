@@ -4,6 +4,7 @@
 export type { GameState } from "./types/GameState";
 
 // Classes with their interfaces
+export { AIEnemy } from "./classes/AIEnemy";
 export { Camera } from "./classes/Camera";
 export { Game } from "./classes/Game";
 export { Player } from "./classes/Player";

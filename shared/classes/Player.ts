@@ -40,6 +40,12 @@ export class Player {
   public strafeVelocityX: number; // Current strafe velocity X
   public strafeVelocityY: number; // Current strafe velocity Y
   public strafeDecayRate: number; // How quickly strafe velocity decays
+  public shieldHealth: number; // Current shield health points
+  public maxShieldHealth: number; // Maximum shield health points
+  public shieldExpiration: number; // When the shield expires (timestamp)
+  public hasShield: boolean; // Whether player currently has a shield
+  public experience: number; // Total experience points
+  public level: number; // Player level based on experience
 
   constructor(
     id: string,
@@ -77,6 +83,12 @@ export class Player {
     this.strafeVelocityX = 0;
     this.strafeVelocityY = 0;
     this.strafeDecayRate = 0.85; // Velocity decays to 85% each frame (smooth deceleration)
+    this.shieldHealth = 0;
+    this.maxShieldHealth = 100;
+    this.shieldExpiration = 0;
+    this.hasShield = false;
+    this.experience = 0;
+    this.level = 1;
   }
 
   // Update player position with bounds checking
@@ -173,6 +185,7 @@ export class Player {
   applyBoostUpgrade(): void {
     this.boostUpgradeLevel = Math.min(3, this.boostUpgradeLevel + 1); // Max level 3
     this.boostUpgradeExpiration = Date.now() + 60000; // 1 minute duration
+    this.addExperience(10); // 10 XP for upgrade
     this.replenishBoostEnergy(0.5); // Replenish 50% of boost energy
   }
 
@@ -185,6 +198,69 @@ export class Player {
     );
   }
 
+  // Check if player can be healed (not at full health)
+  canBeHealed(): boolean {
+    return this.health < this.maxHealth;
+  }
+
+  // Apply shield pickup
+  applyShield(): void {
+    this.shieldHealth = this.maxShieldHealth;
+    this.shieldExpiration = 0; // No time limit on shield
+    this.hasShield = true;
+    this.addExperience(10); // 10 XP for shield pickup
+  }
+
+  // Update shield status (call this regularly to check expiration)
+  updateShield(): void {
+    if (this.hasShield && this.shieldHealth <= 0) {
+      this.hasShield = false;
+      this.shieldHealth = 0;
+      this.shieldExpiration = 0;
+    }
+  }
+
+  // Get shield status info
+  getShieldInfo(): {
+    hasShield: boolean;
+    shieldHealth: number;
+    timeRemaining: number;
+  } {
+    this.updateShield();
+    return {
+      hasShield: this.hasShield,
+      shieldHealth: this.shieldHealth,
+      timeRemaining: 0, // No time limit on shields
+    };
+  }
+
+  // Experience system methods
+  addExperience(amount: number): void {
+    this.experience += amount;
+    this.updateLevel();
+  }
+
+  // Calculate level based on experience (100 XP per level)
+  private updateLevel(): void {
+    const newLevel = Math.floor(this.experience / 100) + 1;
+    this.level = newLevel;
+  }
+
+  // Get experience needed for next level
+  getExperienceToNextLevel(): number {
+    const currentLevelXP = (this.level - 1) * 100;
+    const nextLevelXP = this.level * 100;
+    return nextLevelXP - this.experience;
+  }
+
+  // Get progress to next level as percentage (0-1)
+  getLevelProgress(): number {
+    const currentLevelXP = (this.level - 1) * 100;
+    const nextLevelXP = this.level * 100;
+    const progressXP = this.experience - currentLevelXP;
+    return progressXP / (nextLevelXP - currentLevelXP);
+  }
+
   // Check if player has boost upgrade active
   hasBoostUpgrade(): boolean {
     return (
@@ -195,6 +271,7 @@ export class Player {
   // Apply laser upgrade
   applyLaserUpgrade(): void {
     this.laserUpgradeLevel = Math.min(5, this.laserUpgradeLevel + 1); // Max level 5
+    this.addExperience(10); // 10 XP for upgrade
     // Removed expiration - upgrades are now permanent
   }
 
@@ -206,6 +283,7 @@ export class Player {
   // Apply missile upgrade
   applyMissileUpgrade(): void {
     this.missileUpgradeLevel = Math.min(5, this.missileUpgradeLevel + 1); // Max level 5
+    this.addExperience(10); // 10 XP for upgrade
     // Removed expiration - upgrades are now permanent
   }
 
@@ -377,15 +455,37 @@ export class Player {
     };
   }
 
-  // Take damage
+  // Take damage with shield protection
   takeDamage(damage: number): boolean {
-    this.health = Math.max(0, this.health - damage);
+    this.updateShield(); // Check if shield is still active
+
+    if (this.hasShield && this.shieldHealth > 0) {
+      // Shield absorbs damage first
+      const damageToShield = Math.min(damage, this.shieldHealth);
+      this.shieldHealth -= damageToShield;
+      const remainingDamage = damage - damageToShield;
+
+      // If shield is depleted, take remaining damage to health
+      if (this.shieldHealth <= 0) {
+        this.hasShield = false;
+        this.shieldHealth = 0;
+        this.health = Math.max(0, this.health - remainingDamage);
+      }
+    } else {
+      // No shield, take damage directly to health
+      this.health = Math.max(0, this.health - damage);
+    }
+
     return this.health <= 0; // Returns true if player is dead
   }
 
-  // Heal player
-  heal(amount: number): void {
+  // Heal player (returns true if healing was successful)
+  heal(amount: number): boolean {
+    if (this.health >= this.maxHealth) {
+      return false; // Already at full health
+    }
     this.health = Math.min(this.maxHealth, this.health + amount);
+    return true; // Successfully healed
   }
 
   // Check if player can shoot missile (cooldown check)
@@ -436,6 +536,7 @@ export class Player {
     health: number;
     maxHealth: number;
     speed: number;
+    radius: number;
     lastMissileTime: number;
     boostEnergy: number;
     isBoostActive: boolean;
@@ -448,6 +549,12 @@ export class Player {
     rollDirection: number;
     lastRollTime: number;
     rollCooldown: number;
+    shieldHealth: number;
+    maxShieldHealth: number;
+    shieldExpiration: number;
+    hasShield: boolean;
+    experience: number;
+    level: number;
   } {
     return {
       id: this.id,
@@ -459,6 +566,7 @@ export class Player {
       health: this.health,
       maxHealth: this.maxHealth,
       speed: this.speed,
+      radius: this.radius,
       lastMissileTime: this.lastMissileTime,
       boostEnergy: this.boostEnergy,
       isBoostActive: this.isBoostActive,
@@ -471,6 +579,12 @@ export class Player {
       rollDirection: this.rollDirection,
       lastRollTime: this.lastRollTime,
       rollCooldown: this.rollCooldown,
+      shieldHealth: this.shieldHealth,
+      maxShieldHealth: this.maxShieldHealth,
+      shieldExpiration: this.shieldExpiration,
+      hasShield: this.hasShield,
+      experience: this.experience,
+      level: this.level,
     };
   }
 
@@ -485,6 +599,7 @@ export class Player {
     health: number;
     maxHealth: number;
     speed: number;
+    radius?: number;
     lastMissileTime: number;
     boostEnergy?: number;
     isBoostActive?: boolean;
@@ -497,6 +612,12 @@ export class Player {
     rollDirection?: number;
     lastRollTime?: number;
     rollCooldown?: number;
+    shieldHealth?: number;
+    maxShieldHealth?: number;
+    shieldExpiration?: number;
+    hasShield?: boolean;
+    experience?: number;
+    level?: number;
   }): Player {
     const player = new Player(
       data.id,
@@ -509,6 +630,7 @@ export class Player {
     );
     player.angle = data.angle;
     player.maxHealth = data.maxHealth;
+    player.radius = data.radius || 15; // Default radius
     player.lastMissileTime = data.lastMissileTime;
     player.boostEnergy = data.boostEnergy || 100;
     player.isBoostActive = data.isBoostActive || false;
@@ -521,6 +643,12 @@ export class Player {
     player.rollDirection = data.rollDirection || 0;
     player.lastRollTime = data.lastRollTime || 0;
     player.rollCooldown = data.rollCooldown || 1500;
+    player.shieldHealth = data.shieldHealth || 0;
+    player.maxShieldHealth = data.maxShieldHealth || 100;
+    player.shieldExpiration = data.shieldExpiration || 0;
+    player.hasShield = data.hasShield || false;
+    player.experience = data.experience || 0;
+    player.level = data.level || 1;
     return player;
   }
 

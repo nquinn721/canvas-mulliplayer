@@ -11,6 +11,8 @@ export enum PowerUpType {
   BOOST_UPGRADE = "boost_upgrade",
   LASER_UPGRADE = "laser_upgrade",
   MISSILE_UPGRADE = "missile_upgrade",
+  HEALTH_PICKUP = "health_pickup",
+  SHIELD_PICKUP = "shield_pickup",
 }
 
 export class PowerUp {

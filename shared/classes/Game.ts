@@ -178,6 +178,7 @@ export class Game {
 
     return {
       players: serializedPlayers,
+      aiEnemies: {}, // Empty for now since Game class doesn't handle AI enemies
       projectiles: serializedProjectiles,
       walls: this.world.walls,
       powerUps: {}, // Empty for now since Game class doesn't handle power-ups

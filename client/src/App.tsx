@@ -6,7 +6,7 @@ import { soundService } from "./services/SoundService";
 const App = observer(() => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(() => soundService.isSoundMuted()); // Initialize with localStorage value
 
   useEffect(() => {
     if (!canvasRef.current) return;

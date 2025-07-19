@@ -8,12 +8,16 @@ export class SoundService {
   private backgroundMusicGain: GainNode | null = null;
   private soundBuffers: Map<string, AudioBuffer> = new Map();
   private loadedSounds: Set<string> = new Set();
-  
+
   // Continuous sounds (like jet engines)
-  private continuousSounds: Map<string, { source: AudioBufferSourceNode; gain: GainNode }> = new Map();
+  private continuousSounds: Map<
+    string,
+    { source: AudioBufferSourceNode; gain: GainNode }
+  > = new Map();
 
   constructor() {
     this.initializeAudioContext();
+    this.loadMuteState(); // Load mute state from localStorage
     this.loadSoundFiles();
   }
 
@@ -26,34 +30,63 @@ export class SoundService {
     }
   }
 
+  // Load mute state from localStorage
+  private loadMuteState(): void {
+    try {
+      const savedMuteState = localStorage.getItem("soundService_muted");
+      if (savedMuteState !== null) {
+        this.isMuted = JSON.parse(savedMuteState);
+      }
+    } catch (error) {
+      console.warn("Failed to load mute state from localStorage:", error);
+    }
+  }
+
+  // Save mute state to localStorage
+  private saveMuteState(): void {
+    try {
+      localStorage.setItem("soundService_muted", JSON.stringify(this.isMuted));
+    } catch (error) {
+      console.warn("Failed to save mute state to localStorage:", error);
+    }
+  }
+
   // Load all sound files
   private async loadSoundFiles(): Promise<void> {
     if (!this.audioContext) return;
 
     const soundFiles = {
-      'laser': '/src/sounds/laser-shot.mp3',
-      'missile': '/src/sounds/missle-explosion.mp3', // Note: using explosion for missile sound
-      'explosion': '/src/sounds/missle-explosion.mp3',
-      'powerup': '/src/sounds/power-up.mp3',
-      'hit': '/src/sounds/laser-hit.mp3',
-      'move': '/src/sounds/player-move.mp3',
-      'background': '/src/sounds/background-music.mp3'
+      laser: "/src/sounds/laser-shot.mp3",
+      missile: "/src/sounds/missle-explosion.mp3", // Note: using explosion for missile sound
+      explosion: "/src/sounds/missle-explosion.mp3",
+      powerup: "/src/sounds/power-up.mp3",
+      hit: "/src/sounds/laser-hit.mp3",
+      move: "/src/sounds/player-move.mp3",
+      background: "/src/sounds/background-music.mp3",
     };
 
-    const loadPromises = Object.entries(soundFiles).map(async ([name, path]) => {
-      try {
-        const response = await fetch(path);
-        const arrayBuffer = await response.arrayBuffer();
-        const audioBuffer = await this.audioContext!.decodeAudioData(arrayBuffer);
-        this.soundBuffers.set(name, audioBuffer);
-        this.loadedSounds.add(name);
-      } catch (error) {
-        console.warn(`Failed to load sound: ${name}`, error);
+    const loadPromises = Object.entries(soundFiles).map(
+      async ([name, path]) => {
+        try {
+          const response = await fetch(path);
+          const arrayBuffer = await response.arrayBuffer();
+          const audioBuffer =
+            await this.audioContext!.decodeAudioData(arrayBuffer);
+          this.soundBuffers.set(name, audioBuffer);
+          this.loadedSounds.add(name);
+        } catch (error) {
+          console.warn(`Failed to load sound: ${name}`, error);
+        }
       }
-    });
+    );
 
     await Promise.all(loadPromises);
     console.log(`Loaded ${this.loadedSounds.size} sound files`);
+
+    // Start background music if not muted
+    if (!this.isMuted) {
+      setTimeout(() => this.startBackgroundMusic(), 100);
+    }
   }
 
   // Play different sound effects
@@ -62,28 +95,30 @@ export class SoundService {
 
     // Map sound names to our loaded sounds
     const soundMap: { [key: string]: string } = {
-      'laser': 'laser',
-      'missile': 'missile', 
-      'explosion': 'explosion',
-      'powerup': 'powerup',
-      'boost': 'move', // Use move sound for boost
-      'roll': 'move', // Use move sound for roll  
-      'damage': 'hit',
-      'death': 'explosion',
-      'hit': 'hit'
+      laser: "laser",
+      missile: "missile",
+      explosion: "explosion",
+      powerup: "powerup",
+      boost: "move", // Use move sound for boost
+      roll: "move", // Use move sound for roll
+      damage: "hit",
+      death: "explosion",
+      hit: "hit",
     };
 
     const mappedSoundName = soundMap[soundName] || soundName;
     const soundBuffer = this.soundBuffers.get(mappedSoundName);
 
     if (!soundBuffer) {
-      console.warn(`Sound not found: ${soundName} (mapped to: ${mappedSoundName})`);
+      console.warn(
+        `Sound not found: ${soundName} (mapped to: ${mappedSoundName})`
+      );
       return;
     }
 
     try {
       // Resume audio context if needed
-      if (this.audioContext.state === 'suspended') {
+      if (this.audioContext.state === "suspended") {
         this.audioContext.resume();
       }
 
@@ -115,21 +150,23 @@ export class SoundService {
     this.stopContinuousSound(soundName);
 
     const soundMap: { [key: string]: string } = {
-      'boost': 'move',
-      'jet': 'move'
+      boost: "move",
+      jet: "move",
     };
 
     const mappedSoundName = soundMap[soundName] || soundName;
     const soundBuffer = this.soundBuffers.get(mappedSoundName);
 
     if (!soundBuffer) {
-      console.warn(`Continuous sound not found: ${soundName} (mapped to: ${mappedSoundName})`);
+      console.warn(
+        `Continuous sound not found: ${soundName} (mapped to: ${mappedSoundName})`
+      );
       return;
     }
 
     try {
       // Resume audio context if needed
-      if (this.audioContext.state === 'suspended') {
+      if (this.audioContext.state === "suspended") {
         this.audioContext.resume();
       }
 
@@ -199,9 +236,9 @@ export class SoundService {
     if (!this.audioContext || this.isMuted) return;
 
     // Use loaded background music instead of generated buffer
-    const backgroundBuffer = this.soundBuffers.get('background');
+    const backgroundBuffer = this.soundBuffers.get("background");
     if (!backgroundBuffer) {
-      console.warn('Background music not loaded');
+      console.warn("Background music not loaded");
       return;
     }
 
@@ -250,6 +287,7 @@ export class SoundService {
   // Mute/unmute
   toggleMute(): boolean {
     this.isMuted = !this.isMuted;
+    this.saveMuteState(); // Save to localStorage
     if (this.isMuted) {
       this.stopBackgroundMusic();
       this.stopAllContinuousSounds();
@@ -262,6 +300,7 @@ export class SoundService {
 
   setMuted(muted: boolean): void {
     this.isMuted = muted;
+    this.saveMuteState(); // Save to localStorage
     if (muted) {
       this.stopBackgroundMusic();
       this.stopAllContinuousSounds();

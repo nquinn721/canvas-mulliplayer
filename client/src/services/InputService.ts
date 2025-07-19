@@ -43,8 +43,10 @@ export class InputService {
 
     // Missile ability (key 1 or spacebar)
     if (e.key === "1" || e.key === " ") {
-      this.gameStore.shootMissile();
-      soundService.playSound("missile", 0.8);
+      const missileFired = this.gameStore.shootMissile();
+      if (missileFired) {
+        soundService.playSound("missile", 0.8);
+      }
     }
 
     // Prevent default for game keys
@@ -117,15 +119,18 @@ export class InputService {
     const currentPlayer = this.gameStore.currentPlayer;
     if (currentPlayer) {
       const currentBoostState = currentPlayer.isBoostActive;
-      
+
       if (currentBoostState && !soundService.isContinuousSoundPlaying("jet")) {
         // Boost just activated - start continuous jet sound
         soundService.startContinuousSound("jet", 0.4);
-      } else if (!currentBoostState && soundService.isContinuousSoundPlaying("jet")) {
+      } else if (
+        !currentBoostState &&
+        soundService.isContinuousSoundPlaying("jet")
+      ) {
         // Boost deactivated - stop jet sound
         soundService.stopContinuousSound("jet");
       }
-      
+
       this.previousBoostState = currentBoostState;
     }
   }
@@ -134,7 +139,7 @@ export class InputService {
   cleanup() {
     // Stop any continuous sounds
     soundService.stopContinuousSound("jet");
-    
+
     window.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("keyup", this.handleKeyUp);
     this.canvas.removeEventListener("mousemove", this.handleMouseMove);

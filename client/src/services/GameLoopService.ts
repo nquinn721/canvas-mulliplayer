@@ -54,6 +54,9 @@ export class GameLoopService {
     // Update particle effects
     this.gameStore.updateParticles(deltaTime);
 
+    // Generate wind effects for moving players
+    this.updateWindEffects();
+
     // Update input-related sounds
     if (this.inputService) {
       this.inputService.updateBoostSound();
@@ -73,5 +76,50 @@ export class GameLoopService {
 
   get isActive() {
     return this.isRunning;
+  }
+
+  private updateWindEffects() {
+    // Generate wind effects for the current player when moving
+    const currentPlayer = this.gameStore.currentPlayer;
+    if (!currentPlayer) return;
+
+    // Check if player is moving by looking at input state
+    const isMoving = this.gameStore.isInputActive;
+
+    if (isMoving) {
+      // Create wind effect at regular intervals (every few frames)
+      // Use a simple counter to throttle wind particle generation
+      if (Math.random() < 0.3) {
+        // 30% chance each frame when moving
+        // Estimate velocity based on movement keys and boost state
+        let velocityX = 0;
+        let velocityY = 0;
+        const baseSpeed = 200;
+        const boostMultiplier = currentPlayer.isBoostActive ? 1.5 : 1;
+
+        if (this.gameStore.keys.w || this.gameStore.keys.ArrowUp)
+          velocityY -= baseSpeed;
+        if (this.gameStore.keys.s || this.gameStore.keys.ArrowDown)
+          velocityY += baseSpeed;
+        if (this.gameStore.keys.a || this.gameStore.keys.ArrowLeft)
+          velocityX -= baseSpeed;
+        if (this.gameStore.keys.d || this.gameStore.keys.ArrowRight)
+          velocityX += baseSpeed;
+
+        velocityX *= boostMultiplier;
+        velocityY *= boostMultiplier;
+
+        // Only create wind if there's actual movement
+        if (velocityX !== 0 || velocityY !== 0) {
+          this.gameStore.createWindEffect(
+            currentPlayer.x,
+            currentPlayer.y,
+            velocityX,
+            velocityY,
+            currentPlayer.angle
+          );
+        }
+      }
+    }
   }
 }

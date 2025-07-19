@@ -8,6 +8,7 @@ export class GameStore {
   // Game state
   gameState: GameState = {
     players: {},
+    aiEnemies: {},
     projectiles: [],
     walls: [],
     powerUps: {},
@@ -213,18 +214,18 @@ export class GameStore {
   }
 
   // Missile ability
-  shootMissile() {
+  shootMissile(): boolean {
     if (
       !this.socket ||
       !this.playerId ||
       !this.gameState.players[this.playerId]
     ) {
-      return;
+      return false;
     }
 
     const currentTime = Date.now();
     if (currentTime - this.lastMissileTime < this.missileColdown) {
-      return; // Still on cooldown
+      return false; // Still on cooldown
     }
 
     const player = this.gameState.players[this.playerId];
@@ -244,6 +245,7 @@ export class GameStore {
 
     // Update cooldown
     this.lastMissileTime = currentTime;
+    return true; // Successfully fired missile
   }
 
   // Projectile management
@@ -266,7 +268,11 @@ export class GameStore {
   }
 
   get playerCount() {
-    return Object.keys(this.gameState.players).length;
+    const humanPlayers = Object.keys(this.gameState.players).length;
+    const aiEnemies = this.gameState.aiEnemies
+      ? Object.keys(this.gameState.aiEnemies).length
+      : 0;
+    return humanPlayers + aiEnemies;
   }
 
   get isInputActive() {
@@ -322,6 +328,16 @@ export class GameStore {
     this.particleSystem.createExplosion(x, y, type);
   }
 
+  createWindEffect(
+    x: number,
+    y: number,
+    velocityX: number,
+    velocityY: number,
+    angle: number
+  ) {
+    this.particleSystem.createWindEffect(x, y, velocityX, velocityY, angle);
+  }
+
   handleProjectileHit(data: {
     x: number;
     y: number;
@@ -359,6 +375,7 @@ export class GameStore {
   reset() {
     this.gameState = {
       players: {},
+      aiEnemies: {},
       projectiles: [],
       walls: [],
       powerUps: {},

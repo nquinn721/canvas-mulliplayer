@@ -8,6 +8,7 @@ export interface Particle {
   size: number;
   color: string;
   alpha: number;
+  type?: "explosion" | "wind"; // Add particle type
 }
 
 export class ParticleSystem {
@@ -23,10 +24,17 @@ export class ParticleSystem {
       // Fade out over time
       particle.alpha = particle.life / particle.maxLife;
 
-      // Apply gravity/deceleration
-      particle.velocityY += 150 * (deltaTime / 1000); // gravity
-      particle.velocityX *= 0.98; // air resistance
-      particle.velocityY *= 0.98;
+      // Apply different physics based on particle type
+      if (particle.type === "wind") {
+        // Wind particles: no gravity, gradual deceleration
+        particle.velocityX *= 0.95;
+        particle.velocityY *= 0.95;
+      } else {
+        // Explosion particles: apply gravity and air resistance
+        particle.velocityY += 150 * (deltaTime / 1000); // gravity
+        particle.velocityX *= 0.98; // air resistance
+        particle.velocityY *= 0.98;
+      }
 
       return particle.life > 0;
     });
@@ -73,6 +81,7 @@ export class ParticleSystem {
         size,
         color: colors[Math.floor(Math.random() * colors.length)],
         alpha: 1,
+        type: "explosion",
       });
     }
 
@@ -99,7 +108,112 @@ export class ParticleSystem {
         size,
         color: colors[Math.floor(Math.random() * colors.length)],
         alpha: 0.7,
+        type: "explosion",
       });
+    }
+  }
+
+  createWindEffect(
+    x: number,
+    y: number,
+    playerVelocityX: number,
+    playerVelocityY: number,
+    playerAngle: number
+  ) {
+    // Only create wind if player is moving fast enough
+    const playerSpeed = Math.sqrt(
+      playerVelocityX * playerVelocityX + playerVelocityY * playerVelocityY
+    );
+    if (playerSpeed < 50) return; // Minimum speed threshold
+
+    // Wind particles flow from front to back of ship - reduced particle count for subtlety
+    const windCount = Math.min(8, Math.floor(playerSpeed / 20)); // Fewer particles for subtle effect (reduced from 20 to 8)
+    const windColors = [
+      "#88ccff",
+      "#aaddff",
+      "#cceeFF",
+      "#ffffff",
+      "#ddddff",
+      "#bbddff",
+    ];
+
+    for (let i = 0; i < windCount; i++) {
+      // Start particles slightly in front of the ship
+      const offsetDistance = 15 + Math.random() * 25; // Increased spread
+      const offsetAngle = playerAngle + (Math.random() - 0.5) * 1.2; // Wider spread around ship direction
+
+      const startX = x + Math.cos(offsetAngle) * offsetDistance;
+      const startY = y + Math.sin(offsetAngle) * offsetDistance;
+
+      // Wind flows opposite to movement direction with some spread
+      const windAngle = playerAngle + Math.PI + (Math.random() - 0.5) * 0.8; // Increased spread
+      const windSpeed = playerSpeed * 0.8 + Math.random() * 60; // Increased variation
+
+      this.particles.push({
+        x: startX,
+        y: startY,
+        velocityX: Math.cos(windAngle) * windSpeed,
+        velocityY: Math.sin(windAngle) * windSpeed,
+        life: 300 + Math.random() * 200, // Shorter lasting particles
+        maxLife: 300 + Math.random() * 200,
+        size: 0.5 + Math.random() * 1.5, // Smaller particles (reduced from 0.8-3.3 to 0.5-2.0)
+        color: windColors[Math.floor(Math.random() * windColors.length)],
+        alpha: 0.1 + Math.random() * 0.2, // Much lower opacity (reduced from 0.3-0.7 to 0.1-0.3)
+        type: "wind",
+      });
+    }
+
+    // Add fewer side wind particles for subtle lateral movement effect
+    if (playerSpeed > 100) {
+      // Higher threshold for side particles
+      for (let i = 0; i < 3; i++) {
+        // Reduced from 8 to 3
+        const sideAngle =
+          playerAngle + Math.PI * 0.5 * (Math.random() > 0.5 ? 1 : -1);
+        const sideDistance = 8 + Math.random() * 20; // Increased spread
+
+        const startX = x + Math.cos(sideAngle) * sideDistance;
+        const startY = y + Math.sin(sideAngle) * sideDistance;
+
+        this.particles.push({
+          x: startX,
+          y: startY,
+          velocityX: Math.cos(playerAngle + Math.PI) * (playerSpeed * 0.7),
+          velocityY: Math.sin(playerAngle + Math.PI) * (playerSpeed * 0.7),
+          life: 200 + Math.random() * 150,
+          maxLife: 200 + Math.random() * 150,
+          size: 0.3 + Math.random() * 1.2, // Smaller side particles
+          color: windColors[Math.floor(Math.random() * windColors.length)],
+          alpha: 0.08 + Math.random() * 0.15, // Even lower opacity for side particles
+          type: "wind",
+        });
+      }
+    }
+
+    // Add subtle trailing particles behind the ship
+    if (playerSpeed > 140) {
+      // Higher threshold for trailing particles
+      for (let i = 0; i < 2; i++) {
+        // Reduced from 6 to 2
+        const trailDistance = 25 + Math.random() * 15;
+        const trailAngle = playerAngle + Math.PI + (Math.random() - 0.5) * 0.4;
+
+        const startX = x + Math.cos(trailAngle) * trailDistance;
+        const startY = y + Math.sin(trailAngle) * trailDistance;
+
+        this.particles.push({
+          x: startX,
+          y: startY,
+          velocityX: Math.cos(trailAngle) * (playerSpeed * 0.5),
+          velocityY: Math.sin(trailAngle) * (playerSpeed * 0.5),
+          life: 250 + Math.random() * 150, // Shorter life
+          maxLife: 250 + Math.random() * 150,
+          size: 0.6 + Math.random() * 1.8, // Smaller trailing particles
+          color: windColors[Math.floor(Math.random() * windColors.length)],
+          alpha: 0.1 + Math.random() * 0.2, // Much lower opacity
+          type: "wind",
+        });
+      }
     }
   }
 

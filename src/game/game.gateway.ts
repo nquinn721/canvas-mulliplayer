@@ -9,6 +9,7 @@ import {
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import {
+  AIEnemy,
   GameState,
   Laser,
   Missile,
@@ -38,6 +39,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server: Server;
 
   private players: Map<string, Player> = new Map();
+  private aiEnemies: Map<string, AIEnemy> = new Map();
   private projectiles: Map<string, Projectile> = new Map();
   private powerUps: Map<string, PowerUp> = new Map();
   private walls: Wall[] = [];
@@ -45,16 +47,19 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private projectileIdCounter = 0;
   private powerUpIdCounter = 0;
   private playerNameCounter = 1;
+  private aiEnemyCounter = 1;
 
   // World bounds
   private readonly WORLD_WIDTH = 5000;
   private readonly WORLD_HEIGHT = 5000;
   private readonly WALL_COUNT = 60;
   private readonly POWERUP_COUNT = 20;
+  private readonly AI_ENEMY_COUNT = 5; // Number of AI enemies to spawn
 
   constructor() {
     this.generateWalls();
     this.spawnPowerUps();
+    this.spawnAIEnemies();
     this.startGameLoop();
   }
 
@@ -107,8 +112,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // Update boost energy
     player.updateBoostEnergy(deltaTime);
 
-    // Update roll animation
-    player.updateRoll(deltaTime / 1000); // Convert to seconds
+    // Remove roll animation update - no longer needed
 
     // Update strafe velocity and get movement delta
     const strafeMovement = player.updateStrafeVelocity(deltaTime / 1000);
@@ -134,19 +138,19 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const currentTime = Date.now();
 
-    // A/D for rolling and quick sideways movement
+    // A/D for strafing without roll animation
     if (keys.a) {
-      // Start left roll if available
-      if (player.startRoll(-1, currentTime)) {
-        // Apply smooth strafe impulse to the left
+      // Apply strafe impulse to the left if not already strafing or cooldown available
+      if (player.canRoll(currentTime)) {
         player.applyStrafe(-1);
+        player.lastRollTime = currentTime; // Update cooldown time
       }
     }
     if (keys.d) {
-      // Start right roll if available
-      if (player.startRoll(1, currentTime)) {
-        // Apply smooth strafe impulse to the right
+      // Apply strafe impulse to the right if not already strafing or cooldown available
+      if (player.canRoll(currentTime)) {
         player.applyStrafe(1);
+        player.lastRollTime = currentTime; // Update cooldown time
       }
     }
 
@@ -188,7 +192,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (data.weapon === "missile") {
       // Get missile stats based on player upgrades
       const missileStats = player.getMissileStats();
-      
+
       // Create missiles based on upgrade level
       if (missileStats.missileCount === 1) {
         // Single missile (levels 1-2)
@@ -207,7 +211,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         // Dual shot (level 3) - left and right wing missiles
         const wingOffset = 15; // Distance from center to wing
         const wingAngle = data.angle + Math.PI / 2; // Perpendicular to ship direction
-        
+
         // Left wing missile
         const leftWingX = data.x + Math.cos(wingAngle) * wingOffset;
         const leftWingY = data.y + Math.sin(wingAngle) * wingOffset;
@@ -244,10 +248,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         );
         rightMissile.id = rightMissileId;
         this.projectiles.set(rightMissileId, rightMissile);
-
       } else if (missileStats.missileCount === 3) {
         // Triple shot (level 5) - center, left wing, and right wing missiles
-        
+
         // Center missile (main)
         projectile = new Missile(
           data.x,
@@ -260,10 +263,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           missileStats.trackingRange,
           missileStats.turnRate
         );
-        
+
         const wingOffset = 15; // Distance from center to wing
         const wingAngle = data.angle + Math.PI / 2; // Perpendicular to ship direction
-        
+
         // Left wing missile
         const leftWingX = data.x + Math.cos(wingAngle) * wingOffset;
         const leftWingY = data.y + Math.sin(wingAngle) * wingOffset;
@@ -380,13 +383,26 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private updateGame() {
     const deltaTime = 16;
 
+    // Update player shields
+    this.players.forEach((player) => {
+      player.updateShield();
+    });
+
+    // Update AI enemies
+    this.updateAIEnemies(deltaTime);
+
     // Update projectiles
     const projectilesToRemove: string[] = [];
 
     this.projectiles.forEach((projectile, id) => {
       // Special handling for missiles with homing capability
       if (projectile instanceof Missile) {
-        (projectile as Missile).updateWithHoming(deltaTime, this.players);
+        // Combine players and AI enemies for missile targeting
+        const allTargets = new Map<string, Player>();
+        this.players.forEach((player, pid) => allTargets.set(pid, player));
+        this.aiEnemies.forEach((aiEnemy, aid) => allTargets.set(aid, aiEnemy));
+
+        (projectile as Missile).updateWithHoming(deltaTime, allTargets);
       } else {
         projectile.update(deltaTime);
       }
@@ -429,6 +445,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           const isDead = player.takeDamage(projectile.damage);
 
           if (isDead) {
+            // Give XP to the killer (if it's not self-damage)
+            if (projectile.ownerId !== player.id) {
+              const killer = this.players.get(projectile.ownerId);
+              if (killer) {
+                killer.addExperience(50); // 50 XP for kill
+              }
+            }
+
             // Respawn player at a safe location
             player.heal(player.maxHealth); // Fully heal
             const spawnPos = this.getRandomSpawnPosition();
@@ -442,6 +466,32 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
             x: projectile.x,
             y: projectile.y,
             targetId: playerId,
+          });
+        }
+      });
+
+      // Check AI enemy collisions
+      this.aiEnemies.forEach((aiEnemy, aiId) => {
+        if (aiId === projectile.ownerId) return; // Don't hit own shots
+
+        if (aiEnemy.containsPoint(projectile.x, projectile.y)) {
+          // AI enemy was hit
+          const isDead = aiEnemy.takeDamage(projectile.damage);
+
+          if (isDead) {
+            // Respawn AI at a safe location
+            aiEnemy.heal(aiEnemy.maxHealth);
+            const spawnPos = this.getRandomSpawnPosition();
+            aiEnemy.x = spawnPos.x;
+            aiEnemy.y = spawnPos.y;
+          }
+
+          projectilesToRemove.push(id);
+          this.server.emit("projectileHit", {
+            projectileId: id,
+            x: projectile.x,
+            y: projectile.y,
+            targetId: aiId,
           });
         }
       });
@@ -499,26 +549,204 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         );
 
         if (distance < player.radius + powerUp.radius) {
-          // Power-up collected!
-          powerUp.collect();
+          // Check if player can benefit from this power-up
+          let canCollect = true;
 
-          // Apply upgrade to player based on type
-          if (powerUp.type === PowerUpType.BOOST_UPGRADE) {
-            player.applyBoostUpgrade();
-          } else if (powerUp.type === PowerUpType.LASER_UPGRADE) {
-            player.applyLaserUpgrade();
-          } else if (powerUp.type === PowerUpType.MISSILE_UPGRADE) {
-            player.applyMissileUpgrade();
+          if (powerUp.type === PowerUpType.HEALTH_PICKUP) {
+            canCollect = player.canBeHealed();
           }
 
-          this.server.emit("powerUpCollected", {
-            powerUpId: powerUpId,
-            playerId: playerId,
-            type: powerUp.type,
+          if (canCollect) {
+            // Power-up collected!
+            powerUp.collect();
+
+            // Apply upgrade to player based on type
+            if (powerUp.type === PowerUpType.BOOST_UPGRADE) {
+              player.applyBoostUpgrade();
+            } else if (powerUp.type === PowerUpType.LASER_UPGRADE) {
+              player.applyLaserUpgrade();
+            } else if (powerUp.type === PowerUpType.MISSILE_UPGRADE) {
+              player.applyMissileUpgrade();
+            } else if (powerUp.type === PowerUpType.HEALTH_PICKUP) {
+              player.heal(50); // Heal 50 health points
+            } else if (powerUp.type === PowerUpType.SHIELD_PICKUP) {
+              player.applyShield(); // Apply shield protection
+            }
+
+            this.server.emit("powerUpCollected", {
+              powerUpId: powerUpId,
+              playerId: playerId,
+              type: powerUp.type,
+            });
+          }
+        }
+      });
+    });
+  }
+
+  private updateAIEnemies(deltaTime: number) {
+    // Combine players and AI enemies for collision checking
+    const allEntities = new Map<string, Player>();
+    this.players.forEach((player, id) => allEntities.set(id, player));
+    this.aiEnemies.forEach((aiEnemy, id) => allEntities.set(id, aiEnemy));
+
+    this.aiEnemies.forEach((aiEnemy, aiId) => {
+      // Update AI behavior
+      aiEnemy.updateAI(
+        deltaTime,
+        this.players,
+        this.WORLD_WIDTH,
+        this.WORLD_HEIGHT,
+        (x, y, radius) => this.checkWallCollision(x, y, radius),
+        this.powerUps
+      );
+
+      // Check if AI wants to shoot
+      const closestPlayer = this.findClosestPlayerToAI(aiEnemy);
+      if (closestPlayer) {
+        const distance = aiEnemy.getDistanceTo(
+          closestPlayer.x,
+          closestPlayer.y
+        );
+        const currentTime = Date.now();
+
+        // AI shooting logic
+        if (distance <= 400 && currentTime - aiEnemy.lastMissileTime >= 3000) {
+          const shootAngle = Math.atan2(
+            closestPlayer.y - aiEnemy.y,
+            closestPlayer.x - aiEnemy.x
+          );
+          const weapon =
+            distance > 250 && Math.random() < 0.3 ? "missile" : "laser";
+
+          this.createAIProjectile(aiEnemy, shootAngle, weapon);
+          aiEnemy.updateMissileTime(currentTime);
+        }
+      }
+
+      // Check projectile collisions with AI enemies
+      this.projectiles.forEach((projectile, projectileId) => {
+        if (projectile.ownerId === aiId) return; // Don't hit own shots
+
+        if (aiEnemy.containsPoint(projectile.x, projectile.y)) {
+          // AI was hit
+          const isDead = aiEnemy.takeDamage(projectile.damage);
+
+          if (isDead) {
+            // Respawn AI at a safe location
+            aiEnemy.heal(aiEnemy.maxHealth);
+            const spawnPos = this.getRandomSpawnPosition();
+            aiEnemy.x = spawnPos.x;
+            aiEnemy.y = spawnPos.y;
+          }
+
+          this.projectiles.delete(projectileId);
+          this.server.emit("projectileHit", {
+            projectileId: projectileId,
+            x: projectile.x,
+            y: projectile.y,
+            targetId: aiId,
           });
         }
       });
     });
+
+    // AI power-up collection
+    this.aiEnemies.forEach((aiEnemy, aiId) => {
+      this.powerUps.forEach((powerUp, powerUpId) => {
+        if (powerUp.collected) return;
+
+        const distance = Math.sqrt(
+          (aiEnemy.x - powerUp.x) ** 2 + (aiEnemy.y - powerUp.y) ** 2
+        );
+
+        if (distance < aiEnemy.radius + powerUp.radius) {
+          // Check if AI can benefit from this power-up
+          let canCollect = true;
+
+          if (powerUp.type === PowerUpType.HEALTH_PICKUP) {
+            canCollect = aiEnemy.canBeHealed();
+          }
+
+          if (canCollect) {
+            // Power-up collected by AI!
+            powerUp.collect();
+
+            // Apply upgrade to AI based on type
+            if (powerUp.type === PowerUpType.BOOST_UPGRADE) {
+              aiEnemy.applyBoostUpgrade();
+            } else if (powerUp.type === PowerUpType.LASER_UPGRADE) {
+              aiEnemy.applyLaserUpgrade();
+            } else if (powerUp.type === PowerUpType.MISSILE_UPGRADE) {
+              aiEnemy.applyMissileUpgrade();
+            } else if (powerUp.type === PowerUpType.HEALTH_PICKUP) {
+              aiEnemy.heal(50); // Heal 50 health points
+            } else if (powerUp.type === PowerUpType.SHIELD_PICKUP) {
+              aiEnemy.applyShield(); // Apply shield protection
+            }
+
+            this.server.emit("powerUpCollected", {
+              powerUpId: powerUpId,
+              playerId: aiId,
+              type: powerUp.type,
+            });
+          }
+        }
+      });
+    });
+  }
+
+  private findClosestPlayerToAI(aiEnemy: AIEnemy): Player | null {
+    let closestPlayer: Player | null = null;
+    let closestDistance = Infinity;
+
+    this.players.forEach((player) => {
+      const distance = aiEnemy.getDistanceTo(player.x, player.y);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestPlayer = player;
+      }
+    });
+
+    return closestPlayer;
+  }
+
+  private createAIProjectile(
+    aiEnemy: AIEnemy,
+    angle: number,
+    weapon: "laser" | "missile"
+  ) {
+    let projectile: Projectile;
+    const projectileId = `proj_${this.projectileIdCounter++}`;
+
+    if (weapon === "missile") {
+      const missileStats = aiEnemy.getMissileStats();
+      projectile = new Missile(
+        aiEnemy.x,
+        aiEnemy.y,
+        angle,
+        aiEnemy.id,
+        missileStats.speed,
+        missileStats.damage,
+        missileStats.distance,
+        missileStats.trackingRange,
+        missileStats.turnRate
+      );
+    } else {
+      const laserStats = aiEnemy.getLaserStats();
+      projectile = new Laser(
+        aiEnemy.x,
+        aiEnemy.y,
+        angle,
+        aiEnemy.id,
+        laserStats.speed,
+        laserStats.damage,
+        laserStats.distance
+      );
+    }
+
+    projectile.id = projectileId;
+    this.projectiles.set(projectileId, projectile);
   }
 
   private checkWallCollision(x: number, y: number, radius: number): boolean {
@@ -654,18 +882,38 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
 
     const powerUpId = `powerup_${this.powerUpIdCounter++}`;
-    // Randomly choose between boost, laser, and missile upgrades (33/33/33 split)
+    // Randomly choose between all power-up types (20% each)
     const randomValue = Math.random();
     let powerUpType: PowerUpType;
-    if (randomValue < 0.33) {
+    if (randomValue < 0.2) {
       powerUpType = PowerUpType.BOOST_UPGRADE;
-    } else if (randomValue < 0.66) {
+    } else if (randomValue < 0.4) {
       powerUpType = PowerUpType.LASER_UPGRADE;
-    } else {
+    } else if (randomValue < 0.6) {
       powerUpType = PowerUpType.MISSILE_UPGRADE;
+    } else if (randomValue < 0.8) {
+      powerUpType = PowerUpType.HEALTH_PICKUP;
+    } else {
+      powerUpType = PowerUpType.SHIELD_PICKUP;
     }
     const powerUp = new PowerUp(powerUpId, x, y, powerUpType);
     this.powerUps.set(powerUpId, powerUp);
+  }
+
+  private spawnAIEnemies() {
+    this.aiEnemies.clear();
+
+    for (let i = 0; i < this.AI_ENEMY_COUNT; i++) {
+      const spawnPosition = this.getRandomSpawnPosition();
+      const aiId = `ai_${this.aiEnemyCounter++}`;
+
+      const aiEnemy = new AIEnemy(aiId, spawnPosition.x, spawnPosition.y);
+
+      this.aiEnemies.set(aiId, aiEnemy);
+      console.log(
+        `AI Enemy ${aiId} spawned at (${spawnPosition.x}, ${spawnPosition.y})`
+      );
+    }
   }
 
   private checkPowerUpCollision(
@@ -692,6 +940,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       serializedPlayers[id] = player.serialize();
     }
 
+    // Serialize AI enemies for network transmission
+    const serializedAIEnemies: { [id: string]: any } = {};
+    for (const [id, aiEnemy] of this.aiEnemies) {
+      serializedAIEnemies[id] = aiEnemy.serialize();
+    }
+
     // Serialize power-ups for network transmission
     const serializedPowerUps: { [id: string]: any } = {};
     for (const [id, powerUp] of this.powerUps) {
@@ -700,6 +954,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const gameState: GameState = {
       players: serializedPlayers,
+      aiEnemies: serializedAIEnemies,
       walls: this.walls,
       powerUps: serializedPowerUps,
       projectiles: Array.from(this.projectiles.values()).map((p) => ({
