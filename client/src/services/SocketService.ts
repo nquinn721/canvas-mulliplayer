@@ -242,6 +242,13 @@ export class SocketService {
     }
   }
 
+  // Join the game with a specific player name
+  joinGame(playerName: string) {
+    if (this.socket?.connected) {
+      this.socket.emit("joinGame", { playerName });
+    }
+  }
+
   // Utility methods to check connection status
   get isConnected() {
     return this.socket?.connected || false;

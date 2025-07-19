@@ -78,7 +78,16 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
 
-    const playerName = `Player ${this.playerNameCounter++}`;
+    // Don't create player immediately - wait for player name
+    client.emit("playerId", client.id);
+  }
+
+  @SubscribeMessage("joinGame")
+  handleJoinGame(
+    @MessageBody() data: { playerName: string },
+    @ConnectedSocket() client: Socket
+  ) {
+    const playerName = data.playerName || `Player ${this.playerNameCounter++}`;
     const spawnPosition = this.getRandomSpawnPosition();
 
     const player = new Player(
@@ -89,7 +98,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
 
     this.players.set(client.id, player);
-    client.emit("playerId", client.id);
     console.log(
       `${playerName} joined the game at (${spawnPosition.x}, ${spawnPosition.y})`
     );

@@ -22,6 +22,9 @@ interface EscapeMenuProps {
   // AI difficulty controls
   currentAIDifficulty: string;
   onAIDifficultyChange: (difficulty: "EASY" | "MEDIUM" | "HARD") => void;
+
+  // Navigation
+  onReturnToHome?: () => void;
 }
 
 const EscapeMenu: React.FC<EscapeMenuProps> = ({
@@ -41,6 +44,7 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
   onMusicVolumeChange,
   currentAIDifficulty,
   onAIDifficultyChange,
+  onReturnToHome,
 }) => {
   if (!isOpen) return null;
 
@@ -251,6 +255,18 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
               <br />• Press Escape to pause and open this menu
             </div>
           </div>
+
+          {/* Return to Home */}
+          {onReturnToHome && (
+            <div className="menu-section">
+              <button 
+                className="return-home-button"
+                onClick={onReturnToHome}
+              >
+                🏠 Return to Home Menu
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
