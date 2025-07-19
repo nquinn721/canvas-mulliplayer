@@ -4,6 +4,8 @@ export interface KeyState {
   a: boolean;
   s: boolean;
   d: boolean;
+  q: boolean;
+  e: boolean;
   shift: boolean;
   ArrowUp: boolean;
   ArrowLeft: boolean;
@@ -489,12 +491,28 @@ export class Player {
     return remaining / this.rollCooldown;
   }
 
-  // Apply strafe impulse when roll starts
+  // Apply strafe impulse when roll starts (Q/E keys - fast strafe)
   applyStrafe(direction: number): void {
     const strafeSpeed = 850; // Increased velocity magnitude for more pronounced strafe movement
     const perpAngle = this.angle + (direction * Math.PI) / 2; // Perpendicular to facing direction
     this.strafeVelocityX = Math.cos(perpAngle) * strafeSpeed;
     this.strafeVelocityY = Math.sin(perpAngle) * strafeSpeed;
+  }
+
+  // Apply continuous slow strafe (A/D keys - slow strafe)
+  applyContinuousStrafe(
+    direction: number,
+    deltaTime: number
+  ): { deltaX: number; deltaY: number } {
+    const slowStrafeSpeed = 200; // Much slower than the impulse strafe
+    const perpAngle = this.angle + (direction * Math.PI) / 2; // Perpendicular to facing direction
+    const strafeVelocityX = Math.cos(perpAngle) * slowStrafeSpeed;
+    const strafeVelocityY = Math.sin(perpAngle) * slowStrafeSpeed;
+
+    return {
+      deltaX: strafeVelocityX * deltaTime,
+      deltaY: strafeVelocityY * deltaTime,
+    };
   }
 
   // Update strafe velocity (apply decay)

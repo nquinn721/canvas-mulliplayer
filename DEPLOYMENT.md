@@ -119,12 +119,14 @@ The following environment variables are available:
 
 ## Game Controls
 
-- **Movement**: WASD or Arrow Keys
+- **Movement**: W/S for forward/backward
+- **Slow Strafe**: A/D keys (continuous)
+- **Fast Strafe**: Q/E keys (with cooldown)
 - **Aim**: Mouse
 - **Shoot**: Left Mouse Button (hold for continuous fire)
 - **Missile**: Right Click
+- **Flash**: F key
 - **Boost**: Shift key
-- **Strafe**: A/D keys (with cooldown)
 
 ## Technical Details
 

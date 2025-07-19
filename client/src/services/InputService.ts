@@ -62,6 +62,8 @@ export class InputService {
         "a",
         "s",
         "d",
+        "q",
+        "e",
         "shift",
         "f",
         "arrowup",

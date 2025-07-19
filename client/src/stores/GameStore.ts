@@ -32,6 +32,8 @@ export class GameStore {
     a: false,
     s: false,
     d: false,
+    q: false,
+    e: false,
     shift: false,
     ArrowUp: false,
     ArrowLeft: false,

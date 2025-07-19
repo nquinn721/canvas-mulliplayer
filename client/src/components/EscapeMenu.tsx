@@ -164,11 +164,19 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
               </div>
               <div className="control-key">
                 <strong>A</strong>
-                Strafe Left
+                Slow Strafe Left
               </div>
               <div className="control-key">
                 <strong>D</strong>
-                Strafe Right
+                Slow Strafe Right
+              </div>
+              <div className="control-key">
+                <strong>Q</strong>
+                Fast Strafe Left
+              </div>
+              <div className="control-key">
+                <strong>E</strong>
+                Fast Strafe Right
               </div>
               <div className="control-key">
                 <strong>Mouse</strong>

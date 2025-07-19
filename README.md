@@ -29,10 +29,13 @@ A space-themed multiplayer game with intelligent AI bots featuring advanced path
 
 ### Controls
 
-- **WASD**: Move and strafe
+- **W/S**: Move forward/backward
+- **A/D**: Slow continuous strafe left/right  
+- **Q/E**: Fast strafe left/right (with cooldown)
 - **Mouse**: Aim direction
 - **Left Click**: Fire laser
 - **Right Click**: Fire homing missile
+- **F**: Flash teleport ability
 - **Shift**: Boost speed
 - **ESC**: Game menu
 

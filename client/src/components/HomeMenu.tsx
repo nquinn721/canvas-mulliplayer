@@ -167,7 +167,13 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
                 <h4>Controls</h4>
                 <div className="controls-list">
                   <div className="control-item">
-                    <strong>W/A/S/D</strong> - Move & Strafe
+                    <strong>W/S</strong> - Move Forward/Backward
+                  </div>
+                  <div className="control-item">
+                    <strong>A/D</strong> - Slow Strafe Left/Right
+                  </div>
+                  <div className="control-item">
+                    <strong>Q/E</strong> - Fast Strafe Left/Right
                   </div>
                   <div className="control-item">
                     <strong>Mouse</strong> - Aim direction

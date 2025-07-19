@@ -158,21 +158,39 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const currentTime = Date.now();
 
-    // A/D for strafing without roll animation
+    // A/D for slow continuous strafing (no cooldown, continuous movement)
+    let continuousStrafeX = 0;
+    let continuousStrafeY = 0;
     if (keys.a) {
+      const slowStrafe = player.applyContinuousStrafe(-1, deltaTime / 1000);
+      continuousStrafeX += slowStrafe.deltaX;
+      continuousStrafeY += slowStrafe.deltaY;
+    }
+    if (keys.d) {
+      const slowStrafe = player.applyContinuousStrafe(1, deltaTime / 1000);
+      continuousStrafeX += slowStrafe.deltaX;
+      continuousStrafeY += slowStrafe.deltaY;
+    }
+
+    // Q/E for fast strafe impulse (with cooldown, like the old A/D)
+    if (keys.q) {
       // Apply strafe impulse to the left if not already strafing or cooldown available
       if (player.canRoll(currentTime)) {
         player.applyStrafe(-1);
         player.lastRollTime = currentTime; // Update cooldown time
       }
     }
-    if (keys.d) {
+    if (keys.e) {
       // Apply strafe impulse to the right if not already strafing or cooldown available
       if (player.canRoll(currentTime)) {
         player.applyStrafe(1);
         player.lastRollTime = currentTime; // Update cooldown time
       }
     }
+
+    // Add continuous strafe to the total movement
+    deltaX += continuousStrafeX;
+    deltaY += continuousStrafeY;
 
     // Use Player class method to update position with collision checking
     player.updatePosition(

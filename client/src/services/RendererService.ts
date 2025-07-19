@@ -33,31 +33,70 @@ export class RendererService {
 
     switch (iconType) {
       case "mouse":
-        // Draw mouse shape
+        // Draw mouse shape - more elongated and realistic
+        this.ctx.fillStyle = color;
         this.ctx.beginPath();
+        // Create a more mouse-like shape with rounded top
         this.ctx.ellipse(
           x,
           y,
-          halfSize * 0.6,
-          halfSize * 0.9,
+          halfSize * 0.5,
+          halfSize * 1.1,
           0,
           0,
           Math.PI * 2
         );
         this.ctx.fill();
 
-        // Mouse buttons
+        // Draw mouse outline with thinner lines
         this.ctx.strokeStyle = "#000000";
         this.ctx.lineWidth = 1;
-        this.ctx.beginPath();
-        this.ctx.moveTo(x - halfSize * 0.2, y - halfSize * 0.5);
-        this.ctx.lineTo(x - halfSize * 0.2, y);
         this.ctx.stroke();
 
+        // Draw middle line separating buttons (thinner)
         this.ctx.beginPath();
-        this.ctx.moveTo(x + halfSize * 0.2, y - halfSize * 0.5);
-        this.ctx.lineTo(x + halfSize * 0.2, y);
+        this.ctx.moveTo(x, y - halfSize * 0.7);
+        this.ctx.lineTo(x, y + halfSize * 0.1);
         this.ctx.stroke();
+        break;
+
+      case "mouseRight":
+        // Draw mouse shape (outline) - more elongated and realistic
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = 1.5;
+        this.ctx.beginPath();
+        // Create a more mouse-like shape with rounded top
+        this.ctx.ellipse(
+          x,
+          y,
+          halfSize * 0.5,
+          halfSize * 1.1,
+          0,
+          0,
+          Math.PI * 2
+        );
+        this.ctx.stroke();
+
+        // Draw middle line separating buttons (thinner)
+        this.ctx.beginPath();
+        this.ctx.moveTo(x, y - halfSize * 0.7);
+        this.ctx.lineTo(x, y + halfSize * 0.1);
+        this.ctx.stroke();
+
+        // Fill the right button area (more realistic positioning)
+        this.ctx.fillStyle = color;
+        this.ctx.beginPath();
+        // Create right button as a rounded rectangle area
+        this.ctx.ellipse(
+          x + halfSize * 0.25,
+          y - halfSize * 0.3,
+          halfSize * 0.2,
+          halfSize * 0.35,
+          0,
+          0,
+          Math.PI * 2
+        );
+        this.ctx.fill();
         break;
 
       case "rocket":
@@ -1507,17 +1546,12 @@ export class RendererService {
     const x = this.gameStore.CANVAS_WIDTH - iconSize - margin - spacing;
     const y = this.gameStore.CANVAS_HEIGHT - iconSize - margin;
 
-    // Missile icon drawing function using custom icons
+    // Missile icon drawing function using mouse right-click indicator
     const drawMissileIcon = (centerX: number, centerY: number) => {
       this.ctx.save();
 
-      // Draw custom rocket icon
-      this.drawCustomIcon(centerX, centerY, "rocket", 24, "#ff8c00");
-
-      // Add engine glow effect
-      this.ctx.shadowColor = "#ffaa00";
-      this.ctx.shadowBlur = 8;
-      this.drawCustomIcon(centerX, centerY, "rocket", 24, "#ffffff");
+      // Draw mouse with right button highlighted
+      this.drawCustomIcon(centerX, centerY, "mouseRight", 24, "#ffffff");
 
       this.ctx.restore();
     };
@@ -1555,8 +1589,32 @@ export class RendererService {
     cooldownTimeLeft?: number,
     descriptionText?: string
   ) {
-    // Background circle
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    // 3D Shadow effect - draw shadow first
+    this.ctx.save();
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+    this.ctx.beginPath();
+    this.ctx.arc(
+      x + iconSize / 2 + 3,
+      y + iconSize / 2 + 3,
+      iconSize / 2,
+      0,
+      Math.PI * 2
+    );
+    this.ctx.fill();
+    this.ctx.restore();
+
+    // Background circle with gradient for 3D effect
+    const gradient = this.ctx.createRadialGradient(
+      x + iconSize / 2 - iconSize / 4,
+      y + iconSize / 2 - iconSize / 4,
+      0,
+      x + iconSize / 2,
+      y + iconSize / 2,
+      iconSize / 2
+    );
+    gradient.addColorStop(0, "rgba(40, 40, 40, 0.9)");
+    gradient.addColorStop(1, "rgba(0, 0, 0, 0.7)");
+    this.ctx.fillStyle = gradient;
     this.ctx.beginPath();
     this.ctx.arc(
       x + iconSize / 2,
@@ -1570,14 +1628,45 @@ export class RendererService {
     const centerX = x + iconSize / 2;
     const centerY = y + iconSize / 2;
 
-    // Draw weapon icon background
-    this.ctx.fillStyle = isReady ? backgroundColor : "rgba(102, 102, 102, 0.8)";
+    // Draw weapon icon background with 3D gradient
+    const iconGradient = this.ctx.createLinearGradient(
+      x + 5,
+      y + 5,
+      x + iconSize - 5,
+      y + iconSize - 5
+    );
+    if (isReady) {
+      // Parse the background color and create gradient
+      const baseColor = backgroundColor.replace("rgba(", "").replace(")", "");
+      const [r, g, b, a] = baseColor
+        .split(",")
+        .map((v, i) => (i < 3 ? parseInt(v.trim()) : parseFloat(v.trim())));
+      iconGradient.addColorStop(
+        0,
+        `rgba(${Math.min(255, r + 30)}, ${Math.min(255, g + 30)}, ${Math.min(255, b + 30)}, ${a})`
+      );
+      iconGradient.addColorStop(0.5, backgroundColor);
+      iconGradient.addColorStop(
+        1,
+        `rgba(${Math.max(0, r - 30)}, ${Math.max(0, g - 30)}, ${Math.max(0, b - 30)}, ${a})`
+      );
+    } else {
+      iconGradient.addColorStop(0, "rgba(130, 130, 130, 0.8)");
+      iconGradient.addColorStop(0.5, "rgba(102, 102, 102, 0.8)");
+      iconGradient.addColorStop(1, "rgba(70, 70, 70, 0.8)");
+    }
+    this.ctx.fillStyle = iconGradient;
     this.ctx.fillRect(x + 5, y + 5, iconSize - 10, iconSize - 10);
 
-    // Draw weapon icon border
+    // Draw weapon icon border with highlight
     this.ctx.strokeStyle = "#fff";
     this.ctx.lineWidth = 2;
     this.ctx.strokeRect(x + 5, y + 5, iconSize - 10, iconSize - 10);
+
+    // Add inner highlight for 3D effect
+    this.ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x + 6, y + 6, iconSize - 12, iconSize - 12);
 
     // Draw weapon-specific icon
     this.ctx.fillStyle = "#fff";
