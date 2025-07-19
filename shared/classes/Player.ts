@@ -381,7 +381,7 @@ export class Player {
   } {
     const baseSpeed = 400;
     const baseDamage = 12;
-    const baseDistance = 500;
+    const baseDistance = 1200; // Increased from 500 for larger world
 
     // Level 1 is the base level with no multipliers
     if (this.laserUpgradeLevel <= 1) {
@@ -421,7 +421,7 @@ export class Player {
   } {
     const baseSpeed = 400;
     const baseDamage = 75;
-    const baseDistance = 800; // Reduced from 1500 to 800 for shorter range
+    const baseDistance = 1200; // Increased from 800 for larger world
     const baseTrackingRange = 300;
     const baseTurnRate = 3;
 

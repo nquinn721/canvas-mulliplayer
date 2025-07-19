@@ -307,21 +307,21 @@
     width: 95%;
     margin: 10px;
   }
-  
+
   .escape-menu-content {
     grid-template-columns: 1fr;
     padding: 15px 20px;
     gap: 20px;
   }
-  
+
   .escape-menu-header {
     padding: 15px 20px;
   }
-  
+
   .controls-grid {
     grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   }
-  
+
   .ai-difficulty-controls {
     flex-direction: column;
   }

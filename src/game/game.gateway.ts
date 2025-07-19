@@ -16,7 +16,6 @@ import {
   Player,
   PowerUp,
   Projectile,
-  SmartAIEnemy,
   Star,
   Wall,
 } from "@shared";
@@ -395,13 +394,11 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       `Player ${client.id} requested AI difficulty change to ${data.difficulty}`
     );
 
-    // Change difficulty for existing SmartAI enemies
+    // Update existing AI enemies with new difficulty
     let changedCount = 0;
     this.aiEnemies.forEach((aiEnemy) => {
-      if (aiEnemy instanceof SmartAIEnemy) {
-        aiEnemy.setDifficulty(data.difficulty);
-        changedCount++;
-      }
+      aiEnemy.setDifficulty(data.difficulty);
+      changedCount++;
     });
 
     // Store the preferred difficulty for new AI spawns
@@ -636,13 +633,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private updateAIEnemies(deltaTime: number) {
-    // Combine players and AI enemies for collision checking
-    const allEntities = new Map<string, Player>();
-    this.players.forEach((player, id) => allEntities.set(id, player));
-    this.aiEnemies.forEach((aiEnemy, id) => allEntities.set(id, aiEnemy));
-
     this.aiEnemies.forEach((aiEnemy, aiId) => {
-      // Update AI behavior
+      // Update AI behavior - this includes movement and state decisions
       aiEnemy.updateAI(
         deltaTime,
         this.players,
@@ -652,40 +644,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.powerUps
       );
 
-      // Check if AI wants to shoot (works for both AIEnemy and SmartAIEnemy)
-      let shootingDecision = null;
-
-      if (aiEnemy instanceof SmartAIEnemy) {
-        // Use new behavior tree shooting system
-        shootingDecision = aiEnemy.getShootingDecision();
-      } else {
-        // Fallback to old shooting logic for regular AIEnemy
-        const closestPlayer = this.findClosestPlayerToAI(aiEnemy);
-        if (closestPlayer) {
-          const distance = aiEnemy.getDistanceTo(
-            closestPlayer.x,
-            closestPlayer.y
-          );
-          const currentTime = Date.now();
-
-          if (
-            distance <= 400 &&
-            currentTime - (aiEnemy as any).lastMissileTime >= 3000
-          ) {
-            const shootAngle = Math.atan2(
-              closestPlayer.y - aiEnemy.y,
-              closestPlayer.x - aiEnemy.x
-            );
-            const weapon =
-              distance > 250 && Math.random() < 0.3 ? "missile" : "laser";
-
-            shootingDecision = { weapon, angle: shootAngle };
-            (aiEnemy as any).updateMissileTime(currentTime);
-          }
-        }
-      }
-
-      // Create projectile if AI decided to shoot
+      // Check if AI wants to shoot using our simple behavior system
+      const shootingDecision = aiEnemy.getShootingInfo(this.players);
       if (shootingDecision) {
         this.createAIProjectile(
           aiEnemy,
@@ -977,40 +937,15 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const spawnPosition = this.getRandomSpawnPosition();
       const aiId = `ai_${this.aiEnemyCounter++}`;
 
-      // Use preferred difficulty with some randomness
-      let difficulty: "EASY" | "MEDIUM" | "HARD";
-      const randomChance = Math.random();
-
-      // 70% chance to use preferred difficulty, 30% chance for variety
-      if (randomChance < 0.7) {
-        difficulty = this.preferredAIDifficulty;
-      } else {
-        // Add variety with other difficulties
-        const otherDifficulties: ("EASY" | "MEDIUM" | "HARD")[] = [];
-        if (this.preferredAIDifficulty !== "EASY")
-          otherDifficulties.push("EASY");
-        if (this.preferredAIDifficulty !== "MEDIUM")
-          otherDifficulties.push("MEDIUM");
-        if (this.preferredAIDifficulty !== "HARD")
-          otherDifficulties.push("HARD");
-
-        difficulty =
-          otherDifficulties[
-            Math.floor(Math.random() * otherDifficulties.length)
-          ];
-      }
-
-      const aiEnemy = new SmartAIEnemy(
+      // Create a simple AI enemy at the spawn position with difficulty setting
+      const aiEnemy = new AIEnemy(
         aiId,
         spawnPosition.x,
         spawnPosition.y,
-        difficulty
+        this.preferredAIDifficulty
       );
 
       this.aiEnemies.set(aiId, aiEnemy);
-      console.log(
-        `Smart AI Enemy ${aiId} spawned at (${spawnPosition.x}, ${spawnPosition.y}) with ${difficulty} difficulty`
-      );
     }
   }
 

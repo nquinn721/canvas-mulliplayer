@@ -1,5 +1,5 @@
-import React from 'react';
-import './EscapeMenu.css';
+import React from "react";
+import "./EscapeMenu.css";
 
 interface EscapeMenuProps {
   isOpen: boolean;
@@ -8,7 +8,7 @@ interface EscapeMenuProps {
   playerCount: number;
   enemyCount: number;
   isConnected: boolean;
-  
+
   // Audio controls
   isMuted: boolean;
   onMuteToggle: () => void;
@@ -18,7 +18,7 @@ interface EscapeMenuProps {
   onMasterVolumeChange: (volume: number) => void;
   onSfxVolumeChange: (volume: number) => void;
   onMusicVolumeChange: (volume: number) => void;
-  
+
   // AI difficulty controls
   currentAIDifficulty: string;
   onAIDifficultyChange: (difficulty: "EASY" | "MEDIUM" | "HARD") => void;
@@ -55,16 +55,20 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
       <div className="escape-menu">
         <div className="escape-menu-header">
           <h2>⚙️ Game Menu</h2>
-          <button className="close-button" onClick={onClose}>✕</button>
+          <button className="close-button" onClick={onClose}>
+            ✕
+          </button>
         </div>
-        
+
         <div className="escape-menu-content">
           {/* Connection Status */}
           <div className="menu-section">
             <h3>🌐 Connection</h3>
             <div className="status-item">
               <span className="status-label">Server</span>
-              <span className={`status-value ${isConnected ? 'connected' : 'disconnected'}`}>
+              <span
+                className={`status-value ${isConnected ? "connected" : "disconnected"}`}
+              >
                 {connectionStatus}
               </span>
             </div>
@@ -82,13 +86,13 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
           <div className="menu-section">
             <h3>🔊 Audio</h3>
             <div className="audio-controls">
-              <button 
+              <button
                 onClick={onMuteToggle}
-                className={`mute-button ${isMuted ? 'muted' : ''}`}
+                className={`mute-button ${isMuted ? "muted" : ""}`}
               >
-                {isMuted ? '🔇 Unmute' : '🔊 Mute'}
+                {isMuted ? "🔇 Unmute" : "🔊 Mute"}
               </button>
-              
+
               {!isMuted && (
                 <div className="volume-controls">
                   <div className="volume-control">
@@ -99,7 +103,9 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
                       max="1"
                       step="0.1"
                       value={masterVolume}
-                      onChange={(e) => onMasterVolumeChange(parseFloat(e.target.value))}
+                      onChange={(e) =>
+                        onMasterVolumeChange(parseFloat(e.target.value))
+                      }
                       className="volume-slider"
                     />
                   </div>
@@ -111,7 +117,9 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
                       max="1"
                       step="0.1"
                       value={sfxVolume}
-                      onChange={(e) => onSfxVolumeChange(parseFloat(e.target.value))}
+                      onChange={(e) =>
+                        onSfxVolumeChange(parseFloat(e.target.value))
+                      }
                       className="volume-slider"
                     />
                   </div>
@@ -123,7 +131,9 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
                       max="1"
                       step="0.1"
                       value={musicVolume}
-                      onChange={(e) => onMusicVolumeChange(parseFloat(e.target.value))}
+                      onChange={(e) =>
+                        onMusicVolumeChange(parseFloat(e.target.value))
+                      }
                       className="volume-slider"
                     />
                   </div>
@@ -209,7 +219,8 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
             </div>
             <div className="menu-tip">
               <span className="tip-icon">💡</span>
-              Current: <strong>{currentAIDifficulty}</strong> - Changes AI behavior for new enemies
+              Current: <strong>{currentAIDifficulty}</strong> - Changes AI
+              behavior for new enemies
             </div>
           </div>
 
@@ -237,8 +248,7 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
               • Strafe to dodge incoming projectiles
               <br />
               • Watch out for AI enemies!
-              <br />
-              • Press Escape to pause and open this menu
+              <br />• Press Escape to pause and open this menu
             </div>
           </div>
         </div>

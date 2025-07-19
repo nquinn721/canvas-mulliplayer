@@ -4,7 +4,6 @@
 export type { GameState, MeteorData, StarData } from "./types/GameState";
 
 // Classes with their interfaces
-export { SmartAIEnemy } from "./ai/SmartAIEnemy";
 export { AIEnemy } from "./classes/AIEnemy";
 export { Camera } from "./classes/Camera";
 export { Game } from "./classes/Game";

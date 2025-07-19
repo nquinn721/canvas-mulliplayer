@@ -16,6 +16,7 @@ The SmartAIEnemy system replaces basic AI logic with a sophisticated behavior tr
 ### Difficulty Levels
 
 **Easy AI:**
+
 - Slower reaction time (800ms)
 - Lower accuracy (70%)
 - Less aggressive behavior
@@ -23,6 +24,7 @@ The SmartAIEnemy system replaces basic AI logic with a sophisticated behavior tr
 - Shorter combat range (300 units)
 
 **Medium AI:**
+
 - Moderate reaction time (400ms)
 - Good accuracy (85%)
 - Balanced aggression
@@ -30,6 +32,7 @@ The SmartAIEnemy system replaces basic AI logic with a sophisticated behavior tr
 - Standard combat range (400 units)
 
 **Hard AI:**
+
 - Fast reaction time (150ms)
 - High accuracy (95%)
 - Very aggressive behavior
@@ -48,6 +51,7 @@ The AI uses a priority-based decision tree:
 ### Weapon Selection
 
 The AI intelligently chooses weapons based on:
+
 - **Distance to target**: Missiles for long range (>250 units)
 - **Difficulty level**: Higher difficulty uses missiles more frequently
 - **Random variation**: Adds unpredictability to combat
@@ -57,8 +61,9 @@ The AI intelligently chooses weapons based on:
 ### Spawning Smart AI Enemies
 
 The game gateway now automatically spawns SmartAIEnemy instances with random difficulty:
+
 - 30% Easy
-- 50% Medium  
+- 50% Medium
 - 20% Hard
 
 ### Runtime Difficulty Adjustment
@@ -87,6 +92,7 @@ The system maintains backward compatibility with the existing AIEnemy class whil
 ## Performance
 
 The behavior tree system is designed to be efficient:
+
 - Nodes short-circuit on failure for fast decision making
 - Reaction delays prevent excessive processing
 - State is maintained between frames for smooth behavior
@@ -94,6 +100,7 @@ The behavior tree system is designed to be efficient:
 ## Future Enhancements
 
 The behavior tree system can be easily extended with:
+
 - Formation flying for multiple AI
 - Learning from player behavior patterns
 - Dynamic difficulty adjustment based on player skill
@@ -102,4 +109,4 @@ The behavior tree system can be easily extended with:
 
 ---
 
-*The SmartAIEnemy system provides a solid foundation for challenging, fair, and engaging AI opponents in your multiplayer space shooter.*
+_The SmartAIEnemy system provides a solid foundation for challenging, fair, and engaging AI opponents in your multiplayer space shooter._
