@@ -251,14 +251,11 @@ export class GameStore {
 
   // Flash ability
   useFlash(): boolean {
-    console.log("useFlash called");
-
     if (
       !this.socket ||
       !this.playerId ||
       !this.gameState.players[this.playerId]
     ) {
-      console.log("Flash failed: missing socket, playerId, or player data");
       return false;
     }
 
@@ -270,12 +267,7 @@ export class GameStore {
     const lastFlashTime = player.lastFlashTime || 0;
     const cooldownRemaining = flashCooldown - (currentTime - lastFlashTime);
 
-    console.log(`Flash cooldown check: ${cooldownRemaining}ms remaining`);
-
     if (currentTime - lastFlashTime < flashCooldown) {
-      console.log(
-        `Flash on cooldown: ${Math.ceil(cooldownRemaining / 1000)}s remaining`
-      );
       return false; // Still on cooldown
     }
 
@@ -284,17 +276,12 @@ export class GameStore {
       this.mousePosition.y
     );
 
-    console.log(
-      `Sending flash request to server: mouse(${worldMouse.x}, ${worldMouse.y})`
-    );
-
     // Send flash request to server
     this.socket.emit("flash", {
       mouseX: worldMouse.x,
       mouseY: worldMouse.y,
     });
 
-    console.log("Flash request sent successfully");
     return true; // Successfully initiated flash
   }
 
@@ -361,18 +348,7 @@ export class GameStore {
     const flashCooldown = player.flashCooldown || 5000;
     const lastFlashTime = player.lastFlashTime || 0;
     const remaining = flashCooldown - (currentTime - lastFlashTime);
-    
-    // Debug logging
-    if (remaining > 0) {
-      console.log('Flash cooldown debug:', {
-        currentTime,
-        flashCooldown,
-        lastFlashTime,
-        remaining,
-        timeSinceFlash: currentTime - lastFlashTime
-      });
-    }
-    
+
     return Math.max(0, remaining);
   }
 

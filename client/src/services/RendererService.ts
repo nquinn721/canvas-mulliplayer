@@ -1862,12 +1862,6 @@ export class RendererService {
     };
 
     // Use the same weapon icon template with cooldown support from GameStore
-    console.log('Flash Debug:', {
-      isReady: this.gameStore.isFlashReady,
-      cooldownPercent: this.gameStore.flashCooldownPercent,
-      cooldownRemaining: this.gameStore.flashCooldownRemaining
-    });
-    
     this.drawWeaponIcon(
       x,
       y,

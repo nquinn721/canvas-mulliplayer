@@ -220,7 +220,7 @@ export class ParticleSystem {
   createFlashEffect(fromX: number, fromY: number, toX: number, toY: number) {
     // Flash teleport effect - particles disappearing at origin and appearing at destination
     const flashColors = ["#ffff00", "#ffff88", "#ffffaa", "#ffcc00", "#fff700"];
-    
+
     // Disappearing effect at origin
     for (let i = 0; i < 15; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -266,12 +266,12 @@ export class ParticleSystem {
     // Lightning trail between origin and destination
     const distance = Math.sqrt((toX - fromX) ** 2 + (toY - fromY) ** 2);
     const trailParticles = Math.min(12, Math.floor(distance / 50));
-    
+
     for (let i = 0; i < trailParticles; i++) {
       const t = i / trailParticles;
       const x = fromX + (toX - fromX) * t + (Math.random() - 0.5) * 40;
       const y = fromY + (toY - fromY) * t + (Math.random() - 0.5) * 40;
-      
+
       this.particles.push({
         x,
         y,
