@@ -2,6 +2,7 @@ import { observer } from "mobx-react-lite";
 import { useEffect, useRef, useState } from "react";
 import { Game } from "./game/Game";
 import { soundService } from "./services/SoundService";
+import "./App.css";
 
 const App = observer(() => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -46,76 +47,129 @@ const App = observer(() => {
     }
   };
 
-  const CANVAS_WIDTH = 1200;
-  const CANVAS_HEIGHT = 800;
+  const CANVAS_WIDTH = 1000;
+  const CANVAS_HEIGHT = 700;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        backgroundColor: "#111",
-        color: "white",
-      }}
-    >
-      <h1 style={{ margin: "20px 0", color: "#4ade80" }}>
-        Multiplayer Canvas Game
-      </h1>
+    <div className="game-container">
+      {/* Header */}
+      <header className="game-header">
+        <h1 className="game-title">🎮 Canvas Multiplayer</h1>
+        <div style={{ fontSize: "12px", color: "#888" }}>
+          {gameRef.current?.isConnected ? "🟢 Online" : "🔴 Offline"}
+        </div>
+      </header>
 
-      <canvas
-        ref={canvasRef}
-        width={CANVAS_WIDTH}
-        height={CANVAS_HEIGHT}
-        onClick={handleUserInteraction}
-        style={{
-          border: "2px solid #333",
-          cursor: "crosshair",
-          backgroundColor: "#000",
-        }}
-      />
+      {/* Main game area */}
+      <div className="game-main">
+        {/* Canvas area */}
+        <div className="canvas-container">
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_WIDTH}
+            height={CANVAS_HEIGHT}
+            onClick={handleUserInteraction}
+            className="game-canvas"
+          />
+        </div>
 
-      {/* Sound Control Button */}
-      <button
-        onClick={toggleMute}
-        style={{
-          position: "absolute",
-          top: "20px",
-          right: "20px",
-          padding: "10px 15px",
-          backgroundColor: isMuted ? "#f87171" : "#4ade80",
-          color: "white",
-          border: "none",
-          borderRadius: "5px",
-          cursor: "pointer",
-          fontSize: "14px",
-          fontWeight: "bold",
-        }}
-      >
-        {isMuted ? "🔇 Unmute" : "🔊 Mute"}
-      </button>
-
-      {gameRef.current && (
-        <div
-          style={{
-            marginTop: "10px",
-            padding: "10px",
-            backgroundColor: "rgba(0, 0, 0, 0.7)",
-            borderRadius: "8px",
-            fontSize: "12px",
-          }}
-        >
-          <div>
-            Status: {gameRef.current.isConnected ? "Connected" : "Disconnected"}
+        {/* Controls panel */}
+        <div className="controls-panel">
+          {/* Audio Controls */}
+          <div className="control-section">
+            <h3>🎵 Audio</h3>
+            <button
+              onClick={toggleMute}
+              className={`control-button ${isMuted ? 'muted' : ''}`}
+            >
+              {isMuted ? "🔇 Sound Off" : "🔊 Sound On"}
+            </button>
+            <div className="game-tip">
+              <span className="tip-icon">💡</span>
+              Click canvas to start ambient music
+            </div>
           </div>
-          <div>Game Running: {gameRef.current.isRunning ? "Yes" : "No"}</div>
-          <div style={{ marginTop: "5px", fontSize: "10px", color: "#888" }}>
-            🎵 Click canvas to start ambient music
+
+          {/* Game Status */}
+          <div className="control-section">
+            <h3>📊 Status</h3>
+            {gameRef.current && (
+              <>
+                <div className="status-item">
+                  <span className="status-label">Connection</span>
+                  <span className={`status-value ${!gameRef.current.isConnected ? 'disconnected' : ''}`}>
+                    {gameRef.current.isConnected ? "Connected" : "Disconnected"}
+                  </span>
+                </div>
+                <div className="status-item">
+                  <span className="status-label">Game State</span>
+                  <span className="status-value">
+                    {gameRef.current.isRunning ? "Running" : "Stopped"}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Controls Guide */}
+          <div className="control-section">
+            <h3>🎮 Controls</h3>
+            <div className="controls-grid">
+              <div className="control-key">
+                <strong>W</strong>
+                Forward
+              </div>
+              <div className="control-key">
+                <strong>S</strong>
+                Backward
+              </div>
+              <div className="control-key">
+                <strong>A</strong>
+                Strafe Left
+              </div>
+              <div className="control-key">
+                <strong>D</strong>
+                Strafe Right
+              </div>
+              <div className="control-key">
+                <strong>Mouse</strong>
+                Aim & Shoot
+              </div>
+              <div className="control-key">
+                <strong>Shift</strong>
+                Boost
+              </div>
+            </div>
+          </div>
+
+          {/* Weapons */}
+          <div className="control-section">
+            <h3>⚔️ Weapons</h3>
+            <div className="status-item">
+              <span className="status-label">Primary</span>
+              <span className="status-value">Laser Cannon</span>
+            </div>
+            <div className="status-item">
+              <span className="status-label">Secondary</span>
+              <span className="status-value">Missiles</span>
+            </div>
+          </div>
+
+          {/* Game Tips */}
+          <div className="control-section">
+            <h3>💡 Tips</h3>
+            <div className="game-tip">
+              • Collect power-ups to upgrade your weapons
+              <br />
+              • Use boost to escape dangerous situations
+              <br />
+              • Strafe to dodge incoming projectiles
+              <br />
+              • Watch out for AI enemies!
+            </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 });
