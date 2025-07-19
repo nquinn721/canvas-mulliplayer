@@ -18,27 +18,29 @@ async function bootstrap() {
   // Serve static files in production
   if (process.env.NODE_ENV === 'production') {
     const clientPath = join(process.cwd(), 'client', 'dist');
-    app.use(express.static(clientPath));
+    console.log(`Serving static files from: ${clientPath}`);
     
-    // Handle client-side routing - serve index.html for non-API routes
-    app.getHttpAdapter().get('*', (req, res, next) => {
-      if (req.path.startsWith('/socket.io') || req.path.startsWith('/health')) {
-        return next();
+    // Serve static assets (CSS, JS, images, etc.)
+    app.use('/assets', express.static(join(clientPath, 'assets')));
+    app.use('/vite.svg', express.static(join(clientPath, 'vite.svg')));
+    
+    // Serve other static files with proper cache headers
+    app.use(express.static(clientPath, {
+      maxAge: '1d', // Cache static assets for 1 day
+      setHeaders: (res, path) => {
+        // Don't cache index.html
+        if (path.endsWith('index.html')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
       }
-      res.sendFile(join(clientPath, 'index.html'));
-    });
+    }));
   }
-
-  // Add health check endpoint for Cloud Run
-  const expressApp = app.getHttpAdapter().getInstance();
-  expressApp.get('/health', (req, res) => {
-    res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
-  });
 
   // Use PORT environment variable for Cloud Run or default to 3001
   const port = process.env.PORT || 3001;
   await app.listen(port, '0.0.0.0'); // Bind to all interfaces for Cloud Run
   console.log(`Game server running on http://0.0.0.0:${port}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 }
 
 bootstrap();
