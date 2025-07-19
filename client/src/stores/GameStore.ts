@@ -10,6 +10,8 @@ export class GameStore {
     players: {},
     aiEnemies: {},
     projectiles: [],
+    meteors: [],
+    stars: [],
     walls: [],
     powerUps: {},
   };
@@ -168,18 +170,18 @@ export class GameStore {
   }
 
   // Shooting
-  shoot() {
+  shoot(): boolean {
     if (
       !this.socket ||
       !this.playerId ||
       !this.gameState.players[this.playerId]
     ) {
-      return;
+      return false;
     }
 
     const currentTime = Date.now();
     if (currentTime - this.lastLaserTime < this.laserFireRate) {
-      return; // Still on fire rate cooldown
+      return false; // Still on fire rate cooldown
     }
 
     const player = this.gameState.players[this.playerId];
@@ -198,18 +200,17 @@ export class GameStore {
     });
 
     this.lastLaserTime = currentTime;
+
+    // Play laser sound
+    soundService.playSound("laser", 0.2);
+
+    return true; // Successfully fired
   }
 
   // Update continuous shooting
   updateShooting() {
     if (this.isMouseDown) {
-      const currentTime = Date.now();
-      // Check laser cooldown before shooting
-      if (currentTime - this.lastLaserTime >= this.laserFireRate) {
-        this.shoot();
-        this.lastLaserTime = currentTime;
-        soundService.playSound("laser", 0.2); // Reduced volume for continuous shooting
-      }
+      this.shoot();
     }
   }
 
@@ -348,7 +349,7 @@ export class GameStore {
     // Determine projectile type from the projectile data before it's removed
     let projectileType: "laser" | "missile" = "laser";
     const projectile = this.gameState.projectiles.find(
-      (p) => p.id === data.projectileId
+      (p: any) => p.id === data.projectileId
     );
     if (projectile) {
       projectileType = projectile.type;
@@ -359,6 +360,22 @@ export class GameStore {
 
     // Remove the projectile
     this.removeProjectile(data.projectileId);
+  }
+
+  // Meteor handling methods
+  handleMeteorHit(data: {
+    x: number;
+    y: number;
+    meteorId: string;
+    targetId?: string;
+    wallHit?: boolean;
+    damage?: number;
+  }) {
+    // Create large explosion effect for meteor impact
+    this.createExplosion(data.x, data.y, "missile");
+
+    // Add additional explosion effects for meteor impact
+    this.particleSystem.createExplosion(data.x, data.y, "missile");
   }
 
   // Cleanup
@@ -377,6 +394,7 @@ export class GameStore {
       players: {},
       aiEnemies: {},
       projectiles: [],
+      meteors: [],
       walls: [],
       powerUps: {},
     };

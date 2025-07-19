@@ -1,7 +1,9 @@
 export type { GameState } from "../types/GameState";
 export { Camera } from "./Camera";
 export { Game } from "./Game";
+export { Meteor } from "./Meteor";
 export { Player } from "./Player";
 export type { KeyState } from "./Player";
+export { Star } from "./Star";
 export { World } from "./World";
 export type { Wall } from "./World";

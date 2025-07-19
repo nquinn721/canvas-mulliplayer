@@ -27,6 +27,8 @@ export class RendererService {
     this.drawPlayers();
     this.drawAIEnemies();
     this.drawProjectiles();
+    this.drawMeteors();
+    this.drawStars();
     this.drawParticles();
     this.restoreCamera();
     this.drawUI();
@@ -670,43 +672,391 @@ export class RendererService {
             // Reset shadow
             this.ctx.shadowBlur = 0;
 
-            // Draw missile body
+            // Draw missile body (made bigger)
             this.ctx.fillStyle = "#666666";
-            this.ctx.fillRect(-3, -1.5, 8, 3);
+            this.ctx.fillRect(-4, -2.5, 12, 5); // Increased from 8x3 to 12x5
 
-            // Draw nose cone
+            // Draw nose cone (proportionally bigger)
             this.ctx.fillStyle = "#444444";
             this.ctx.beginPath();
-            this.ctx.moveTo(5, 0);
-            this.ctx.lineTo(2, -1.5);
-            this.ctx.lineTo(2, 1.5);
+            this.ctx.moveTo(8, 0); // Extended nose forward
+            this.ctx.lineTo(3, -2.5);
+            this.ctx.lineTo(3, 2.5);
             this.ctx.closePath();
             this.ctx.fill();
 
-            // Draw fins
+            // Draw fins (bigger)
             this.ctx.fillStyle = "#555555";
             this.ctx.beginPath();
-            this.ctx.moveTo(-3, -1.5);
+            this.ctx.moveTo(-4, -2.5);
+            this.ctx.lineTo(-7, -4); // Bigger fins
             this.ctx.lineTo(-5, -2.5);
-            this.ctx.lineTo(-4, -1.5);
             this.ctx.closePath();
             this.ctx.fill();
 
             this.ctx.beginPath();
-            this.ctx.moveTo(-3, 1.5);
+            this.ctx.moveTo(-4, 2.5);
+            this.ctx.lineTo(-7, 4); // Bigger fins
             this.ctx.lineTo(-5, 2.5);
-            this.ctx.lineTo(-4, 1.5);
             this.ctx.closePath();
             this.ctx.fill();
 
-            // Draw red stripe
+            // Draw red stripe (bigger)
             this.ctx.fillStyle = "#ff4444";
-            this.ctx.fillRect(-1, -0.5, 4, 1);
+            this.ctx.fillRect(-1, -1, 6, 2); // Increased stripe size
 
             this.ctx.restore();
           }
         }
       }
+    });
+  }
+
+  private drawMeteors() {
+    // Draw meteors from game state
+    this.gameStore.gameState.meteors?.forEach((meteor) => {
+      // Check if meteor is in view
+      const cameraX = this.gameStore.camera.x;
+      const cameraY = this.gameStore.camera.y;
+      const cameraWidth =
+        this.gameStore.CANVAS_WIDTH / this.gameStore.camera.zoom;
+      const cameraHeight =
+        this.gameStore.CANVAS_HEIGHT / this.gameStore.camera.zoom;
+
+      if (
+        meteor.x >= cameraX - meteor.radius &&
+        meteor.x <= cameraX + cameraWidth + meteor.radius &&
+        meteor.y >= cameraY - meteor.radius &&
+        meteor.y <= cameraY + cameraHeight + meteor.radius
+      ) {
+        this.ctx.save();
+
+        // Calculate trail direction (opposite to velocity direction)
+        const velocityAngle = Math.atan2(meteor.velocityY, meteor.velocityX);
+        const trailAngle = velocityAngle + Math.PI; // Opposite direction
+        const trailLength = 40;
+
+        // Draw fiery tail FIRST (behind the meteor)
+        this.ctx.shadowColor = "#ff4400";
+        this.ctx.shadowBlur = 15;
+
+        // Draw multiple trail segments for realistic fire effect
+        for (let i = 0; i < 8; i++) {
+          const distance = (i + 1) * (trailLength / 8);
+          const trailX = meteor.x + Math.cos(trailAngle) * distance;
+          const trailY = meteor.y + Math.sin(trailAngle) * distance;
+
+          // Vary tail width and opacity for realistic fire effect
+          const trailWidth =
+            meteor.radius *
+            (1 - i * 0.1) *
+            (0.8 + Math.sin(Date.now() * 0.01 + i) * 0.2);
+          const opacity = 0.9 - i * 0.1;
+
+          // Color gradient from white-hot to red-orange
+          let hue = 15 + i * 8; // Orange to red
+          let saturation = 100;
+          let lightness = 80 - i * 8; // Bright to darker
+
+          this.ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${opacity})`;
+          this.ctx.beginPath();
+          this.ctx.ellipse(
+            trailX,
+            trailY,
+            trailWidth,
+            trailWidth * 0.6,
+            trailAngle,
+            0,
+            Math.PI * 2
+          );
+          this.ctx.fill();
+        }
+
+        // Reset shadow for rock
+        this.ctx.shadowBlur = 0;
+
+        // Now draw the meteor rock
+        this.ctx.translate(meteor.x, meteor.y);
+        this.ctx.rotate(meteor.rotation);
+
+        // Draw main rocky body with irregular shape
+        this.ctx.fillStyle = "#2a1f1a"; // Dark brown/black rock
+        this.ctx.beginPath();
+
+        // Create irregular meteor shape
+        const points = 8;
+        for (let i = 0; i < points; i++) {
+          const angle = (i / points) * Math.PI * 2;
+          const radius =
+            meteor.radius * (0.8 + Math.sin(angle * 3 + meteor.rotation) * 0.2);
+          const x = Math.cos(angle) * radius;
+          const y = Math.sin(angle) * radius;
+
+          if (i === 0) {
+            this.ctx.moveTo(x, y);
+          } else {
+            this.ctx.lineTo(x, y);
+          }
+        }
+        this.ctx.closePath();
+        this.ctx.fill();
+
+        // Add rocky texture with craters and bumps
+        this.ctx.fillStyle = "#1a1416"; // Even darker for craters
+
+        // Crater 1
+        this.ctx.beginPath();
+        this.ctx.arc(
+          -meteor.radius * 0.3,
+          -meteor.radius * 0.2,
+          meteor.radius * 0.2,
+          0,
+          Math.PI * 2
+        );
+        this.ctx.fill();
+
+        // Crater 2
+        this.ctx.beginPath();
+        this.ctx.arc(
+          meteor.radius * 0.2,
+          meteor.radius * 0.3,
+          meteor.radius * 0.15,
+          0,
+          Math.PI * 2
+        );
+        this.ctx.fill();
+
+        // Crater 3
+        this.ctx.beginPath();
+        this.ctx.arc(
+          meteor.radius * 0.1,
+          -meteor.radius * 0.4,
+          meteor.radius * 0.1,
+          0,
+          Math.PI * 2
+        );
+        this.ctx.fill();
+
+        // Add some lighter rocky highlights
+        this.ctx.fillStyle = "#3d3026";
+        this.ctx.beginPath();
+        this.ctx.arc(
+          -meteor.radius * 0.4,
+          meteor.radius * 0.1,
+          meteor.radius * 0.1,
+          0,
+          Math.PI * 2
+        );
+        this.ctx.fill();
+
+        this.ctx.beginPath();
+        this.ctx.arc(
+          meteor.radius * 0.3,
+          -meteor.radius * 0.1,
+          meteor.radius * 0.08,
+          0,
+          Math.PI * 2
+        );
+        this.ctx.fill();
+
+        // Draw glowing fire around the rock edges
+        this.ctx.shadowColor = "#ff6600";
+        this.ctx.shadowBlur = 12;
+        this.ctx.strokeStyle = "#ff4400";
+        this.ctx.lineWidth = 2;
+        this.ctx.globalAlpha = 0.7;
+
+        // Redraw the outer edge with fire glow
+        this.ctx.beginPath();
+        for (let i = 0; i < points; i++) {
+          const angle = (i / points) * Math.PI * 2;
+          const radius =
+            meteor.radius * (0.8 + Math.sin(angle * 3 + meteor.rotation) * 0.2);
+          const x = Math.cos(angle) * radius;
+          const y = Math.sin(angle) * radius;
+
+          if (i === 0) {
+            this.ctx.moveTo(x, y);
+          } else {
+            this.ctx.lineTo(x, y);
+          }
+        }
+        this.ctx.closePath();
+        this.ctx.stroke();
+
+        // Add bright hot spots on the rock
+        this.ctx.globalAlpha = 0.8;
+        this.ctx.fillStyle = "#ff8800";
+        this.ctx.shadowBlur = 8;
+
+        this.ctx.beginPath();
+        this.ctx.arc(
+          meteor.radius * 0.2,
+          meteor.radius * 0.1,
+          meteor.radius * 0.1,
+          0,
+          Math.PI * 2
+        );
+        this.ctx.fill();
+
+        this.ctx.beginPath();
+        this.ctx.arc(
+          -meteor.radius * 0.1,
+          -meteor.radius * 0.3,
+          meteor.radius * 0.08,
+          0,
+          Math.PI * 2
+        );
+        this.ctx.fill();
+
+        this.ctx.restore();
+      }
+    });
+  }
+
+  private drawStars() {
+    this.gameStore.gameState.stars?.forEach((star: any) => {
+      this.ctx.save();
+
+      // Check if star is in view
+      const isInView = this.gameStore.camera.isInView(
+        star.x,
+        star.y,
+        star.explosionRadius + 20
+      );
+
+      if (!isInView) {
+        this.ctx.restore();
+        return;
+      }
+
+      this.ctx.translate(star.x, star.y);
+
+      if (star.isExploding) {
+        // Draw explosion effect
+        const progress =
+          (Date.now() - star.explosionStartTime) / star.explosionDuration;
+        const explosionRadius = star.explosionRadius * progress;
+
+        // Outer explosion ring
+        this.ctx.globalAlpha = 0.6 * (1 - progress);
+        this.ctx.fillStyle = "#ffff00";
+        this.ctx.shadowColor = "#ffff00";
+        this.ctx.shadowBlur = 20;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, explosionRadius, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Inner explosion core
+        this.ctx.globalAlpha = 0.8 * (1 - progress);
+        this.ctx.fillStyle = "#ffffff";
+        this.ctx.shadowBlur = 30;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, explosionRadius * 0.6, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Explosion shockwave
+        this.ctx.globalAlpha = 0.4 * (1 - progress);
+        this.ctx.strokeStyle = "#ff8800";
+        this.ctx.lineWidth = 4;
+        this.ctx.shadowBlur = 15;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, explosionRadius * 0.8, 0, Math.PI * 2);
+        this.ctx.stroke();
+
+        // Add explosion particles
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2;
+          const distance = explosionRadius * 0.9;
+          const x = Math.cos(angle) * distance;
+          const y = Math.sin(angle) * distance;
+
+          this.ctx.globalAlpha = 0.7 * (1 - progress);
+          this.ctx.fillStyle = i % 2 === 0 ? "#ffaa00" : "#ff6600";
+          this.ctx.shadowBlur = 10;
+          this.ctx.beginPath();
+          this.ctx.arc(x, y, 3, 0, Math.PI * 2);
+          this.ctx.fill();
+        }
+      } else {
+        // Draw normal star
+        const timeUntilExplosion =
+          star.lifespan - (Date.now() - star.createdAt);
+        const isAboutToExplode = timeUntilExplosion <= 3000;
+
+        // Warning effect if about to explode
+        if (isAboutToExplode) {
+          const warningIntensity = 1 - timeUntilExplosion / 3000;
+          const pulseSpeed = 5 + warningIntensity * 10;
+          const pulse = Math.sin(Date.now() * 0.01 * pulseSpeed) * 0.5 + 0.5;
+
+          // Warning glow
+          this.ctx.globalAlpha = 0.3 + pulse * 0.4 * warningIntensity;
+          this.ctx.fillStyle = "#ff0000";
+          this.ctx.shadowColor = "#ff0000";
+          this.ctx.shadowBlur = 20 + pulse * 10;
+          this.ctx.beginPath();
+          this.ctx.arc(
+            0,
+            0,
+            star.radius * (2 + pulse * warningIntensity),
+            0,
+            Math.PI * 2
+          );
+          this.ctx.fill();
+        }
+
+        // Main star body with twinkling
+        const twinkle = Math.sin(star.twinklePhase) * 0.3 + 0.7;
+        this.ctx.globalAlpha = star.brightness * twinkle;
+        this.ctx.fillStyle = isAboutToExplode ? "#ffaa00" : "#ffffff";
+        this.ctx.shadowColor = isAboutToExplode ? "#ff4400" : "#ffffff";
+        this.ctx.shadowBlur = 8 + twinkle * 4;
+
+        // Draw star shape (5-pointed star)
+        this.ctx.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const angle = (i * Math.PI) / 5;
+          const radius = i % 2 === 0 ? star.radius : star.radius * 0.4;
+          const x = Math.cos(angle - Math.PI / 2) * radius;
+          const y = Math.sin(angle - Math.PI / 2) * radius;
+
+          if (i === 0) {
+            this.ctx.moveTo(x, y);
+          } else {
+            this.ctx.lineTo(x, y);
+          }
+        }
+        this.ctx.closePath();
+        this.ctx.fill();
+
+        // Inner star glow
+        this.ctx.globalAlpha = 0.6 * twinkle;
+        this.ctx.fillStyle = "#ffffff";
+        this.ctx.shadowBlur = 4;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, star.radius * 0.3, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Star sparkles
+        if (Math.random() < 0.1) {
+          for (let i = 0; i < 4; i++) {
+            const angle = (i / 4) * Math.PI * 2;
+            const distance = star.radius * (1.5 + Math.random() * 0.5);
+            const x = Math.cos(angle) * distance;
+            const y = Math.sin(angle) * distance;
+
+            this.ctx.globalAlpha = 0.8 * Math.random();
+            this.ctx.fillStyle = "#ffffff";
+            this.ctx.shadowBlur = 6;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 1, 0, Math.PI * 2);
+            this.ctx.fill();
+          }
+        }
+      }
+
+      this.ctx.restore();
     });
   }
 
@@ -779,35 +1129,7 @@ export class RendererService {
       playerIconY + 16
     );
 
-    // Connection status with icon
-    const connectionX = margin + 145;
-    const connectionY = margin;
-
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-    this.ctx.fillRect(connectionX, connectionY, 24, 24);
-
-    const isConnected = this.gameStore.isConnected;
-
-    if (isConnected) {
-      // Green checkmark
-      this.ctx.strokeStyle = "#4ade80";
-      this.ctx.lineWidth = 2;
-      this.ctx.beginPath();
-      this.ctx.moveTo(connectionX + 6, connectionY + 12);
-      this.ctx.lineTo(connectionX + 10, connectionY + 16);
-      this.ctx.lineTo(connectionX + 18, connectionY + 8);
-      this.ctx.stroke();
-    } else {
-      // Red X
-      this.ctx.strokeStyle = "#f87171";
-      this.ctx.lineWidth = 2;
-      this.ctx.beginPath();
-      this.ctx.moveTo(connectionX + 6, connectionY + 6);
-      this.ctx.lineTo(connectionX + 18, connectionY + 18);
-      this.ctx.moveTo(connectionX + 18, connectionY + 6);
-      this.ctx.lineTo(connectionX + 6, connectionY + 18);
-      this.ctx.stroke();
-    }
+    // Connection status section removed
   }
 
   private drawMissileCooldown() {
@@ -1158,26 +1480,27 @@ export class RendererService {
     const player = this.gameStore.gameState.players[this.gameStore.playerId];
     if (!player) return;
 
-    // Much smaller dimensions
-    const barWidth = 80;
-    const barHeight = 6;
+    // Consistent bar dimensions and spacing
+    const barWidth = 120;
+    const barHeight = 10;
+    const margin = 12; // Consistent margin for spacing
     const x = (this.gameStore.CANVAS_WIDTH - barWidth) / 2;
-    const y = this.gameStore.CANVAS_HEIGHT - 30; // Bottom middle
+    const y = this.gameStore.CANVAS_HEIGHT - 60; // More space from bottom
 
-    // Background (subtle)
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-    this.ctx.fillRect(x - 2, y - 2, barWidth + 4, barHeight + 4);
+    // Background with consistent styling
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    this.ctx.fillRect(x - 3, y - 3, barWidth + 6, barHeight + 6);
 
-    // Border (thin)
-    this.ctx.strokeStyle = "#fff";
+    // Border with consistent thickness
+    this.ctx.strokeStyle = "#666";
     this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(x, y, barWidth, barHeight);
+    this.ctx.strokeRect(x - 1, y - 1, barWidth + 2, barHeight + 2);
 
     // Energy fill
     const energyPercent = (player.boostEnergy || 100) / 100;
     const fillWidth = barWidth * energyPercent;
 
-    // Color based on energy level
+    // Color based on energy level with consistent styling
     if (energyPercent > 0.6) {
       this.ctx.fillStyle = "#00ff88"; // Cyan-green
     } else if (energyPercent > 0.3) {
@@ -1189,66 +1512,75 @@ export class RendererService {
     // Add glow effect if boost is active
     if (player.isBoostActive) {
       this.ctx.shadowColor = "#00ffff";
-      this.ctx.shadowBlur = 5;
+      this.ctx.shadowBlur = 8;
     }
 
     this.ctx.fillRect(x, y, fillWidth, barHeight);
     this.ctx.shadowBlur = 0;
 
-    // Level number to the left of the bar (starting at 1)
+    // Level number to the left of the bar with consistent positioning
     this.ctx.fillStyle = "#fff";
-    this.ctx.font = "10px Arial";
+    this.ctx.font = "12px Arial";
     this.ctx.textAlign = "right";
     this.ctx.fillText(
       `${player.boostUpgradeLevel + 1}`,
-      x - 8,
+      x - margin,
       y + barHeight - 1
     );
 
-    // Boost icon to the right of the bar (simple arrow/lightning symbol)
+    // Boost icon to the right of the bar with consistent positioning
     this.ctx.fillStyle = player.isBoostActive ? "#00ffff" : "#fff";
-    this.ctx.font = "12px Arial";
+    this.ctx.font = "14px Arial";
     this.ctx.textAlign = "left";
-    this.ctx.fillText("⚡", x + barWidth + 6, y + barHeight - 1);
+    this.ctx.fillText("⚡", x + barWidth + margin, y + barHeight - 1);
   }
 
   private drawExperienceBar() {
     const player = this.gameStore.gameState.players[this.gameStore.playerId];
     if (!player) return;
 
-    // XP bar dimensions - smaller and positioned below boost bar
-    const barWidth = 100;
-    const barHeight = 4;
+    // XP bar dimensions - consistent sizing with boost bar
+    const barWidth = 120; // Same width as boost bar
+    const barHeight = 6; // Slightly smaller but proportional
+    const margin = 12; // Same margin as boost bar
     const x = (this.gameStore.CANVAS_WIDTH - barWidth) / 2;
-    const y = this.gameStore.CANVAS_HEIGHT - 18; // Below boost bar
+    const y = this.gameStore.CANVAS_HEIGHT - 35; // Consistent spacing below boost bar
 
-    // Background
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-    this.ctx.fillRect(x - 2, y - 2, barWidth + 4, barHeight + 4);
+    // Background with consistent styling
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    this.ctx.fillRect(x - 3, y - 3, barWidth + 6, barHeight + 6);
 
-    // Border
-    this.ctx.strokeStyle = "#555";
+    // Border with consistent styling
+    this.ctx.strokeStyle = "#666";
     this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(x, y, barWidth, barHeight);
+    this.ctx.strokeRect(x - 1, y - 1, barWidth + 2, barHeight + 2);
 
-    // XP progress fill
-    const progress = player.getLevelProgress ? player.getLevelProgress() : 0;
+    // Calculate XP progress manually (since player object may not have methods)
+    const currentLevel = player.level || 1;
+    const currentLevelXP = (currentLevel - 1) * 100;
+    const nextLevelXP = currentLevel * 100;
+    const progressXP = (player.experience || 0) - currentLevelXP;
+    const progress = Math.max(
+      0,
+      Math.min(1, progressXP / (nextLevelXP - currentLevelXP))
+    );
+
     const fillWidth = barWidth * progress;
 
     this.ctx.fillStyle = "#ffd700"; // Gold color for XP
     this.ctx.fillRect(x, y, fillWidth, barHeight);
 
-    // Level number to the left
+    // Level number to the left with consistent positioning
     this.ctx.fillStyle = "#fff";
-    this.ctx.font = "10px Arial";
+    this.ctx.font = "11px Arial";
     this.ctx.textAlign = "right";
-    this.ctx.fillText(`LV ${player.level || 1}`, x - 8, y + barHeight - 1);
+    this.ctx.fillText(`LV ${currentLevel}`, x - margin, y + barHeight - 1);
 
-    // XP to the right
+    // XP to the right with consistent positioning
     this.ctx.textAlign = "left";
     this.ctx.fillText(
       `${player.experience || 0} XP`,
-      x + barWidth + 6,
+      x + barWidth + margin,
       y + barHeight - 1
     );
   }

@@ -16,9 +16,20 @@ export class SoundService {
   > = new Map();
 
   constructor() {
+    // Hot reload protection - cleanup previous instance
+    if ((window as any).__soundService) {
+      console.log("🎵 Cleaning up previous sound service instance");
+      const previousService = (window as any).__soundService;
+      previousService.cleanup();
+    }
+
     this.initializeAudioContext();
     this.loadMuteState(); // Load mute state from localStorage
+    this.loadVolumeSettings(); // Load volume settings from localStorage
     this.loadSoundFiles();
+
+    // Register this instance globally for hot reload cleanup
+    (window as any).__soundService = this;
   }
 
   private initializeAudioContext(): void {
@@ -51,18 +62,65 @@ export class SoundService {
     }
   }
 
+  // Load volume settings from localStorage
+  private loadVolumeSettings(): void {
+    try {
+      const savedMasterVolume = localStorage.getItem(
+        "soundService_masterVolume"
+      );
+      if (savedMasterVolume !== null) {
+        this.masterVolume = Math.max(
+          0,
+          Math.min(1, parseFloat(savedMasterVolume))
+        );
+      }
+
+      const savedSfxVolume = localStorage.getItem("soundService_sfxVolume");
+      if (savedSfxVolume !== null) {
+        this.sfxVolume = Math.max(0, Math.min(1, parseFloat(savedSfxVolume)));
+      }
+
+      const savedMusicVolume = localStorage.getItem("soundService_musicVolume");
+      if (savedMusicVolume !== null) {
+        this.musicVolume = Math.max(
+          0,
+          Math.min(1, parseFloat(savedMusicVolume))
+        );
+      }
+    } catch (error) {
+      console.warn("Failed to load volume settings from localStorage:", error);
+    }
+  }
+
+  // Save volume settings to localStorage
+  private saveVolumeSettings(): void {
+    try {
+      localStorage.setItem(
+        "soundService_masterVolume",
+        this.masterVolume.toString()
+      );
+      localStorage.setItem("soundService_sfxVolume", this.sfxVolume.toString());
+      localStorage.setItem(
+        "soundService_musicVolume",
+        this.musicVolume.toString()
+      );
+    } catch (error) {
+      console.warn("Failed to save volume settings to localStorage:", error);
+    }
+  }
+
   // Load all sound files
   private async loadSoundFiles(): Promise<void> {
     if (!this.audioContext) return;
 
     const soundFiles = {
-      laser: "/src/sounds/laser-shot.mp3",
-      missile: "/src/sounds/missle-explosion.mp3", // Note: using explosion for missile sound
-      explosion: "/src/sounds/missle-explosion.mp3",
-      powerup: "/src/sounds/power-up.mp3",
-      hit: "/src/sounds/laser-hit.mp3",
-      move: "/src/sounds/player-move.mp3",
-      background: "/src/sounds/background-music.mp3",
+      laser: "/sounds/laser-shot.mp3",
+      missile: "/sounds/rocket-fire.mp3", // Use rocket firing sound for missiles
+      explosion: "/sounds/missle-explosion.mp3",
+      powerup: "/sounds/power-up.mp3",
+      hit: "/sounds/laser-hit.mp3",
+      move: "/sounds/player-move.mp3",
+      background: "/sounds/background-music.mp3",
     };
 
     const loadPromises = Object.entries(soundFiles).map(
@@ -217,10 +275,12 @@ export class SoundService {
   // Volume controls
   setMasterVolume(volume: number): void {
     this.masterVolume = Math.max(0, Math.min(1, volume));
+    this.saveVolumeSettings();
   }
 
   setSFXVolume(volume: number): void {
     this.sfxVolume = Math.max(0, Math.min(1, volume));
+    this.saveVolumeSettings();
   }
 
   setMusicVolume(volume: number): void {
@@ -229,6 +289,7 @@ export class SoundService {
       this.backgroundMusicGain.gain.value =
         this.masterVolume * this.musicVolume;
     }
+    this.saveVolumeSettings();
   }
 
   // Background music controls
@@ -245,6 +306,8 @@ export class SoundService {
     try {
       // Stop existing music if playing
       this.stopBackgroundMusic();
+
+      console.log("🎵 Starting background music");
 
       // Resume audio context if needed
       if (this.audioContext.state === "suspended") {
@@ -274,6 +337,7 @@ export class SoundService {
 
   stopBackgroundMusic(): void {
     if (this.backgroundMusicSource) {
+      console.log("🎵 Stopping background music");
       try {
         this.backgroundMusicSource.stop();
       } catch (error) {
@@ -282,6 +346,11 @@ export class SoundService {
       this.backgroundMusicSource = null;
     }
     this.backgroundMusicGain = null;
+  }
+
+  // Check if background music is currently playing
+  isBackgroundMusicPlaying(): boolean {
+    return this.backgroundMusicSource !== null;
   }
 
   // Mute/unmute
@@ -299,13 +368,24 @@ export class SoundService {
   }
 
   setMuted(muted: boolean): void {
+    const wasPlaying = this.isBackgroundMusicPlaying();
+    
     this.isMuted = muted;
     this.saveMuteState(); // Save to localStorage
+    
     if (muted) {
       this.stopBackgroundMusic();
       this.stopAllContinuousSounds();
-    } else {
+    } else if (wasPlaying) {
+      // Only restart music if it was previously playing
       setTimeout(() => this.startBackgroundMusic(), 100);
+    }
+  }
+
+  // Method to manually start music (for explicit user actions)
+  forceStartBackgroundMusic(): void {
+    if (!this.isMuted) {
+      this.startBackgroundMusic();
     }
   }
 
@@ -332,7 +412,22 @@ export class SoundService {
   isSoundMuted(): boolean {
     return this.isMuted;
   }
+
+  // Cleanup method for hot reload protection
+  cleanup(): void {
+    console.log("🎵 Stopping background music");
+    this.stopBackgroundMusic();
+
+    console.log("🎵 Stopping continuous sounds");
+    this.stopAllContinuousSounds();
+
+    if (this.audioContext) {
+      console.log("🎵 Closing audio context");
+      this.audioContext.close();
+      this.audioContext = null;
+    }
+  }
 }
 
-// Create a singleton instance
+// Create and export a singleton instance
 export const soundService = new SoundService();

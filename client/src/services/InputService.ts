@@ -45,7 +45,10 @@ export class InputService {
     if (e.key === "1" || e.key === " ") {
       const missileFired = this.gameStore.shootMissile();
       if (missileFired) {
-        soundService.playSound("missile", 0.8);
+        const player = this.gameStore.currentPlayer;
+        if (player) {
+          soundService.playSound("missile", 0.8);
+        }
       }
     }
 
@@ -96,9 +99,9 @@ export class InputService {
     if (e.button !== 0) return;
 
     e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling that could trigger focus changes
     this.gameStore.setMouseDown(true);
     this.gameStore.shoot(); // Fire immediately on first click
-    soundService.playSound("laser", 0.3); // Reduced volume
   };
 
   private handleMouseUp = (e: MouseEvent) => {
@@ -106,6 +109,7 @@ export class InputService {
     if (e.button !== 0) return;
 
     e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling that could trigger focus changes
     this.gameStore.setMouseDown(false);
   };
 

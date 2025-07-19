@@ -23,7 +23,7 @@ export class Missile extends Projectile {
       ownerId,
       speed || 400, // speed (pixels per second)
       damage || 75, // damage
-      maxDistance || 1500, // max distance
+      maxDistance || 800, // max distance - reduced from 1500 to 800
       2000, // cooldown (ms)
       "missile"
     );

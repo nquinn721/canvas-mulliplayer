@@ -3,39 +3,71 @@ import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import { Game } from "./game/Game";
 import { soundService } from "./services/SoundService";
+import { GameStore } from "./stores/GameStore";
+import EscapeMenu from "./components/EscapeMenu";
 
 const App = observer(() => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
   const [isMuted, setIsMuted] = useState(() => soundService.isSoundMuted()); // Initialize with localStorage value
+  const [masterVolume, setMasterVolume] = useState(() =>
+    soundService.getMasterVolume()
+  );
+  const [sfxVolume, setSfxVolume] = useState(() => soundService.getSFXVolume());
+  const [musicVolume, setMusicVolume] = useState(() =>
+    soundService.getMusicVolume()
+  );
+  const [currentAIDifficulty, setCurrentAIDifficulty] = useState<
+    "EASY" | "MEDIUM" | "HARD"
+  >("MEDIUM"); // Track current AI difficulty
+  const [gameStore, setGameStore] = useState<GameStore | null>(null); // Add game store to component state
+  const [isEscapeMenuOpen, setIsEscapeMenuOpen] = useState(false); // Escape menu state
   const [canvasDimensions, setCanvasDimensions] = useState(() => {
-    const CONTROLS_WIDTH = 320;
     const HEADER_HEIGHT = 50;
     const PADDING = 40;
     const MIN_WIDTH = 600;
     const MIN_HEIGHT = 400;
     return {
-      width: Math.max(MIN_WIDTH, window.innerWidth - CONTROLS_WIDTH - PADDING),
-      height: Math.max(MIN_HEIGHT, window.innerHeight - HEADER_HEIGHT - PADDING),
+      width: Math.max(MIN_WIDTH, window.innerWidth - PADDING),
+      height: Math.max(
+        MIN_HEIGHT,
+        window.innerHeight - HEADER_HEIGHT - PADDING
+      ),
     };
   });
 
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
-      const CONTROLS_WIDTH = 320;
       const HEADER_HEIGHT = 50;
       const PADDING = 40;
       const MIN_WIDTH = 600;
       const MIN_HEIGHT = 400;
-      const newWidth = Math.max(MIN_WIDTH, window.innerWidth - CONTROLS_WIDTH - PADDING);
-      const newHeight = Math.max(MIN_HEIGHT, window.innerHeight - HEADER_HEIGHT - PADDING);
-
+      const newWidth = Math.max(
+        MIN_WIDTH,
+        window.innerWidth - PADDING
+      );
+      const newHeight = Math.max(
+        MIN_HEIGHT,
+        window.innerHeight - HEADER_HEIGHT - PADDING
+      );
       setCanvasDimensions({ width: newWidth, height: newHeight });
     };
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Handle escape key for menu
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsEscapeMenuOpen(prev => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   useEffect(() => {
@@ -44,6 +76,7 @@ const App = observer(() => {
     // Initialize game
     const game = new Game(canvasRef.current);
     gameRef.current = game;
+    setGameStore(game.store); // Set the game store in component state
 
     // Start the game
     game.start().catch(console.error);
@@ -51,7 +84,7 @@ const App = observer(() => {
     // Start background music after a short delay to allow user interaction
     const startMusicTimer = setTimeout(() => {
       if (!soundService.isSoundMuted()) {
-        soundService.startBackgroundMusic();
+        soundService.forceStartBackgroundMusic();
       }
     }, 1000);
 
@@ -61,6 +94,7 @@ const App = observer(() => {
       soundService.stopBackgroundMusic();
       game.cleanup();
       gameRef.current = null;
+      setGameStore(null); // Clear the game store reference
     };
   }, []);
 
@@ -69,10 +103,26 @@ const App = observer(() => {
     setIsMuted(newMuteState);
   };
 
-  // Start music on first user interaction
-  const handleUserInteraction = () => {
-    if (!soundService.isSoundMuted() && !isMuted) {
-      soundService.startBackgroundMusic();
+  const handleMasterVolumeChange = (value: number) => {
+    soundService.setMasterVolume(value);
+    setMasterVolume(value);
+  };
+
+  const handleSfxVolumeChange = (value: number) => {
+    soundService.setSFXVolume(value);
+    setSfxVolume(value);
+  };
+
+  const handleMusicVolumeChange = (value: number) => {
+    soundService.setMusicVolume(value);
+    setMusicVolume(value);
+  };
+
+  const changeAIDifficulty = (difficulty: "EASY" | "MEDIUM" | "HARD") => {
+    if (gameStore?.socket) {
+      gameStore.socket.emit("changeAIDifficulty", { difficulty });
+      setCurrentAIDifficulty(difficulty); // Update local state
+      console.log(`Changed AI difficulty to ${difficulty}`);
     }
   };
 
@@ -81,122 +131,45 @@ const App = observer(() => {
       {/* Header */}
       <header className="game-header">
         <h1 className="game-title">🎮 Canvas Multiplayer</h1>
-        <div style={{ fontSize: "12px", color: "#888" }}>
-          {gameRef.current?.isConnected ? "🟢 Online" : "🔴 Offline"}
+        <div className="header-status">
+          <div style={{ fontSize: "12px", color: "#888" }}>
+            {gameStore?.isConnected ? "🟢 Online" : "🔴 Offline"}
+          </div>
+          <div style={{ fontSize: "12px", color: "#888", marginLeft: "20px" }}>
+            Press <strong>ESC</strong> for menu
+          </div>
         </div>
       </header>
 
-      {/* Main game area */}
-      <div className="game-main">
-        {/* Controls panel */}
-        <div className="controls-panel">
-          {/* Audio Controls */}
-          <div className="control-section">
-            <h3>🎵 Audio</h3>
-            <button
-              onClick={toggleMute}
-              className={`control-button ${isMuted ? "muted" : ""}`}
-            >
-              {isMuted ? "🔇 Sound Off" : "🔊 Sound On"}
-            </button>
-            <div className="game-tip">
-              <span className="tip-icon">💡</span>
-              Click canvas to start ambient music
-            </div>
-          </div>
-
-          {/* Game Status */}
-          <div className="control-section">
-            <h3>📊 Status</h3>
-            {gameRef.current && (
-              <>
-                <div className="status-item">
-                  <span className="status-label">Connection</span>
-                  <span
-                    className={`status-value ${!gameRef.current.isConnected ? "disconnected" : ""}`}
-                  >
-                    {gameRef.current.isConnected ? "Connected" : "Disconnected"}
-                  </span>
-                </div>
-                <div className="status-item">
-                  <span className="status-label">Game State</span>
-                  <span className="status-value">
-                    {gameRef.current.isRunning ? "Running" : "Stopped"}
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Controls Guide */}
-          <div className="control-section">
-            <h3>🎮 Controls</h3>
-            <div className="controls-grid">
-              <div className="control-key">
-                <strong>W</strong>
-                Forward
-              </div>
-              <div className="control-key">
-                <strong>S</strong>
-                Backward
-              </div>
-              <div className="control-key">
-                <strong>A</strong>
-                Strafe Left
-              </div>
-              <div className="control-key">
-                <strong>D</strong>
-                Strafe Right
-              </div>
-              <div className="control-key">
-                <strong>Mouse</strong>
-                Aim & Shoot
-              </div>
-              <div className="control-key">
-                <strong>Shift</strong>
-                Boost
-              </div>
-            </div>
-          </div>
-
-          {/* Weapons */}
-          <div className="control-section">
-            <h3>⚔️ Weapons</h3>
-            <div className="status-item">
-              <span className="status-label">Primary</span>
-              <span className="status-value">Laser Cannon</span>
-            </div>
-            <div className="status-item">
-              <span className="status-label">Secondary</span>
-              <span className="status-value">Missiles</span>
-            </div>
-          </div>
-
-          {/* Game Tips */}
-          <div className="control-section">
-            <h3>💡 Tips</h3>
-            <div className="game-tip">
-              • Collect power-ups to upgrade your weapons
-              <br />
-              • Use boost to escape dangerous situations
-              <br />
-              • Strafe to dodge incoming projectiles
-              <br />• Watch out for AI enemies!
-            </div>
-          </div>
-        </div>
-
-        {/* Canvas area */}
-        <div className="canvas-container">
-          <canvas
-            ref={canvasRef}
-            width={canvasDimensions.width}
-            height={canvasDimensions.height}
-            onClick={handleUserInteraction}
-            className="game-canvas"
-          />
-        </div>
+      {/* Main game area - full screen canvas */}
+      <div className="game-main-fullscreen">
+        <canvas
+          ref={canvasRef}
+          width={canvasDimensions.width}
+          height={canvasDimensions.height}
+          className="game-canvas"
+        />
       </div>
+
+      {/* Escape Menu */}
+      <EscapeMenu
+        isOpen={isEscapeMenuOpen}
+        onClose={() => setIsEscapeMenuOpen(false)}
+        connectionStatus={gameStore?.isConnected ? "Connected" : "Disconnected"}
+        playerCount={Object.keys(gameStore?.gameState?.players || {}).length}
+        enemyCount={Object.keys(gameStore?.gameState?.aiEnemies || {}).length}
+        isConnected={gameStore?.isConnected || false}
+        isMuted={isMuted}
+        onMuteToggle={toggleMute}
+        masterVolume={masterVolume}
+        sfxVolume={sfxVolume}
+        musicVolume={musicVolume}
+        onMasterVolumeChange={handleMasterVolumeChange}
+        onSfxVolumeChange={handleSfxVolumeChange}
+        onMusicVolumeChange={handleMusicVolumeChange}
+        currentAIDifficulty={currentAIDifficulty}
+        onAIDifficultyChange={changeAIDifficulty}
+      />
     </div>
   );
 });

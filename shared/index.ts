@@ -1,15 +1,18 @@
 // Main shared exports - use these for clean imports
 
 // Core types
-export type { GameState } from "./types/GameState";
+export type { GameState, MeteorData, StarData } from "./types/GameState";
 
 // Classes with their interfaces
+export { SmartAIEnemy } from "./ai/SmartAIEnemy";
 export { AIEnemy } from "./classes/AIEnemy";
 export { Camera } from "./classes/Camera";
 export { Game } from "./classes/Game";
+export { Meteor } from "./classes/Meteor";
 export { Player } from "./classes/Player";
 export type { KeyState } from "./classes/Player";
 export { PowerUp, PowerUpType } from "./classes/PowerUp";
+export { Star } from "./classes/Star";
 export { World } from "./classes/World";
 export type { Wall } from "./classes/World";
 

@@ -71,12 +71,18 @@ export class SocketService {
       }) => {
         this.gameStore.handleProjectileHit(data);
 
-        // Play explosion sound
+        const currentPlayer = this.gameStore.currentPlayer;
+        const explosionPos = { x: data.x, y: data.y };
+        const listenerPos = currentPlayer
+          ? { x: currentPlayer.x, y: currentPlayer.y }
+          : explosionPos;
+
+        // Play explosion sound with distance-based volume
         if (data.targetId) {
           // Hit a player
           soundService.playSound("explosion", 0.8);
           if (data.targetId === this.gameStore.playerId) {
-            // Current player was hit
+            // Current player was hit - always full volume for damage
             soundService.playSound("damage", 0.7);
           }
         } else if (data.wallHit) {
@@ -86,13 +92,74 @@ export class SocketService {
       }
     );
 
+    // Meteor events
+    this.socket.on(
+      "meteorSpawned",
+      (data: {
+        meteorId: string;
+        x: number;
+        y: number;
+        targetX: number;
+        targetY: number;
+      }) => {
+        // Meteors are handled through the game state, no special handling needed
+        // Could add sound effect here if desired
+      }
+    );
+
+    this.socket.on(
+      "meteorHit",
+      (data: {
+        meteorId: string;
+        x: number;
+        y: number;
+        targetId?: string;
+        wallHit?: boolean;
+        damage?: number;
+      }) => {
+        const currentPlayer = this.gameStore.currentPlayer;
+        const explosionPos = { x: data.x, y: data.y };
+        const listenerPos = currentPlayer
+          ? { x: currentPlayer.x, y: currentPlayer.y }
+          : explosionPos;
+
+        // Play explosion sound with distance-based volume
+        if (data.targetId) {
+          // Hit a player or AI
+          soundService.playSound("explosion", 1.0);
+          if (data.targetId === this.gameStore.playerId) {
+            // Current player was hit - always full volume for damage
+            soundService.playSound("damage", 0.9);
+          }
+        } else if (data.wallHit) {
+          // Hit a wall
+          soundService.playSound("explosion", 0.8);
+        }
+
+        // Handle meteor hit effects
+        this.gameStore.handleMeteorHit(data);
+      }
+    );
+
+    this.socket.on("meteorExpired", (meteorId: string) => {
+      // Meteors are handled through the game state, no special handling needed
+    });
+
     // Power-up collection event
     this.socket.on(
       "powerUpCollected",
       (data: { powerUpId: string; playerId: string; type: string }) => {
         if (data.playerId === this.gameStore.playerId) {
-          // Current player collected power-up
+          // Current player collected power-up - always full volume
           soundService.playSound("powerup", 0.8);
+        } else {
+          // Another player collected power-up - use distance-based volume
+          const currentPlayer = this.gameStore.currentPlayer;
+          const powerUp = this.gameStore.gameState.powerUps[data.powerUpId];
+
+          if (currentPlayer && powerUp) {
+            soundService.playSound("powerup", 0.8);
+          }
         }
       }
     );
@@ -100,6 +167,17 @@ export class SocketService {
     this.socket.on("projectileExpired", (projectileId: string) => {
       this.gameStore.removeProjectile(projectileId);
     });
+
+    // AI difficulty change confirmation
+    this.socket.on(
+      "aiDifficultyChanged",
+      (data: { difficulty: string; affectedEnemies: number }) => {
+        console.log(
+          `AI difficulty changed to ${data.difficulty}, affected ${data.affectedEnemies} enemies`
+        );
+        // You could add a toast notification here if desired
+      }
+    );
 
     // Error handling
     this.socket.on("connect_error", (error) => {

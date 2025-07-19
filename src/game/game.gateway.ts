@@ -11,10 +11,13 @@ import {
   AIEnemy,
   GameState,
   Laser,
+  Meteor,
   Missile,
   Player,
   PowerUp,
   Projectile,
+  SmartAIEnemy,
+  Star,
   Wall,
 } from "@shared";
 import { PowerUpType } from "@shared/classes/PowerUp";
@@ -44,6 +47,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private players: Map<string, Player> = new Map();
   private aiEnemies: Map<string, AIEnemy> = new Map();
   private projectiles: Map<string, Projectile> = new Map();
+  private meteors: Map<string, Meteor> = new Map();
+  private stars: Map<string, Star> = new Map();
   private powerUps: Map<string, PowerUp> = new Map();
   private walls: Wall[] = [];
   private gameLoopInterval: NodeJS.Timeout;
@@ -51,6 +56,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private powerUpIdCounter = 0;
   private playerNameCounter = 1;
   private aiEnemyCounter = 1;
+  private lastMeteorSpawn = Date.now();
+  private meteorSpawnInterval = 8000; // 8 seconds
+  private lastStarSpawn = Date.now();
+  private starSpawnInterval = 20000; // 20 seconds
 
   // World bounds
   private readonly WORLD_WIDTH = 5000;
@@ -58,6 +67,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly WALL_COUNT = 60;
   private readonly POWERUP_COUNT = 20;
   private readonly AI_ENEMY_COUNT = 5; // Number of AI enemies to spawn
+  private preferredAIDifficulty: "EASY" | "MEDIUM" | "HARD" = "MEDIUM"; // Default difficulty
 
   constructor() {
     this.generateWalls();
@@ -376,6 +386,38 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.players.set(client.id, player);
   }
 
+  @SubscribeMessage("changeAIDifficulty")
+  handleChangeAIDifficulty(
+    @MessageBody() data: { difficulty: "EASY" | "MEDIUM" | "HARD" },
+    @ConnectedSocket() client: Socket
+  ) {
+    console.log(
+      `Player ${client.id} requested AI difficulty change to ${data.difficulty}`
+    );
+
+    // Change difficulty for existing SmartAI enemies
+    let changedCount = 0;
+    this.aiEnemies.forEach((aiEnemy) => {
+      if (aiEnemy instanceof SmartAIEnemy) {
+        aiEnemy.setDifficulty(data.difficulty);
+        changedCount++;
+      }
+    });
+
+    // Store the preferred difficulty for new AI spawns
+    this.preferredAIDifficulty = data.difficulty;
+
+    console.log(
+      `Changed difficulty for ${changedCount} AI enemies to ${data.difficulty}`
+    );
+
+    // Send confirmation back to client
+    client.emit("aiDifficultyChanged", {
+      difficulty: data.difficulty,
+      affectedEnemies: changedCount,
+    });
+  }
+
   private startGameLoop() {
     this.gameLoopInterval = setInterval(() => {
       this.updateGame();
@@ -452,7 +494,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
             if (projectile.ownerId !== player.id) {
               const killer = this.players.get(projectile.ownerId);
               if (killer) {
-                killer.addExperience(50); // 50 XP for kill
+                killer.addExperience(30); // 30 XP for kill
               }
             }
 
@@ -504,6 +546,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     projectilesToRemove.forEach((id) => {
       this.projectiles.delete(id);
     });
+
+    // Update meteors
+    this.updateMeteors(deltaTime);
+
+    // Update stars
+    this.updateStars(deltaTime);
 
     // Update power-ups and check for collection
     this.updatePowerUps(deltaTime);
@@ -604,27 +652,46 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.powerUps
       );
 
-      // Check if AI wants to shoot
-      const closestPlayer = this.findClosestPlayerToAI(aiEnemy);
-      if (closestPlayer) {
-        const distance = aiEnemy.getDistanceTo(
-          closestPlayer.x,
-          closestPlayer.y
-        );
-        const currentTime = Date.now();
+      // Check if AI wants to shoot (works for both AIEnemy and SmartAIEnemy)
+      let shootingDecision = null;
 
-        // AI shooting logic
-        if (distance <= 400 && currentTime - aiEnemy.lastMissileTime >= 3000) {
-          const shootAngle = Math.atan2(
-            closestPlayer.y - aiEnemy.y,
-            closestPlayer.x - aiEnemy.x
+      if (aiEnemy instanceof SmartAIEnemy) {
+        // Use new behavior tree shooting system
+        shootingDecision = aiEnemy.getShootingDecision();
+      } else {
+        // Fallback to old shooting logic for regular AIEnemy
+        const closestPlayer = this.findClosestPlayerToAI(aiEnemy);
+        if (closestPlayer) {
+          const distance = aiEnemy.getDistanceTo(
+            closestPlayer.x,
+            closestPlayer.y
           );
-          const weapon =
-            distance > 250 && Math.random() < 0.3 ? "missile" : "laser";
+          const currentTime = Date.now();
 
-          this.createAIProjectile(aiEnemy, shootAngle, weapon);
-          aiEnemy.updateMissileTime(currentTime);
+          if (
+            distance <= 400 &&
+            currentTime - (aiEnemy as any).lastMissileTime >= 3000
+          ) {
+            const shootAngle = Math.atan2(
+              closestPlayer.y - aiEnemy.y,
+              closestPlayer.x - aiEnemy.x
+            );
+            const weapon =
+              distance > 250 && Math.random() < 0.3 ? "missile" : "laser";
+
+            shootingDecision = { weapon, angle: shootAngle };
+            (aiEnemy as any).updateMissileTime(currentTime);
+          }
         }
+      }
+
+      // Create projectile if AI decided to shoot
+      if (shootingDecision) {
+        this.createAIProjectile(
+          aiEnemy,
+          shootingDecision.angle,
+          shootingDecision.weapon
+        );
       }
 
       // Check projectile collisions with AI enemies
@@ -910,11 +977,39 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const spawnPosition = this.getRandomSpawnPosition();
       const aiId = `ai_${this.aiEnemyCounter++}`;
 
-      const aiEnemy = new AIEnemy(aiId, spawnPosition.x, spawnPosition.y);
+      // Use preferred difficulty with some randomness
+      let difficulty: "EASY" | "MEDIUM" | "HARD";
+      const randomChance = Math.random();
+
+      // 70% chance to use preferred difficulty, 30% chance for variety
+      if (randomChance < 0.7) {
+        difficulty = this.preferredAIDifficulty;
+      } else {
+        // Add variety with other difficulties
+        const otherDifficulties: ("EASY" | "MEDIUM" | "HARD")[] = [];
+        if (this.preferredAIDifficulty !== "EASY")
+          otherDifficulties.push("EASY");
+        if (this.preferredAIDifficulty !== "MEDIUM")
+          otherDifficulties.push("MEDIUM");
+        if (this.preferredAIDifficulty !== "HARD")
+          otherDifficulties.push("HARD");
+
+        difficulty =
+          otherDifficulties[
+            Math.floor(Math.random() * otherDifficulties.length)
+          ];
+      }
+
+      const aiEnemy = new SmartAIEnemy(
+        aiId,
+        spawnPosition.x,
+        spawnPosition.y,
+        difficulty
+      );
 
       this.aiEnemies.set(aiId, aiEnemy);
       console.log(
-        `AI Enemy ${aiId} spawned at (${spawnPosition.x}, ${spawnPosition.y})`
+        `Smart AI Enemy ${aiId} spawned at (${spawnPosition.x}, ${spawnPosition.y}) with ${difficulty} difficulty`
       );
     }
   }
@@ -934,6 +1029,256 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
     }
     return false;
+  }
+
+  private spawnMeteor() {
+    const meteorId = `meteor_${Date.now()}_${Math.random()}`;
+
+    // Choose random spawn location on the edge of the world
+    const side = Math.floor(Math.random() * 4); // 0: top, 1: right, 2: bottom, 3: left
+    let startX: number, startY: number;
+
+    switch (side) {
+      case 0: // Top
+        startX = Math.random() * this.WORLD_WIDTH;
+        startY = -50;
+        break;
+      case 1: // Right
+        startX = this.WORLD_WIDTH + 50;
+        startY = Math.random() * this.WORLD_HEIGHT;
+        break;
+      case 2: // Bottom
+        startX = Math.random() * this.WORLD_WIDTH;
+        startY = this.WORLD_HEIGHT + 50;
+        break;
+      case 3: // Left
+        startX = -50;
+        startY = Math.random() * this.WORLD_HEIGHT;
+        break;
+      default:
+        startX = 0;
+        startY = 0;
+    }
+
+    // Choose random target location in the world
+    const targetX = Math.random() * this.WORLD_WIDTH;
+    const targetY = Math.random() * this.WORLD_HEIGHT;
+
+    const meteor = new Meteor(meteorId, startX, startY, targetX, targetY);
+    this.meteors.set(meteorId, meteor);
+    this.lastMeteorSpawn = Date.now();
+
+    // Emit meteor spawn event
+    this.server.emit("meteorSpawned", {
+      meteorId: meteorId,
+      x: startX,
+      y: startY,
+      targetX: targetX,
+      targetY: targetY,
+    });
+  }
+
+  private spawnStar() {
+    const starId = `star_${Date.now()}_${Math.random()}`;
+
+    // Choose random location in the world (background stars)
+    const x = Math.random() * this.WORLD_WIDTH;
+    const y = Math.random() * this.WORLD_HEIGHT;
+
+    // Random lifespan between 15-25 seconds before explosion
+    const lifespan = 15000 + Math.random() * 10000;
+
+    const star = new Star(starId, x, y, lifespan);
+    this.stars.set(starId, star);
+    this.lastStarSpawn = Date.now();
+
+    // Emit star spawn event
+    this.server.emit("starSpawned", {
+      starId: starId,
+      x: x,
+      y: y,
+      lifespan: lifespan,
+    });
+  }
+
+  private updateMeteors(deltaTime: number) {
+    const currentTime = Date.now();
+
+    // Spawn new meteor if enough time has passed
+    if (currentTime - this.lastMeteorSpawn > this.meteorSpawnInterval) {
+      this.spawnMeteor();
+    }
+
+    const meteorsToRemove: string[] = [];
+
+    this.meteors.forEach((meteor, id) => {
+      // Update meteor position
+      const isAlive = meteor.update(deltaTime / 1000);
+
+      // Check if meteor is expired (traveled too far)
+      if (!isAlive) {
+        meteorsToRemove.push(id);
+        this.server.emit("meteorExpired", id);
+        return;
+      }
+
+      // Check wall collisions
+      if (this.checkWallCollision(meteor.x, meteor.y, meteor.radius)) {
+        meteorsToRemove.push(id);
+        this.server.emit("meteorHit", {
+          meteorId: id,
+          x: meteor.x,
+          y: meteor.y,
+          wallHit: true,
+        });
+        return;
+      }
+
+      // Check player collisions
+      this.players.forEach((player, playerId) => {
+        if (meteor.checkCollision(player.x, player.y, player.radius)) {
+          const isDead = player.takeDamage(meteor.damage);
+
+          if (isDead) {
+            // Respawn player at a safe location
+            player.heal(player.maxHealth);
+            const spawnPos = this.getRandomSpawnPosition();
+            player.x = spawnPos.x;
+            player.y = spawnPos.y;
+          }
+
+          meteorsToRemove.push(id);
+          this.server.emit("meteorHit", {
+            meteorId: id,
+            x: meteor.x,
+            y: meteor.y,
+            targetId: playerId,
+            damage: meteor.damage,
+          });
+        }
+      });
+
+      // Check AI enemy collisions
+      this.aiEnemies.forEach((aiEnemy, aiId) => {
+        if (meteor.checkCollision(aiEnemy.x, aiEnemy.y, aiEnemy.radius)) {
+          const isDead = aiEnemy.takeDamage(meteor.damage);
+
+          if (isDead) {
+            // Respawn AI at a safe location
+            aiEnemy.heal(aiEnemy.maxHealth);
+            const spawnPos = this.getRandomSpawnPosition();
+            aiEnemy.x = spawnPos.x;
+            aiEnemy.y = spawnPos.y;
+          }
+
+          meteorsToRemove.push(id);
+          this.server.emit("meteorHit", {
+            meteorId: id,
+            x: meteor.x,
+            y: meteor.y,
+            targetId: aiId,
+            damage: meteor.damage,
+          });
+        }
+      });
+    });
+
+    // Remove expired meteors
+    meteorsToRemove.forEach((id) => {
+      this.meteors.delete(id);
+    });
+  }
+
+  private updateStars(deltaTime: number) {
+    const currentTime = Date.now();
+
+    // Spawn new star if enough time has passed
+    if (currentTime - this.lastStarSpawn > this.starSpawnInterval) {
+      this.spawnStar();
+    }
+
+    const starsToRemove: string[] = [];
+
+    this.stars.forEach((star, id) => {
+      // Update star state
+      const wasExploding = star.isExploding;
+      const isAlive = star.update(deltaTime / 1000);
+
+      // Check if star just started exploding
+      if (!wasExploding && star.isExploding) {
+        // Emit explosion event
+        this.server.emit("starExplosion", {
+          starId: id,
+          x: star.x,
+          y: star.y,
+          radius: star.explosionRadius,
+          damage: star.damage,
+        });
+
+        // Check all players in explosion radius
+        this.players.forEach((player, playerId) => {
+          if (star.isInExplosionRadius(player.x, player.y)) {
+            const isDead = player.takeDamage(star.damage);
+
+            // Emit damage event
+            this.server.emit("starDamage", {
+              starId: id,
+              playerId: playerId,
+              damage: star.damage,
+              x: star.x,
+              y: star.y,
+            });
+
+            if (isDead) {
+              // Respawn player
+              const spawnPos = this.getRandomSpawnPosition();
+              player.x = spawnPos.x;
+              player.y = spawnPos.y;
+              player.heal(player.maxHealth);
+            }
+          }
+        });
+
+        // Check AI enemies in explosion radius
+        this.aiEnemies.forEach((aiEnemy, aiId) => {
+          if (star.isInExplosionRadius(aiEnemy.x, aiEnemy.y)) {
+            const isDead = aiEnemy.takeDamage(star.damage);
+
+            if (isDead) {
+              // Respawn AI at a safe location
+              aiEnemy.heal(aiEnemy.maxHealth);
+              const spawnPos = this.getRandomSpawnPosition();
+              aiEnemy.x = spawnPos.x;
+              aiEnemy.y = spawnPos.y;
+            }
+          }
+        });
+
+        // Chain explosions - damage other stars in explosion radius
+        this.stars.forEach((otherStar, otherId) => {
+          if (
+            otherId !== id &&
+            star.isInExplosionRadius(otherStar.x, otherStar.y)
+          ) {
+            // Force other star to explode soon
+            if (!otherStar.isExploding) {
+              otherStar.lifespan = Math.min(otherStar.lifespan, 2000); // Force explosion in 2 seconds
+            }
+          }
+        });
+      }
+
+      // Remove stars that finished exploding
+      if (!isAlive) {
+        starsToRemove.push(id);
+        this.server.emit("starExpired", id);
+      }
+    });
+
+    // Remove expired stars
+    starsToRemove.forEach((id) => {
+      this.stars.delete(id);
+    });
   }
 
   private broadcastGameState() {
@@ -971,6 +1316,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         type: p.type as "laser" | "missile",
         createdAt: p.createdAt,
       })),
+      meteors: Array.from(this.meteors.values()).map((meteor) =>
+        meteor.serialize()
+      ),
+      stars: Array.from(this.stars.values()).map((star) => star.serialize()),
     };
 
     this.server.emit("gameState", gameState);

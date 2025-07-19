@@ -154,8 +154,8 @@ export class Player {
 
     // Calculate upgrade multipliers
     const upgradeMultiplier = 1 + this.boostUpgradeLevel * 0.5; // Each level = 50% improvement
-    const drainRate = 50 / upgradeMultiplier; // Slower drain with upgrades
-    const regenRate = 40 * upgradeMultiplier; // Faster regen with upgrades
+    const drainRate = 35 / upgradeMultiplier; // Slower drain with upgrades (reduced from 50 to 35)
+    const regenRate = 55 * upgradeMultiplier; // Faster regen with upgrades (increased from 40 to 55)
 
     if (this.isBoostActive && this.boostEnergy > 0) {
       // Drain boost energy when active
@@ -203,12 +203,22 @@ export class Player {
     return this.health < this.maxHealth;
   }
 
+  // Check if player can pick up a shield (doesn't have full shield)
+  canPickupShield(): boolean {
+    return !this.hasShield || this.shieldHealth < this.maxShieldHealth;
+  }
+
   // Apply shield pickup
-  applyShield(): void {
+  applyShield(): boolean {
+    if (!this.canPickupShield()) {
+      return false; // Can't pickup shield if already at full shield
+    }
+
     this.shieldHealth = this.maxShieldHealth;
     this.shieldExpiration = 0; // No time limit on shield
     this.hasShield = true;
     this.addExperience(10); // 10 XP for shield pickup
+    return true; // Successfully picked up shield
   }
 
   // Update shield status (call this regularly to check expiration)
@@ -411,7 +421,7 @@ export class Player {
   } {
     const baseSpeed = 400;
     const baseDamage = 75;
-    const baseDistance = 1500;
+    const baseDistance = 800; // Reduced from 1500 to 800 for shorter range
     const baseTrackingRange = 300;
     const baseTurnRate = 3;
 

@@ -1,17 +1,17 @@
 import { Player } from "./Player";
 
 export class AIEnemy extends Player {
-  private lastShootTime: number = 0;
-  private shootCooldown: number = 3000; // 3 seconds between shots
-  private detectionRange: number = 400; // Range to detect and shoot at players
-  private changeDirectionTime: number = 0;
-  private directionChangeInterval: number = 2000; // Change direction every 2 seconds
-  private currentMoveAngle: number = 0;
-  private aggroTarget: string | null = null; // Current target player ID
-  private aggroRange: number = 500; // Range to become aggressive
-  private patrolRadius: number = 300; // Distance to patrol around spawn point
-  private spawnX: number;
-  private spawnY: number;
+  protected lastShootTime: number = 0;
+  protected shootCooldown: number = 3000; // 3 seconds between shots
+  protected detectionRange: number = 400; // Range to detect and shoot at players
+  protected changeDirectionTime: number = 0;
+  protected directionChangeInterval: number = 2000; // Change direction every 2 seconds
+  protected currentMoveAngle: number = 0;
+  protected aggroTarget: string | null = null; // Current target player ID
+  protected aggroRange: number = 1200; // Range to become aggressive - increased for better engagement
+  protected patrolRadius: number = 800; // Distance to patrol around spawn point - increased for better player encounters
+  protected spawnX: number;
+  protected spawnY: number;
 
   constructor(
     id: string,
@@ -182,13 +182,13 @@ export class AIEnemy extends Player {
       this.currentMoveAngle += Math.PI + (Math.random() - 0.5) * 0.5; // Add some randomness
     }
 
-    // Face movement direction when not aggressive
+    // Face movement direction when not aggressive, otherwise keep facing target
     if (!this.aggroTarget) {
       this.angle = this.currentMoveAngle;
     }
   }
 
-  private changeDirection(
+  protected changeDirection(
     players: Map<string, Player>,
     powerUps?: Map<string, any>
   ): void {
