@@ -361,6 +361,18 @@ export class GameStore {
     const flashCooldown = player.flashCooldown || 5000;
     const lastFlashTime = player.lastFlashTime || 0;
     const remaining = flashCooldown - (currentTime - lastFlashTime);
+    
+    // Debug logging
+    if (remaining > 0) {
+      console.log('Flash cooldown debug:', {
+        currentTime,
+        flashCooldown,
+        lastFlashTime,
+        remaining,
+        timeSinceFlash: currentTime - lastFlashTime
+      });
+    }
+    
     return Math.max(0, remaining);
   }
 

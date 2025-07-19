@@ -708,6 +708,8 @@ export class Player {
     hasShield: boolean;
     experience: number;
     level: number;
+    flashUpgradeLevel: number;
+    lastFlashTime: number;
   } {
     return {
       id: this.id,
@@ -738,6 +740,8 @@ export class Player {
       hasShield: this.hasShield,
       experience: this.experience,
       level: this.level,
+      flashUpgradeLevel: this.flashUpgradeLevel,
+      lastFlashTime: this.lastFlashTime,
     };
   }
 
@@ -771,6 +775,8 @@ export class Player {
     hasShield?: boolean;
     experience?: number;
     level?: number;
+    flashUpgradeLevel?: number;
+    lastFlashTime?: number;
   }): Player {
     const player = new Player(
       data.id,
@@ -802,6 +808,8 @@ export class Player {
     player.hasShield = data.hasShield || false;
     player.experience = data.experience || 0;
     player.level = data.level || 1;
+    player.flashUpgradeLevel = data.flashUpgradeLevel || 1; // Default to level 1
+    player.lastFlashTime = data.lastFlashTime || 0;
     return player;
   }
 
