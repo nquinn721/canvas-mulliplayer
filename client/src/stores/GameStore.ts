@@ -1,6 +1,6 @@
 import { makeAutoObservable } from "mobx";
 import { Socket } from "socket.io-client";
-import { Camera, GameState, KeyState, Projectile } from "../../../shared";
+import { Camera, GameState, KeyState, Projectile } from "@shared";
 import { soundService } from "../services/SoundService";
 import { ParticleSystem } from "../utils/ParticleSystem";
 

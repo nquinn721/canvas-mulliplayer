@@ -2,12 +2,16 @@
 # Stage 1: Build the client (React/Vite)
 FROM node:18-alpine AS client-builder
 
-WORKDIR /app/client
+WORKDIR /app
+
+# Copy shared folder first (needed by client)
+COPY shared/ ./shared/
 
 # Copy client package files
-COPY client/package*.json ./
+COPY client/package*.json ./client/
 
 # Install ALL dependencies (including devDependencies) for build
+WORKDIR /app/client
 RUN npm ci
 
 # Copy client source code

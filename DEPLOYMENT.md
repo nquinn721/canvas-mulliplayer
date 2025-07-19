@@ -11,17 +11,20 @@ This repository contains a multiplayer canvas game with automatic Cloud Run depl
 ## Local Development
 
 1. **Install dependencies:**
+
    ```bash
    npm install
    cd client && npm install && cd ..
    ```
 
 2. **Start the development server:**
+
    ```bash
    npm run start:dev
    ```
 
 3. **Start the client development server:**
+
    ```bash
    cd client && npm run dev
    ```
@@ -43,6 +46,7 @@ This repository contains a multiplayer canvas game with automatic Cloud Run depl
 ### Setup Cloud Build Trigger
 
 1. **Connect your repository to Cloud Build:**
+
    ```bash
    gcloud builds triggers create github \
      --repo-name=canvas-mulliplayer \
@@ -53,15 +57,16 @@ This repository contains a multiplayer canvas game with automatic Cloud Run depl
    ```
 
 2. **Grant Cloud Build permissions:**
+
    ```bash
    # Get your project number
    PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")
-   
+
    # Grant Cloud Run Admin role to Cloud Build
    gcloud projects add-iam-policy-binding $PROJECT_ID \
      --member=serviceAccount:$PROJECT_NUMBER@cloudbuild.gserviceaccount.com \
      --role=roles/run.admin
-   
+
    # Grant IAM Service Account User role
    gcloud projects add-iam-policy-binding $PROJECT_ID \
      --member=serviceAccount:$PROJECT_NUMBER@cloudbuild.gserviceaccount.com \
@@ -73,14 +78,15 @@ This repository contains a multiplayer canvas game with automatic Cloud Run depl
 If you prefer to deploy manually:
 
 1. **Build and deploy:**
+
    ```bash
    # Set your project ID
    export PROJECT_ID=your-project-id
-   
+
    # Build and push the image
    docker build -t gcr.io/$PROJECT_ID/canvas-multiplayer .
    docker push gcr.io/$PROJECT_ID/canvas-multiplayer
-   
+
    # Deploy to Cloud Run
    gcloud run deploy canvas-multiplayer \
      --image=gcr.io/$PROJECT_ID/canvas-multiplayer \
@@ -133,12 +139,14 @@ The following environment variables are available:
 ### Health Checks
 
 The application includes health checks for Cloud Run:
+
 - Endpoint: `/health`
 - Returns: `{ status: 'healthy', timestamp: 'ISO-8601' }`
 
 ### Auto-scaling
 
 Cloud Run configuration:
+
 - Min instances: 0 (scales to zero when not in use)
 - Max instances: 10
 - Concurrency: 80 requests per instance
@@ -148,6 +156,7 @@ Cloud Run configuration:
 ## Monitoring
 
 Monitor your deployment:
+
 - Cloud Run console: https://console.cloud.google.com/run
 - Logs: `gcloud logs tail projects/$PROJECT_ID/logs/run.googleapis.com%2Frequest`
 
@@ -163,6 +172,7 @@ Monitor your deployment:
 ### Debugging
 
 View logs:
+
 ```bash
 gcloud logs tail run.googleapis.com/request --project=$PROJECT_ID
 ```

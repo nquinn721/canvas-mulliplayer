@@ -1,4 +1,4 @@
-import { KeyState } from "../../../shared";
+import { KeyState } from "@shared";
 import { GameStore } from "../stores/GameStore";
 import { soundService } from "./SoundService";
 

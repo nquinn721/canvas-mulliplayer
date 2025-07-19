@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { GameGateway } from './game/game.gateway';
+import { Module } from "@nestjs/common";
+import { AppController } from "./app.controller";
+import { GameGateway } from "./game/game.gateway";
 
 @Module({
   imports: [],

@@ -1,5 +1,5 @@
 import { io, Socket } from "socket.io-client";
-import { GameState } from "../../../shared";
+import { GameState } from "@shared";
 import { GameStore } from "../stores/GameStore";
 import { soundService } from "./SoundService";
 
