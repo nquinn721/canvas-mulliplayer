@@ -37,6 +37,7 @@ steps:
         "--concurrency=80",
         "--timeout=3600",
         "--set-env-vars=NODE_ENV=production",
+        "--revision-suffix=$SHORT_SHA",
       ]
 
 # Store images in Google Container Registry

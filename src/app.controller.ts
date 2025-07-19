@@ -16,6 +16,8 @@ export class AppController {
   // Catch-all route for client-side routing
   @Get("*")
   serveClient(@Req() req: Request, @Res() res: Response) {
+    console.log(`Request path: ${req.path}, NODE_ENV: ${process.env.NODE_ENV}`);
+
     // Skip API routes and socket.io
     if (
       req.path.startsWith("/socket.io") ||
@@ -28,9 +30,12 @@ export class AppController {
     // In production, serve the client app
     if (process.env.NODE_ENV === "production") {
       const indexPath = join(process.cwd(), "client", "dist", "index.html");
+      console.log(`Serving client from: ${indexPath}`);
       res.sendFile(indexPath, (err) => {
         if (err) {
           console.error("Error serving index.html:", err);
+          console.error("Current working directory:", process.cwd());
+          console.error("Full path attempted:", indexPath);
           res.status(500).json({ error: "Internal server error" });
         }
       });

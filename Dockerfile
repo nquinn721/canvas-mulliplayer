@@ -68,6 +68,9 @@ RUN addgroup -g 1001 -S nodejs && \
 RUN chown -R nestjs:nodejs /app
 USER nestjs
 
+# Set default environment to production (can be overridden by Cloud Run)
+ENV NODE_ENV=production
+
 # Expose the port that the app runs on
 EXPOSE $PORT
 
