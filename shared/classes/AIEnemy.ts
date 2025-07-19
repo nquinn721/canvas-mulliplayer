@@ -214,12 +214,26 @@ export class AIEnemy extends Player {
       ((Math.random() - 0.5) * (1 - this.settings.accuracy) * Math.PI) / 4;
     const angle = baseAngle + accuracyOffset;
 
-    // Choose weapon based on distance and aggressiveness
-    const weapon =
-      distance < this.settings.optimalRange &&
-      Math.random() < this.settings.aggressiveness
-        ? "missile"
-        : "laser";
+    // Choose weapon based on distance and difficulty-based missile preference
+    let missileChance = 0;
+    switch (this.difficulty) {
+      case "EASY":
+        missileChance = 0.1; // 10% chance for missiles
+        break;
+      case "MEDIUM":
+        missileChance = 0.3; // 30% chance for missiles
+        break;
+      case "HARD":
+        missileChance = 0.6; // 60% chance for missiles
+        break;
+    }
+
+    // Increase missile chance if target is far away
+    if (distance > this.settings.optimalRange) {
+      missileChance *= 1.5; // 1.5x more likely to use missile at long range
+    }
+
+    const weapon = Math.random() < missileChance ? "missile" : "laser";
 
     this.lastShootTime = currentTime;
     console.log(

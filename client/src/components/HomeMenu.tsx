@@ -1,45 +1,35 @@
-import React, { useState } from 'react';
-import './HomeMenu.css';
+import React, { useState } from "react";
+import "./HomeMenu.css";
 
 interface HomeMenuProps {
-  onStartGame: (playerName: string, difficulty: 'EASY' | 'MEDIUM' | 'HARD') => void;
+  onStartGame: (
+    playerName: string,
+    difficulty: "EASY" | "MEDIUM" | "HARD"
+  ) => void;
 }
 
 const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
-  const [selectedDifficulty, setSelectedDifficulty] = useState<'EASY' | 'MEDIUM' | 'HARD'>('MEDIUM');
-  const [playerName, setPlayerName] = useState('Player');
+  const [selectedDifficulty, setSelectedDifficulty] = useState<
+    "EASY" | "MEDIUM" | "HARD"
+  >("MEDIUM");
+  const [playerName, setPlayerName] = useState("");
 
   const difficultyDescriptions = {
     EASY: {
-      color: '#4CAF50',
-      description: 'AI enemies are slower and less accurate. Good for beginners.',
-      details: [
-        'Detection Range: 800px',
-        'Reaction Time: Slow',
-        'Accuracy: 60%',
-        'Aggressiveness: Low'
-      ]
+      color: "#4CAF50",
+      description: "Slower, less accurate AI. Good for beginners.",
+      details: ["Detection: 800px", "Accuracy: 60%"],
     },
     MEDIUM: {
-      color: '#FF9800',
-      description: 'Balanced AI behavior. Recommended for most players.',
-      details: [
-        'Detection Range: 1200px',
-        'Reaction Time: Normal',
-        'Accuracy: 75%',
-        'Aggressiveness: Medium'
-      ]
+      color: "#FF9800",
+      description: "Balanced AI behavior. Recommended.",
+      details: ["Detection: 1200px", "Accuracy: 75%"],
     },
     HARD: {
-      color: '#F44336',
-      description: 'AI enemies are fast, accurate, and aggressive. For experienced players.',
-      details: [
-        'Detection Range: 1600px',
-        'Reaction Time: Fast',
-        'Accuracy: 90%',
-        'Aggressiveness: High'
-      ]
-    }
+      color: "#F44336",
+      description: "Fast, accurate, aggressive AI. For experts.",
+      details: ["Detection: 1600px", "Accuracy: 90%"],
+    },
   };
 
   return (
@@ -53,7 +43,7 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
               animationDelay: `${Math.random() * 3}s`,
-              animationDuration: `${2 + Math.random() * 4}s`
+              animationDuration: `${2 + Math.random() * 4}s`,
             }}
           />
         ))}
@@ -84,24 +74,39 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
               placeholder="Enter your name..."
               maxLength={20}
             />
+            {playerName.trim().length > 0 && playerName.trim().length < 3 && (
+              <span className="validation-text">
+                Name must be at least 3 characters
+              </span>
+            )}
           </div>
 
           <div className="setup-section">
             <label className="setup-label">AI Difficulty</label>
             <div className="difficulty-selector">
-              {(Object.keys(difficultyDescriptions) as Array<keyof typeof difficultyDescriptions>).map((difficulty) => (
+              {(
+                Object.keys(difficultyDescriptions) as Array<
+                  keyof typeof difficultyDescriptions
+                >
+              ).map((difficulty) => (
                 <button
                   key={difficulty}
-                  className={`difficulty-button ${selectedDifficulty === difficulty ? 'selected' : ''}`}
+                  className={`difficulty-button ${selectedDifficulty === difficulty ? "selected" : ""}`}
                   onClick={() => setSelectedDifficulty(difficulty)}
                   style={{
-                    borderColor: selectedDifficulty === difficulty ? difficultyDescriptions[difficulty].color : 'transparent'
+                    borderColor:
+                      selectedDifficulty === difficulty
+                        ? difficultyDescriptions[difficulty].color
+                        : "transparent",
                   }}
                 >
                   <div className="difficulty-header">
-                    <span 
+                    <span
                       className="difficulty-dot"
-                      style={{ backgroundColor: difficultyDescriptions[difficulty].color }}
+                      style={{
+                        backgroundColor:
+                          difficultyDescriptions[difficulty].color,
+                      }}
                     />
                     <span className="difficulty-name">{difficulty}</span>
                   </div>
@@ -114,16 +119,21 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
 
             <div className="difficulty-details">
               <h4>
-                <span 
+                <span
                   className="details-dot"
-                  style={{ backgroundColor: difficultyDescriptions[selectedDifficulty].color }}
+                  style={{
+                    backgroundColor:
+                      difficultyDescriptions[selectedDifficulty].color,
+                  }}
                 />
                 {selectedDifficulty} Settings
               </h4>
               <ul className="difficulty-stats">
-                {difficultyDescriptions[selectedDifficulty].details.map((detail, index) => (
-                  <li key={index}>{detail}</li>
-                ))}
+                {difficultyDescriptions[selectedDifficulty].details.map(
+                  (detail, index) => (
+                    <li key={index}>{detail}</li>
+                  )
+                )}
               </ul>
             </div>
           </div>
@@ -145,21 +155,33 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
               <div className="controls-section">
                 <h4>Controls</h4>
                 <div className="controls-list">
-                  <div className="control-item"><strong>W/A/S/D</strong> - Move & Strafe</div>
-                  <div className="control-item"><strong>Mouse</strong> - Aim direction</div>
-                  <div className="control-item"><strong>Left Click</strong> - Fire Laser</div>
-                  <div className="control-item"><strong>Space Bar</strong> - Fire Missile</div>
-                  <div className="control-item"><strong>Shift</strong> - Boost speed</div>
-                  <div className="control-item"><strong>ESC</strong> - Game menu</div>
+                  <div className="control-item">
+                    <strong>W/A/S/D</strong> - Move & Strafe
+                  </div>
+                  <div className="control-item">
+                    <strong>Mouse</strong> - Aim direction
+                  </div>
+                  <div className="control-item">
+                    <strong>Left Click</strong> - Fire Laser
+                  </div>
+                  <div className="control-item">
+                    <strong>Space Bar</strong> - Fire Missile
+                  </div>
+                  <div className="control-item">
+                    <strong>Shift</strong> - Boost speed
+                  </div>
+                  <div className="control-item">
+                    <strong>ESC</strong> - Game menu
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <button 
+          <button
             className="start-button"
             onClick={() => onStartGame(playerName.trim(), selectedDifficulty)}
-            disabled={!playerName.trim()}
+            disabled={!playerName.trim() || playerName.trim().length < 3}
           >
             <span className="start-button-icon">🎮</span>
             Start Game

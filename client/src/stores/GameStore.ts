@@ -146,7 +146,16 @@ export class GameStore {
   updateCameraPosition() {
     if (this.playerId && this.gameState.players[this.playerId]) {
       const player = this.gameState.players[this.playerId];
-      this.camera.setPosition(player.x, player.y, true);
+      
+      // Set the follow target with boost state for adaptive smoothing
+      this.camera.setFollowTarget({
+        x: player.x,
+        y: player.y,
+        isBoostActive: player.isBoostActive
+      });
+      
+      // Use smooth camera following for better experience
+      this.camera.update(true);
     }
   }
 

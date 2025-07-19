@@ -4,26 +4,27 @@ import GameComponent from "./components/GameComponent";
 import HomeMenu from "./components/HomeMenu";
 
 const App: React.FC = () => {
-  const [gameState, setGameState] = useState<'home' | 'game'>('home');
-  const [playerName, setPlayerName] = useState('Player');
-  const [aiDifficulty, setAIDifficulty] = useState<'EASY' | 'MEDIUM' | 'HARD'>('MEDIUM');
+  const [gameState, setGameState] = useState<"home" | "game">("home");
+  const [playerName, setPlayerName] = useState("Player");
+  const [aiDifficulty, setAIDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">(
+    "MEDIUM"
+  );
 
-  const handleStartGame = (name: string, difficulty: 'EASY' | 'MEDIUM' | 'HARD') => {
+  const handleStartGame = (
+    name: string,
+    difficulty: "EASY" | "MEDIUM" | "HARD"
+  ) => {
     setPlayerName(name);
     setAIDifficulty(difficulty);
-    setGameState('game');
+    setGameState("game");
   };
 
   const handleReturnToHome = () => {
-    setGameState('home');
+    setGameState("home");
   };
 
-  if (gameState === 'home') {
-    return (
-      <HomeMenu
-        onStartGame={handleStartGame}
-      />
-    );
+  if (gameState === "home") {
+    return <HomeMenu onStartGame={handleStartGame} />;
   }
 
   return (

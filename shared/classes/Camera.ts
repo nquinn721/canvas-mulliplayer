@@ -5,8 +5,9 @@ export class Camera {
   public viewportHeight: number;
   public worldWidth: number;
   public worldHeight: number;
-  public followTarget: { x: number; y: number } | null;
+  public followTarget: { x: number; y: number; isBoostActive?: boolean } | null;
   public smoothing: number;
+  public boostSmoothing: number; // Smoother following when boosting
 
   constructor(
     x: number = 0,
@@ -25,10 +26,11 @@ export class Camera {
     this.worldHeight = worldHeight;
     this.followTarget = null;
     this.smoothing = smoothing;
+    this.boostSmoothing = 0.05; // Smoother when boosting
   }
 
   // Set the target to follow (usually a player)
-  setFollowTarget(target: { x: number; y: number } | null): void {
+  setFollowTarget(target: { x: number; y: number; isBoostActive?: boolean } | null): void {
     this.followTarget = target;
   }
 
@@ -40,9 +42,14 @@ export class Camera {
     const targetY = this.followTarget.y - this.viewportHeight / 2;
 
     if (useSmoothing) {
+      // Use different smoothing based on boost state
+      const currentSmoothing = this.followTarget.isBoostActive 
+        ? this.boostSmoothing 
+        : this.smoothing;
+      
       // Smooth camera movement
-      this.x += (targetX - this.x) * this.smoothing;
-      this.y += (targetY - this.y) * this.smoothing;
+      this.x += (targetX - this.x) * currentSmoothing;
+      this.y += (targetY - this.y) * currentSmoothing;
     } else {
       // Instant camera movement
       this.x = targetX;

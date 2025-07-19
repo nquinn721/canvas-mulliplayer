@@ -117,6 +117,7 @@ export class RendererService {
     const x = powerUp.x;
     const y = powerUp.y;
     const radius = 20;
+    const time = Date.now() * 0.003;
 
     // Different colors based on power-up type
     const isLaserUpgrade = powerUp.type === "laser_upgrade";
@@ -125,114 +126,192 @@ export class RendererService {
     const isShieldPickup = powerUp.type === "shield_pickup";
     let baseColor: string;
     let hexColor: string;
+    let shadowColor: string;
 
     if (isLaserUpgrade) {
       baseColor = "255, 100, 100"; // Red for laser
       hexColor = "#ff6464";
+      shadowColor = "#aa0000";
     } else if (isMissileUpgrade) {
       baseColor = "255, 165, 0"; // Orange for missile
       hexColor = "#ffa500";
+      shadowColor = "#cc5500";
     } else if (isHealthPickup) {
       baseColor = "0, 255, 0"; // Green for health
       hexColor = "#00ff00";
+      shadowColor = "#00aa00";
     } else if (isShieldPickup) {
       baseColor = "0, 100, 255"; // Blue for shield
       hexColor = "#0064ff";
+      shadowColor = "#003399";
     } else {
       baseColor = "0, 255, 255"; // Cyan for boost
       hexColor = "#00ffff";
+      shadowColor = "#0099aa";
     }
 
-    // Draw glow effect
-    const glowGradient = this.ctx.createRadialGradient(
-      x,
-      y,
-      0,
-      x,
-      y,
-      radius * 2
-    );
-    glowGradient.addColorStop(0, `rgba(${baseColor}, 0.8)`);
-    glowGradient.addColorStop(0.5, `rgba(${baseColor}, 0.4)`);
+    // Save context for 3D transformation
+    this.ctx.save();
+
+    // Add floating animation with subtle rotation
+    const floatOffset = Math.sin(time + powerUp.x * 0.01) * 3;
+    const rotationAngle = Math.sin(time * 0.5) * 0.1;
+    
+    this.ctx.translate(x, y + floatOffset);
+    this.ctx.rotate(rotationAngle);
+
+    // Draw 3D shadow/depth effect (bottom layer)
+    const shadowOffset = 6;
+    this.ctx.fillStyle = `rgba(0, 0, 0, 0.4)`;
+    this.ctx.beginPath();
+    this.ctx.ellipse(shadowOffset, shadowOffset + 8, radius * 1.2, radius * 0.6, 0, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    // Draw outer glow effect
+    const glowGradient = this.ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.5);
+    glowGradient.addColorStop(0, `rgba(${baseColor}, 0.6)`);
+    glowGradient.addColorStop(0.3, `rgba(${baseColor}, 0.3)`);
+    glowGradient.addColorStop(0.7, `rgba(${baseColor}, 0.1)`);
     glowGradient.addColorStop(1, `rgba(${baseColor}, 0)`);
 
     this.ctx.fillStyle = glowGradient;
-    this.ctx.fillRect(x - radius * 2, y - radius * 2, radius * 4, radius * 4);
+    this.ctx.fillRect(-radius * 2.5, -radius * 2.5, radius * 5, radius * 5);
 
-    // Draw main power-up circle
+    // Draw 3D sphere base (dark bottom part for depth)
+    const depthGradient = this.ctx.createRadialGradient(
+      -radius * 0.3, -radius * 0.3, 0,
+      0, 0, radius
+    );
+    depthGradient.addColorStop(0, hexColor);
+    depthGradient.addColorStop(0.7, shadowColor);
+    depthGradient.addColorStop(1, "#000000");
+
     this.ctx.beginPath();
-    this.ctx.arc(x, y, radius, 0, Math.PI * 2);
-    this.ctx.fillStyle = hexColor;
+    this.ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    this.ctx.fillStyle = depthGradient;
     this.ctx.fill();
-    this.ctx.strokeStyle = "#ffffff";
-    this.ctx.lineWidth = 3;
+
+    // Add 3D highlight/shine effect
+    const shineGradient = this.ctx.createRadialGradient(
+      -radius * 0.4, -radius * 0.4, 0,
+      -radius * 0.4, -radius * 0.4, radius * 0.8
+    );
+    shineGradient.addColorStop(0, `rgba(255, 255, 255, 0.8)`);
+    shineGradient.addColorStop(0.3, `rgba(255, 255, 255, 0.4)`);
+    shineGradient.addColorStop(0.6, `rgba(255, 255, 255, 0.1)`);
+    shineGradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
+
+    this.ctx.beginPath();
+    this.ctx.arc(-radius * 0.3, -radius * 0.3, radius * 0.6, 0, Math.PI * 2);
+    this.ctx.fillStyle = shineGradient;
+    this.ctx.fill();
+
+    // Draw 3D rim/edge highlight
+    this.ctx.strokeStyle = `rgba(255, 255, 255, 0.6)`;
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, radius - 1, 0, Math.PI * 2);
     this.ctx.stroke();
 
-    // Draw icon based on type
-    this.ctx.fillStyle = "#000000";
+    // Add inner rim shadow for depth
+    this.ctx.strokeStyle = `rgba(0, 0, 0, 0.4)`;
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, radius - 3, 0, Math.PI * 2);
+    this.ctx.stroke();
+
+    // Draw 3D icon with depth and shadow
+    this.ctx.save();
+    
+    // Add slight offset for 3D icon effect
+    const iconDepthOffset = 1;
+    
+    // Draw icon shadow first
+    this.ctx.translate(iconDepthOffset, iconDepthOffset);
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    this.drawPowerUpIconShape(isLaserUpgrade, isMissileUpgrade, isHealthPickup, isShieldPickup);
+    
+    // Draw main icon
+    this.ctx.translate(-iconDepthOffset, -iconDepthOffset);
+    this.ctx.fillStyle = "#ffffff";
+    this.drawPowerUpIconShape(isLaserUpgrade, isMissileUpgrade, isHealthPickup, isShieldPickup);
+    
+    // Add icon highlight
+    this.ctx.translate(-0.5, -0.5);
+    this.ctx.fillStyle = `rgba(${baseColor}, 0.8)`;
+    this.drawPowerUpIconShape(isLaserUpgrade, isMissileUpgrade, isHealthPickup, isShieldPickup);
+    
+    this.ctx.restore();
+
+    // Add pulsing energy effect
+    const pulseIntensity = Math.sin(time * 4) * 0.5 + 0.5;
+    const energyGradient = this.ctx.createRadialGradient(0, 0, radius * 0.8, 0, 0, radius * 1.2);
+    energyGradient.addColorStop(0, `rgba(${baseColor}, 0)`);
+    energyGradient.addColorStop(0.8, `rgba(${baseColor}, ${pulseIntensity * 0.3})`);
+    energyGradient.addColorStop(1, `rgba(${baseColor}, 0)`);
+    
+    this.ctx.fillStyle = energyGradient;
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, radius * 1.2, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    this.ctx.restore();
+  }
+
+  private drawPowerUpIconShape(isLaserUpgrade: boolean, isMissileUpgrade: boolean, isHealthPickup: boolean, isShieldPickup: boolean) {
     if (isLaserUpgrade) {
       // Draw laser icon (lightning bolt)
       this.ctx.beginPath();
-      this.ctx.moveTo(x - 3, y - 12);
-      this.ctx.lineTo(x + 5, y - 2);
-      this.ctx.lineTo(x - 2, y - 2);
-      this.ctx.lineTo(x + 3, y + 12);
-      this.ctx.lineTo(x - 5, y + 2);
-      this.ctx.lineTo(x + 2, y + 2);
+      this.ctx.moveTo(-3, -12);
+      this.ctx.lineTo(5, -2);
+      this.ctx.lineTo(-2, -2);
+      this.ctx.lineTo(3, 12);
+      this.ctx.lineTo(-5, 2);
+      this.ctx.lineTo(2, 2);
       this.ctx.closePath();
       this.ctx.fill();
     } else if (isMissileUpgrade) {
       // Draw missile icon (rocket shape)
-      this.ctx.fillRect(x - 2, y - 10, 4, 14); // Body
+      this.ctx.fillRect(-2, -10, 4, 14); // Body
       // Nose cone
       this.ctx.beginPath();
-      this.ctx.moveTo(x, y - 12);
-      this.ctx.lineTo(x - 3, y - 10);
-      this.ctx.lineTo(x + 3, y - 10);
+      this.ctx.moveTo(0, -12);
+      this.ctx.lineTo(-3, -10);
+      this.ctx.lineTo(3, -10);
       this.ctx.closePath();
       this.ctx.fill();
       // Fins
-      this.ctx.fillRect(x - 4, y + 2, 2, 4); // Left fin
-      this.ctx.fillRect(x + 2, y + 2, 2, 4); // Right fin
+      this.ctx.fillRect(-4, 2, 2, 4); // Left fin
+      this.ctx.fillRect(2, 2, 2, 4); // Right fin
     } else if (isHealthPickup) {
       // Draw health icon (cross/plus sign)
-      this.ctx.fillStyle = "#ffffff"; // White cross
-      this.ctx.fillRect(x - 8, y - 2, 16, 4); // Horizontal bar
-      this.ctx.fillRect(x - 2, y - 8, 4, 16); // Vertical bar
+      this.ctx.fillRect(-8, -2, 16, 4); // Horizontal bar
+      this.ctx.fillRect(-2, -8, 4, 16); // Vertical bar
     } else if (isShieldPickup) {
       // Draw shield icon
-      this.ctx.fillStyle = "#ffffff"; // White shield
       this.ctx.beginPath();
-      this.ctx.moveTo(x, y - 12); // Top point
-      this.ctx.lineTo(x - 8, y - 8); // Top left
-      this.ctx.lineTo(x - 10, y + 2); // Bottom left
-      this.ctx.lineTo(x - 4, y + 10); // Bottom left curve
-      this.ctx.lineTo(x, y + 8); // Bottom center
-      this.ctx.lineTo(x + 4, y + 10); // Bottom right curve
-      this.ctx.lineTo(x + 10, y + 2); // Bottom right
-      this.ctx.lineTo(x + 8, y - 8); // Top right
+      this.ctx.moveTo(0, -12); // Top point
+      this.ctx.lineTo(-8, -8); // Top left
+      this.ctx.lineTo(-10, 2); // Bottom left
+      this.ctx.lineTo(-4, 10); // Bottom left curve
+      this.ctx.lineTo(0, 8); // Bottom center
+      this.ctx.lineTo(4, 10); // Bottom right curve
+      this.ctx.lineTo(10, 2); // Bottom right
+      this.ctx.lineTo(8, -8); // Top right
       this.ctx.closePath();
       this.ctx.fill();
     } else {
       // Draw boost icon (arrow pointing up)
       this.ctx.beginPath();
-      this.ctx.moveTo(x, y - 10);
-      this.ctx.lineTo(x - 8, y + 5);
-      this.ctx.lineTo(x - 4, y + 2);
-      this.ctx.lineTo(x, y + 8);
-      this.ctx.lineTo(x + 4, y + 2);
-      this.ctx.lineTo(x + 8, y + 5);
+      this.ctx.moveTo(0, -10);
+      this.ctx.lineTo(-8, 5);
+      this.ctx.lineTo(-4, 2);
+      this.ctx.lineTo(0, 8);
+      this.ctx.lineTo(4, 2);
+      this.ctx.lineTo(8, 5);
       this.ctx.closePath();
       this.ctx.fill();
     }
-
-    // Add pulsing animation
-    const pulseScale = 1 + Math.sin(Date.now() * 0.005) * 0.1;
-    this.ctx.save();
-    this.ctx.translate(x, y);
-    this.ctx.scale(pulseScale, pulseScale);
-    this.ctx.translate(-x, -y);
-    this.ctx.restore();
   }
 
   private drawPlayers() {
@@ -521,19 +600,87 @@ export class RendererService {
 
   private drawHealthBar(player: any) {
     const healthPercent = player.health / player.maxHealth;
+    const barWidth = 40;
+    const barHeight = 6;
+    const x = player.x - 20;
+    const y = player.y - 50;
 
-    // Health bar background
-    this.ctx.fillStyle = "#333";
-    this.ctx.fillRect(player.x - 20, player.y - 50, 40, 6);
+    this.ctx.save();
 
-    // Health bar fill
-    this.ctx.fillStyle =
-      healthPercent > 0.5
-        ? "#4ade80"
-        : healthPercent > 0.25
-          ? "#fbbf24"
-          : "#f87171";
-    this.ctx.fillRect(player.x - 20, player.y - 50, 40 * healthPercent, 6);
+    // Draw 3D shadow
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    this.ctx.fillRect(x + 1, y + 2, barWidth, barHeight);
+
+    // Draw 3D background with gradient depth
+    const bgGradient = this.ctx.createLinearGradient(x, y, x, y + barHeight);
+    bgGradient.addColorStop(0, "#666");
+    bgGradient.addColorStop(0.5, "#333");
+    bgGradient.addColorStop(1, "#111");
+    
+    this.ctx.fillStyle = bgGradient;
+    this.ctx.fillRect(x, y, barWidth, barHeight);
+
+    // Draw 3D inner shadow
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+    this.ctx.fillRect(x, y, barWidth, 1); // Top inner shadow
+    this.ctx.fillRect(x, y, 1, barHeight); // Left inner shadow
+
+    const fillWidth = barWidth * healthPercent;
+
+    if (fillWidth > 0) {
+      // Determine colors based on health level
+      let baseColor, lightColor, darkColor;
+      
+      if (healthPercent > 0.5) {
+        baseColor = "#4ade80"; // Green
+        lightColor = "#6ee7a7";
+        darkColor = "#22c55e";
+      } else if (healthPercent > 0.25) {
+        baseColor = "#fbbf24"; // Orange/Yellow
+        lightColor = "#fcd34d";
+        darkColor = "#f59e0b";
+      } else {
+        baseColor = "#f87171"; // Red
+        lightColor = "#fca5a5";
+        darkColor = "#ef4444";
+      }
+
+      // Create 3D health fill gradient
+      const fillGradient = this.ctx.createLinearGradient(x, y, x, y + barHeight);
+      fillGradient.addColorStop(0, lightColor);
+      fillGradient.addColorStop(0.4, baseColor);
+      fillGradient.addColorStop(0.6, baseColor);
+      fillGradient.addColorStop(1, darkColor);
+
+      this.ctx.fillStyle = fillGradient;
+      this.ctx.fillRect(x, y, fillWidth, barHeight);
+
+      // Add health glow effect for low health
+      if (healthPercent <= 0.25) {
+        this.ctx.shadowColor = baseColor;
+        this.ctx.shadowBlur = 8;
+        this.ctx.shadowOffsetX = 0;
+        this.ctx.shadowOffsetY = 0;
+        this.ctx.fillRect(x, y, fillWidth, barHeight);
+      }
+
+      // Add 3D highlight on top of health bar
+      const highlightGradient = this.ctx.createLinearGradient(x, y, x, y + barHeight * 0.5);
+      highlightGradient.addColorStop(0, "rgba(255, 255, 255, 0.5)");
+      highlightGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+      
+      this.ctx.shadowColor = "transparent";
+      this.ctx.shadowBlur = 0;
+      this.ctx.fillStyle = highlightGradient;
+      this.ctx.fillRect(x, y, fillWidth, barHeight * 0.5);
+    }
+
+    // Draw 3D border
+    this.ctx.strokeStyle = "#999";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x, y, barWidth, barHeight);
+
+    this.ctx.restore();
   }
 
   private drawShieldEffect(player: any) {
@@ -1257,25 +1404,72 @@ export class RendererService {
     const circleX = x + iconSize - circleRadius;
     const circleY = y + circleRadius;
 
-    // Draw circle background
-    this.ctx.fillStyle = backgroundColor;
+    this.ctx.save();
+
+    // Draw 3D shadow
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    this.ctx.beginPath();
+    this.ctx.arc(circleX + 2, circleY + 2, circleRadius, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    // Draw 3D base gradient (darker bottom for depth)
+    const baseGradient = this.ctx.createRadialGradient(
+      circleX - 3, circleY - 3, 0,
+      circleX, circleY, circleRadius
+    );
+    baseGradient.addColorStop(0, backgroundColor);
+    baseGradient.addColorStop(0.7, backgroundColor);
+    baseGradient.addColorStop(1, "#000000");
+
+    this.ctx.fillStyle = baseGradient;
     this.ctx.beginPath();
     this.ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
     this.ctx.fill();
 
-    // Draw circle border
+    // Draw 3D highlight
+    const highlightGradient = this.ctx.createRadialGradient(
+      circleX - 4, circleY - 4, 0,
+      circleX - 4, circleY - 4, circleRadius * 0.6
+    );
+    highlightGradient.addColorStop(0, "rgba(255, 255, 255, 0.8)");
+    highlightGradient.addColorStop(0.5, "rgba(255, 255, 255, 0.3)");
+    highlightGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+
+    this.ctx.fillStyle = highlightGradient;
+    this.ctx.beginPath();
+    this.ctx.arc(circleX - 3, circleY - 3, circleRadius * 0.5, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    // Draw 3D border with depth
     this.ctx.strokeStyle = "#fff";
     this.ctx.lineWidth = 2;
+    this.ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+    this.ctx.shadowBlur = 3;
+    this.ctx.shadowOffsetX = 1;
+    this.ctx.shadowOffsetY = 1;
     this.ctx.beginPath();
     this.ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
     this.ctx.stroke();
 
-    // Draw level number
-    this.ctx.fillStyle = "#fff";
-    this.ctx.font = "12px Arial";
+    // Reset shadow for text
+    this.ctx.shadowColor = "transparent";
+    this.ctx.shadowBlur = 0;
+    this.ctx.shadowOffsetX = 0;
+    this.ctx.shadowOffsetY = 0;
+
+    // Draw level number with 3D text effect
+    this.ctx.fillStyle = "#000";
+    this.ctx.font = "bold 12px Arial";
     this.ctx.textAlign = "center";
     this.ctx.textBaseline = "middle";
+    // Text shadow
+    this.ctx.fillText(`${level}`, circleX + 1, circleY + 1);
+    
+    // Main text
+    this.ctx.fillStyle = "#fff";
     this.ctx.fillText(`${level}`, circleX, circleY);
+
+    this.ctx.restore();
   }
 
   private drawRollCooldown() {
@@ -1492,51 +1686,119 @@ export class RendererService {
     const x = (this.gameStore.CANVAS_WIDTH - barWidth) / 2;
     const y = this.gameStore.CANVAS_HEIGHT - 60; // More space from bottom
 
-    // Background with consistent styling
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    this.ctx.save();
+
+    // Draw 3D background shadow
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+    this.ctx.fillRect(x - 1, y + 2, barWidth + 6, barHeight + 6);
+
+    // Draw 3D background with gradient depth
+    const bgGradient = this.ctx.createLinearGradient(x, y, x, y + barHeight);
+    bgGradient.addColorStop(0, "rgba(20, 20, 20, 0.9)");
+    bgGradient.addColorStop(0.5, "rgba(40, 40, 40, 0.9)");
+    bgGradient.addColorStop(1, "rgba(60, 60, 60, 0.9)");
+    
+    this.ctx.fillStyle = bgGradient;
     this.ctx.fillRect(x - 3, y - 3, barWidth + 6, barHeight + 6);
 
-    // Border with consistent thickness
-    this.ctx.strokeStyle = "#666";
-    this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(x - 1, y - 1, barWidth + 2, barHeight + 2);
+    // Draw 3D inner shadow
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    this.ctx.fillRect(x - 1, y - 1, barWidth + 2, 2); // Top inner shadow
+    this.ctx.fillRect(x - 1, y - 1, 2, barHeight + 2); // Left inner shadow
 
-    // Energy fill
+    // Energy fill with 3D gradient
     const energyPercent = (player.boostEnergy || 100) / 100;
     const fillWidth = barWidth * energyPercent;
 
-    // Color based on energy level with consistent styling
-    if (energyPercent > 0.6) {
-      this.ctx.fillStyle = "#00ff88"; // Cyan-green
-    } else if (energyPercent > 0.3) {
-      this.ctx.fillStyle = "#ffaa00"; // Orange
-    } else {
-      this.ctx.fillStyle = "#ff4444"; // Red
+    if (fillWidth > 0) {
+      let baseColor, lightColor, darkColor;
+      
+      // Color based on energy level with 3D gradients
+      if (energyPercent > 0.6) {
+        baseColor = "#00ff88"; // Cyan-green
+        lightColor = "#66ffaa";
+        darkColor = "#00cc66";
+      } else if (energyPercent > 0.3) {
+        baseColor = "#ffaa00"; // Orange
+        lightColor = "#ffcc44";
+        darkColor = "#cc8800";
+      } else {
+        baseColor = "#ff4444"; // Red
+        lightColor = "#ff6666";
+        darkColor = "#cc2222";
+      }
+
+      // Create 3D fill gradient
+      const fillGradient = this.ctx.createLinearGradient(x, y, x, y + barHeight);
+      fillGradient.addColorStop(0, lightColor);
+      fillGradient.addColorStop(0.3, baseColor);
+      fillGradient.addColorStop(0.7, baseColor);
+      fillGradient.addColorStop(1, darkColor);
+
+      this.ctx.fillStyle = fillGradient;
+      this.ctx.fillRect(x, y, fillWidth, barHeight);
+
+      // Add energy glow effect if boost is active
+      if (player.isBoostActive) {
+        this.ctx.shadowColor = baseColor;
+        this.ctx.shadowBlur = 15;
+        this.ctx.shadowOffsetX = 0;
+        this.ctx.shadowOffsetY = 0;
+        this.ctx.fillRect(x, y, fillWidth, barHeight);
+      }
+
+      // Add 3D highlight on top of energy bar
+      const highlightGradient = this.ctx.createLinearGradient(x, y, x, y + barHeight * 0.4);
+      highlightGradient.addColorStop(0, "rgba(255, 255, 255, 0.6)");
+      highlightGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+      
+      this.ctx.shadowColor = "transparent";
+      this.ctx.shadowBlur = 0;
+      this.ctx.fillStyle = highlightGradient;
+      this.ctx.fillRect(x, y, fillWidth, barHeight * 0.4);
     }
 
-    // Add glow effect if boost is active
-    if (player.isBoostActive) {
-      this.ctx.shadowColor = "#00ffff";
-      this.ctx.shadowBlur = 8;
-    }
+    // Draw 3D border with depth
+    this.ctx.strokeStyle = "#999";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x - 1, y - 1, barWidth + 2, barHeight + 2);
+    
+    // Outer border highlight
+    this.ctx.strokeStyle = "#ccc";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x - 2, y - 2, barWidth + 4, barHeight + 4);
 
-    this.ctx.fillRect(x, y, fillWidth, barHeight);
-    this.ctx.shadowBlur = 0;
+    this.ctx.restore();
 
-    // Level number to the left of the bar with consistent positioning
-    this.ctx.fillStyle = "#fff";
+    // Level number to the left of the bar with 3D text effect
+    this.ctx.fillStyle = "#000";
     this.ctx.font = "12px Arial";
     this.ctx.textAlign = "right";
+    // Text shadow
+    this.ctx.fillText(
+      `${player.boostUpgradeLevel + 1}`,
+      x - margin + 1,
+      y + barHeight
+    );
+    
+    // Main text
+    this.ctx.fillStyle = "#fff";
     this.ctx.fillText(
       `${player.boostUpgradeLevel + 1}`,
       x - margin,
       y + barHeight - 1
     );
 
-    // Boost icon to the right of the bar with consistent positioning
-    this.ctx.fillStyle = player.isBoostActive ? "#00ffff" : "#fff";
+    // Boost icon to the right of the bar with 3D effect
+    const iconColor = player.isBoostActive ? "#00ffff" : "#fff";
+    this.ctx.fillStyle = "#000";
     this.ctx.font = "14px Arial";
     this.ctx.textAlign = "left";
+    // Icon shadow
+    this.ctx.fillText("⚡", x + barWidth + margin + 1, y + barHeight);
+    
+    // Main icon
+    this.ctx.fillStyle = iconColor;
     this.ctx.fillText("⚡", x + barWidth + margin, y + barHeight - 1);
   }
 
@@ -1551,14 +1813,25 @@ export class RendererService {
     const x = (this.gameStore.CANVAS_WIDTH - barWidth) / 2;
     const y = this.gameStore.CANVAS_HEIGHT - 35; // Consistent spacing below boost bar
 
-    // Background with consistent styling
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    this.ctx.save();
+
+    // Draw 3D background shadow
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+    this.ctx.fillRect(x - 1, y + 1, barWidth + 6, barHeight + 6);
+
+    // Draw 3D background with gradient depth
+    const bgGradient = this.ctx.createLinearGradient(x, y, x, y + barHeight);
+    bgGradient.addColorStop(0, "rgba(20, 20, 20, 0.9)");
+    bgGradient.addColorStop(0.5, "rgba(40, 40, 40, 0.9)");
+    bgGradient.addColorStop(1, "rgba(60, 60, 60, 0.9)");
+    
+    this.ctx.fillStyle = bgGradient;
     this.ctx.fillRect(x - 3, y - 3, barWidth + 6, barHeight + 6);
 
-    // Border with consistent styling
-    this.ctx.strokeStyle = "#666";
-    this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(x - 1, y - 1, barWidth + 2, barHeight + 2);
+    // Draw 3D inner shadow
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    this.ctx.fillRect(x - 1, y - 1, barWidth + 2, 2); // Top inner shadow
+    this.ctx.fillRect(x - 1, y - 1, 2, barHeight + 2); // Left inner shadow
 
     // Calculate XP progress manually (since player object may not have methods)
     const currentLevel = player.level || 1;
@@ -1572,17 +1845,70 @@ export class RendererService {
 
     const fillWidth = barWidth * progress;
 
-    this.ctx.fillStyle = "#ffd700"; // Gold color for XP
-    this.ctx.fillRect(x, y, fillWidth, barHeight);
+    if (fillWidth > 0) {
+      // Create 3D XP fill gradient (gold theme)
+      const fillGradient = this.ctx.createLinearGradient(x, y, x, y + barHeight);
+      fillGradient.addColorStop(0, "#ffef94"); // Light gold
+      fillGradient.addColorStop(0.3, "#ffd700"); // Gold
+      fillGradient.addColorStop(0.7, "#ffd700"); // Gold
+      fillGradient.addColorStop(1, "#b8860b"); // Dark gold
 
-    // Level number to the left with consistent positioning
-    this.ctx.fillStyle = "#fff";
+      this.ctx.fillStyle = fillGradient;
+      this.ctx.fillRect(x, y, fillWidth, barHeight);
+
+      // Add XP glow effect
+      this.ctx.shadowColor = "#ffd700";
+      this.ctx.shadowBlur = 8;
+      this.ctx.shadowOffsetX = 0;
+      this.ctx.shadowOffsetY = 0;
+      this.ctx.fillRect(x, y, fillWidth, barHeight);
+
+      // Add 3D highlight on top of XP bar
+      const highlightGradient = this.ctx.createLinearGradient(x, y, x, y + barHeight * 0.4);
+      highlightGradient.addColorStop(0, "rgba(255, 255, 255, 0.7)");
+      highlightGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+      
+      this.ctx.shadowColor = "transparent";
+      this.ctx.shadowBlur = 0;
+      this.ctx.fillStyle = highlightGradient;
+      this.ctx.fillRect(x, y, fillWidth, barHeight * 0.4);
+    }
+
+    // Draw 3D border with depth
+    this.ctx.strokeStyle = "#999";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x - 1, y - 1, barWidth + 2, barHeight + 2);
+    
+    // Outer border highlight
+    this.ctx.strokeStyle = "#ccc";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x - 2, y - 2, barWidth + 4, barHeight + 4);
+
+    this.ctx.restore();
+
+    // Level number to the left with 3D text effect
+    this.ctx.fillStyle = "#000";
     this.ctx.font = "11px Arial";
     this.ctx.textAlign = "right";
+    // Text shadow
+    this.ctx.fillText(`LV ${currentLevel}`, x - margin + 1, y + barHeight);
+    
+    // Main text
+    this.ctx.fillStyle = "#fff";
     this.ctx.fillText(`LV ${currentLevel}`, x - margin, y + barHeight - 1);
 
-    // XP to the right with consistent positioning
+    // XP to the right with 3D text effect
+    this.ctx.fillStyle = "#000";
     this.ctx.textAlign = "left";
+    // XP shadow
+    this.ctx.fillText(
+      `${player.experience || 0} XP`,
+      x + barWidth + margin + 1,
+      y + barHeight
+    );
+    
+    // Main XP text
+    this.ctx.fillStyle = "#fff";
     this.ctx.fillText(
       `${player.experience || 0} XP`,
       x + barWidth + margin,

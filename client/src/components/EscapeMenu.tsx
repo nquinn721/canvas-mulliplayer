@@ -259,10 +259,7 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
           {/* Return to Home */}
           {onReturnToHome && (
             <div className="menu-section">
-              <button 
-                className="return-home-button"
-                onClick={onReturnToHome}
-              >
+              <button className="return-home-button" onClick={onReturnToHome}>
                 🏠 Return to Home Menu
               </button>
             </div>

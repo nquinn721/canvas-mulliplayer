@@ -348,7 +348,7 @@ export class Player {
 
   // Apply strafe impulse when roll starts
   applyStrafe(direction: number): void {
-    const strafeSpeed = 600; // Initial velocity magnitude (reduced for smoother feel)
+    const strafeSpeed = 850; // Increased velocity magnitude for more pronounced strafe movement
     const perpAngle = this.angle + (direction * Math.PI) / 2; // Perpendicular to facing direction
     this.strafeVelocityX = Math.cos(perpAngle) * strafeSpeed;
     this.strafeVelocityY = Math.sin(perpAngle) * strafeSpeed;

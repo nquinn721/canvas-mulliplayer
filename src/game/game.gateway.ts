@@ -19,6 +19,7 @@ import {
   Star,
   Wall,
 } from "@shared";
+import { EnhancedAIEnemy } from "@shared/classes/EnhancedAIEnemy";
 import { PowerUpType } from "@shared/classes/PowerUp";
 import { Server, Socket } from "socket.io";
 
@@ -44,7 +45,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server: Server;
 
   private players: Map<string, Player> = new Map();
-  private aiEnemies: Map<string, AIEnemy> = new Map();
+  private aiEnemies: Map<string, EnhancedAIEnemy> = new Map();
   private projectiles: Map<string, Projectile> = new Map();
   private meteors: Map<string, Meteor> = new Map();
   private stars: Map<string, Star> = new Map();
@@ -642,18 +643,21 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private updateAIEnemies(deltaTime: number) {
     this.aiEnemies.forEach((aiEnemy, aiId) => {
-      // Update AI behavior - this includes movement and state decisions
+      // Update AI behavior with enhanced pathfinding
       aiEnemy.updateAI(
         deltaTime,
         this.players,
         this.WORLD_WIDTH,
         this.WORLD_HEIGHT,
-        (x, y, radius) => this.checkWallCollision(x, y, radius),
-        this.powerUps
+        this.walls,
+        (x, y, radius) => this.checkWallCollision(x, y, radius)
       );
 
-      // Check if AI wants to shoot using our simple behavior system
-      const shootingDecision = aiEnemy.getShootingInfo(this.players);
+      // Check if AI wants to shoot using enhanced line-of-sight system
+      const shootingDecision = aiEnemy.getShootingInfo(
+        this.players,
+        this.walls
+      );
       if (shootingDecision) {
         this.createAIProjectile(
           aiEnemy,
@@ -750,7 +754,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private createAIProjectile(
-    aiEnemy: AIEnemy,
+    aiEnemy: EnhancedAIEnemy,
     angle: number,
     weapon: "laser" | "missile"
   ) {
@@ -945,8 +949,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const spawnPosition = this.getRandomSpawnPosition();
       const aiId = `ai_${this.aiEnemyCounter++}`;
 
-      // Create a simple AI enemy at the spawn position with difficulty setting
-      const aiEnemy = new AIEnemy(
+      // Create an enhanced AI enemy with pathfinding capabilities
+      const aiEnemy = new EnhancedAIEnemy(
         aiId,
         spawnPosition.x,
         spawnPosition.y,

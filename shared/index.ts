@@ -6,6 +6,7 @@ export type { GameState, MeteorData, StarData } from "./types/GameState";
 // Classes with their interfaces
 export { AIEnemy } from "./classes/AIEnemy";
 export { Camera } from "./classes/Camera";
+export { EnhancedAIEnemy } from "./classes/EnhancedAIEnemy";
 export { Game } from "./classes/Game";
 export { Meteor } from "./classes/Meteor";
 export { Player } from "./classes/Player";
@@ -14,6 +15,9 @@ export { PowerUp, PowerUpType } from "./classes/PowerUp";
 export { Star } from "./classes/Star";
 export { World } from "./classes/World";
 export type { Wall } from "./classes/World";
+
+// Utilities
+export { PathfindingUtils } from "./utils/PathfindingUtils";
 
 // Weapon classes with projectile interface
 export { Laser } from "./weapons/Laser";
