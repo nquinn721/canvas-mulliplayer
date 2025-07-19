@@ -27,10 +27,10 @@ export class SocketService {
 
   private getServerUrl(): string {
     // In production, use the same domain as the client
-    if (window.location.hostname !== 'localhost') {
+    if (window.location.hostname !== "localhost") {
       return `${window.location.protocol}//${window.location.host}`;
     }
-    
+
     // In development, use the local server
     return "http://localhost:3001";
   }
