@@ -16,6 +16,130 @@ export class RendererService {
     this.ctx = context;
   }
 
+  // Helper method to draw custom icons in canvas (Font Awesome style)
+  private drawCustomIcon(
+    x: number,
+    y: number,
+    iconType: string,
+    size: number,
+    color: string = "#ffffff"
+  ) {
+    this.ctx.save();
+    this.ctx.fillStyle = color;
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = 2;
+
+    const halfSize = size / 2;
+
+    switch (iconType) {
+      case "mouse":
+        // Draw mouse shape
+        this.ctx.beginPath();
+        this.ctx.ellipse(
+          x,
+          y,
+          halfSize * 0.6,
+          halfSize * 0.9,
+          0,
+          0,
+          Math.PI * 2
+        );
+        this.ctx.fill();
+
+        // Mouse buttons
+        this.ctx.strokeStyle = "#000000";
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        this.ctx.moveTo(x - halfSize * 0.2, y - halfSize * 0.5);
+        this.ctx.lineTo(x - halfSize * 0.2, y);
+        this.ctx.stroke();
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(x + halfSize * 0.2, y - halfSize * 0.5);
+        this.ctx.lineTo(x + halfSize * 0.2, y);
+        this.ctx.stroke();
+        break;
+
+      case "rocket":
+        // Draw rocket shape
+        this.ctx.fillStyle = color;
+
+        // Rocket body
+        this.ctx.fillRect(
+          x - halfSize * 0.3,
+          y - halfSize * 0.7,
+          halfSize * 0.6,
+          halfSize * 1.2
+        );
+
+        // Rocket tip
+        this.ctx.beginPath();
+        this.ctx.moveTo(x, y - halfSize * 0.9);
+        this.ctx.lineTo(x - halfSize * 0.3, y - halfSize * 0.7);
+        this.ctx.lineTo(x + halfSize * 0.3, y - halfSize * 0.7);
+        this.ctx.closePath();
+        this.ctx.fill();
+
+        // Rocket fins
+        this.ctx.fillStyle = "#ff4444";
+        this.ctx.fillRect(
+          x - halfSize * 0.5,
+          y + halfSize * 0.3,
+          halfSize * 0.3,
+          halfSize * 0.3
+        );
+        this.ctx.fillRect(
+          x + halfSize * 0.2,
+          y + halfSize * 0.3,
+          halfSize * 0.3,
+          halfSize * 0.3
+        );
+        break;
+
+      case "bolt":
+        // Draw lightning bolt
+        this.ctx.fillStyle = color;
+        this.ctx.beginPath();
+        this.ctx.moveTo(x - halfSize * 0.3, y - halfSize * 0.8);
+        this.ctx.lineTo(x + halfSize * 0.1, y - halfSize * 0.1);
+        this.ctx.lineTo(x - halfSize * 0.1, y - halfSize * 0.1);
+        this.ctx.lineTo(x + halfSize * 0.3, y + halfSize * 0.8);
+        this.ctx.lineTo(x - halfSize * 0.1, y + halfSize * 0.1);
+        this.ctx.lineTo(x + halfSize * 0.1, y + halfSize * 0.1);
+        this.ctx.closePath();
+        this.ctx.fill();
+        break;
+
+      case "magic":
+        // Draw magic wand
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = 3;
+
+        // Wand stick
+        this.ctx.beginPath();
+        this.ctx.moveTo(x - halfSize * 0.5, y + halfSize * 0.5);
+        this.ctx.lineTo(x + halfSize * 0.3, y - halfSize * 0.3);
+        this.ctx.stroke();
+
+        // Magic star at tip
+        this.ctx.fillStyle = color;
+        const starSize = halfSize * 0.4;
+        this.ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+          const angle = (i * 4 * Math.PI) / 5;
+          const starX = x + halfSize * 0.3 + Math.cos(angle) * starSize;
+          const starY = y - halfSize * 0.3 + Math.sin(angle) * starSize;
+          if (i === 0) this.ctx.moveTo(starX, starY);
+          else this.ctx.lineTo(starX, starY);
+        }
+        this.ctx.closePath();
+        this.ctx.fill();
+        break;
+    }
+
+    this.ctx.restore();
+  }
+
   render() {
     // Ensure no lingering transparency from background effects
     this.ctx.globalAlpha = 1.0;
@@ -124,6 +248,7 @@ export class RendererService {
     const isMissileUpgrade = powerUp.type === "missile_upgrade";
     const isHealthPickup = powerUp.type === "health_pickup";
     const isShieldPickup = powerUp.type === "shield_pickup";
+    const isFlashUpgrade = powerUp.type === "flash_upgrade";
     let baseColor: string;
     let hexColor: string;
     let shadowColor: string;
@@ -144,6 +269,10 @@ export class RendererService {
       baseColor = "0, 100, 255"; // Blue for shield
       hexColor = "#0064ff";
       shadowColor = "#003399";
+    } else if (isFlashUpgrade) {
+      baseColor = "255, 255, 0"; // Yellow for flash
+      hexColor = "#ffff00";
+      shadowColor = "#aaaa00";
     } else {
       baseColor = "0, 255, 255"; // Cyan for boost
       hexColor = "#00ffff";
@@ -156,7 +285,7 @@ export class RendererService {
     // Add floating animation with subtle rotation
     const floatOffset = Math.sin(time + powerUp.x * 0.01) * 3;
     const rotationAngle = Math.sin(time * 0.5) * 0.1;
-    
+
     this.ctx.translate(x, y + floatOffset);
     this.ctx.rotate(rotationAngle);
 
@@ -164,11 +293,26 @@ export class RendererService {
     const shadowOffset = 6;
     this.ctx.fillStyle = `rgba(0, 0, 0, 0.4)`;
     this.ctx.beginPath();
-    this.ctx.ellipse(shadowOffset, shadowOffset + 8, radius * 1.2, radius * 0.6, 0, 0, Math.PI * 2);
+    this.ctx.ellipse(
+      shadowOffset,
+      shadowOffset + 8,
+      radius * 1.2,
+      radius * 0.6,
+      0,
+      0,
+      Math.PI * 2
+    );
     this.ctx.fill();
 
     // Draw outer glow effect
-    const glowGradient = this.ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.5);
+    const glowGradient = this.ctx.createRadialGradient(
+      0,
+      0,
+      0,
+      0,
+      0,
+      radius * 2.5
+    );
     glowGradient.addColorStop(0, `rgba(${baseColor}, 0.6)`);
     glowGradient.addColorStop(0.3, `rgba(${baseColor}, 0.3)`);
     glowGradient.addColorStop(0.7, `rgba(${baseColor}, 0.1)`);
@@ -179,8 +323,12 @@ export class RendererService {
 
     // Draw 3D sphere base (dark bottom part for depth)
     const depthGradient = this.ctx.createRadialGradient(
-      -radius * 0.3, -radius * 0.3, 0,
-      0, 0, radius
+      -radius * 0.3,
+      -radius * 0.3,
+      0,
+      0,
+      0,
+      radius
     );
     depthGradient.addColorStop(0, hexColor);
     depthGradient.addColorStop(0.7, shadowColor);
@@ -193,8 +341,12 @@ export class RendererService {
 
     // Add 3D highlight/shine effect
     const shineGradient = this.ctx.createRadialGradient(
-      -radius * 0.4, -radius * 0.4, 0,
-      -radius * 0.4, -radius * 0.4, radius * 0.8
+      -radius * 0.4,
+      -radius * 0.4,
+      0,
+      -radius * 0.4,
+      -radius * 0.4,
+      radius * 0.8
     );
     shineGradient.addColorStop(0, `rgba(255, 255, 255, 0.8)`);
     shineGradient.addColorStop(0.3, `rgba(255, 255, 255, 0.4)`);
@@ -222,34 +374,62 @@ export class RendererService {
 
     // Draw 3D icon with depth and shadow
     this.ctx.save();
-    
+
     // Add slight offset for 3D icon effect
     const iconDepthOffset = 1;
-    
+
     // Draw icon shadow first
     this.ctx.translate(iconDepthOffset, iconDepthOffset);
     this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-    this.drawPowerUpIconShape(isLaserUpgrade, isMissileUpgrade, isHealthPickup, isShieldPickup);
-    
+    this.drawPowerUpIconShape(
+      isLaserUpgrade,
+      isMissileUpgrade,
+      isHealthPickup,
+      isShieldPickup,
+      isFlashUpgrade
+    );
+
     // Draw main icon
     this.ctx.translate(-iconDepthOffset, -iconDepthOffset);
     this.ctx.fillStyle = "#ffffff";
-    this.drawPowerUpIconShape(isLaserUpgrade, isMissileUpgrade, isHealthPickup, isShieldPickup);
-    
+    this.drawPowerUpIconShape(
+      isLaserUpgrade,
+      isMissileUpgrade,
+      isHealthPickup,
+      isShieldPickup,
+      isFlashUpgrade
+    );
+
     // Add icon highlight
     this.ctx.translate(-0.5, -0.5);
     this.ctx.fillStyle = `rgba(${baseColor}, 0.8)`;
-    this.drawPowerUpIconShape(isLaserUpgrade, isMissileUpgrade, isHealthPickup, isShieldPickup);
-    
+    this.drawPowerUpIconShape(
+      isLaserUpgrade,
+      isMissileUpgrade,
+      isHealthPickup,
+      isShieldPickup,
+      isFlashUpgrade
+    );
+
     this.ctx.restore();
 
     // Add pulsing energy effect
     const pulseIntensity = Math.sin(time * 4) * 0.5 + 0.5;
-    const energyGradient = this.ctx.createRadialGradient(0, 0, radius * 0.8, 0, 0, radius * 1.2);
+    const energyGradient = this.ctx.createRadialGradient(
+      0,
+      0,
+      radius * 0.8,
+      0,
+      0,
+      radius * 1.2
+    );
     energyGradient.addColorStop(0, `rgba(${baseColor}, 0)`);
-    energyGradient.addColorStop(0.8, `rgba(${baseColor}, ${pulseIntensity * 0.3})`);
+    energyGradient.addColorStop(
+      0.8,
+      `rgba(${baseColor}, ${pulseIntensity * 0.3})`
+    );
     energyGradient.addColorStop(1, `rgba(${baseColor}, 0)`);
-    
+
     this.ctx.fillStyle = energyGradient;
     this.ctx.beginPath();
     this.ctx.arc(0, 0, radius * 1.2, 0, Math.PI * 2);
@@ -258,7 +438,13 @@ export class RendererService {
     this.ctx.restore();
   }
 
-  private drawPowerUpIconShape(isLaserUpgrade: boolean, isMissileUpgrade: boolean, isHealthPickup: boolean, isShieldPickup: boolean) {
+  private drawPowerUpIconShape(
+    isLaserUpgrade: boolean,
+    isMissileUpgrade: boolean,
+    isHealthPickup: boolean,
+    isShieldPickup: boolean,
+    isFlashUpgrade: boolean
+  ) {
     if (isLaserUpgrade) {
       // Draw laser icon (lightning bolt)
       this.ctx.beginPath();
@@ -299,6 +485,25 @@ export class RendererService {
       this.ctx.lineTo(10, 2); // Bottom right
       this.ctx.lineTo(8, -8); // Top right
       this.ctx.closePath();
+      this.ctx.fill();
+    } else if (isFlashUpgrade) {
+      // Draw flash icon (lightning bolt with teleport effect)
+      this.ctx.beginPath();
+      this.ctx.moveTo(-6, -10);
+      this.ctx.lineTo(2, -2);
+      this.ctx.lineTo(-2, -2);
+      this.ctx.lineTo(6, 10);
+      this.ctx.lineTo(-2, 2);
+      this.ctx.lineTo(2, 2);
+      this.ctx.closePath();
+      this.ctx.fill();
+
+      // Add small circles around to indicate teleportation
+      this.ctx.beginPath();
+      this.ctx.arc(-8, -6, 1.5, 0, Math.PI * 2);
+      this.ctx.arc(8, 6, 1.5, 0, Math.PI * 2);
+      this.ctx.arc(-6, 8, 1, 0, Math.PI * 2);
+      this.ctx.arc(6, -8, 1, 0, Math.PI * 2);
       this.ctx.fill();
     } else {
       // Draw boost icon (arrow pointing up)
@@ -616,7 +821,7 @@ export class RendererService {
     bgGradient.addColorStop(0, "#666");
     bgGradient.addColorStop(0.5, "#333");
     bgGradient.addColorStop(1, "#111");
-    
+
     this.ctx.fillStyle = bgGradient;
     this.ctx.fillRect(x, y, barWidth, barHeight);
 
@@ -630,7 +835,7 @@ export class RendererService {
     if (fillWidth > 0) {
       // Determine colors based on health level
       let baseColor, lightColor, darkColor;
-      
+
       if (healthPercent > 0.5) {
         baseColor = "#4ade80"; // Green
         lightColor = "#6ee7a7";
@@ -646,7 +851,12 @@ export class RendererService {
       }
 
       // Create 3D health fill gradient
-      const fillGradient = this.ctx.createLinearGradient(x, y, x, y + barHeight);
+      const fillGradient = this.ctx.createLinearGradient(
+        x,
+        y,
+        x,
+        y + barHeight
+      );
       fillGradient.addColorStop(0, lightColor);
       fillGradient.addColorStop(0.4, baseColor);
       fillGradient.addColorStop(0.6, baseColor);
@@ -665,10 +875,15 @@ export class RendererService {
       }
 
       // Add 3D highlight on top of health bar
-      const highlightGradient = this.ctx.createLinearGradient(x, y, x, y + barHeight * 0.5);
+      const highlightGradient = this.ctx.createLinearGradient(
+        x,
+        y,
+        x,
+        y + barHeight * 0.5
+      );
       highlightGradient.addColorStop(0, "rgba(255, 255, 255, 0.5)");
       highlightGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
-      
+
       this.ctx.shadowColor = "transparent";
       this.ctx.shadowBlur = 0;
       this.ctx.fillStyle = highlightGradient;
@@ -1226,11 +1441,11 @@ export class RendererService {
     // Missile cooldown indicator (bottom right)
     this.drawMissileCooldown();
 
-    // Roll cooldown indicator (above missile)
-    this.drawRollCooldown();
-
     // Laser upgrade indicator (to the right of missile)
     this.drawLaserUpgrade();
+
+    // Flash upgrade indicator (to the right of laser)
+    this.drawFlashUpgrade();
 
     // Compact stats in top corner
     this.drawCompactStats();
@@ -1287,24 +1502,24 @@ export class RendererService {
   private drawMissileCooldown() {
     const iconSize = 50;
     const margin = 20;
-    const x = this.gameStore.CANVAS_WIDTH - iconSize - margin;
+    const spacing = 70; // Space between icons
+    // Move missile to middle position (one spacing from right)
+    const x = this.gameStore.CANVAS_WIDTH - iconSize - margin - spacing;
     const y = this.gameStore.CANVAS_HEIGHT - iconSize - margin;
 
-    // Missile icon drawing function
+    // Missile icon drawing function using custom icons
     const drawMissileIcon = (centerX: number, centerY: number) => {
-      // Draw missile body
-      this.ctx.fillRect(centerX - 3, centerY - 8, 6, 16);
+      this.ctx.save();
 
-      // Draw missile tip
-      this.ctx.beginPath();
-      this.ctx.moveTo(centerX, centerY - 12);
-      this.ctx.lineTo(centerX - 3, centerY - 8);
-      this.ctx.lineTo(centerX + 3, centerY - 8);
-      this.ctx.fill();
+      // Draw custom rocket icon
+      this.drawCustomIcon(centerX, centerY, "rocket", 24, "#ff8c00");
 
-      // Draw missile fins
-      this.ctx.fillRect(centerX - 5, centerY + 6, 2, 4);
-      this.ctx.fillRect(centerX + 3, centerY + 6, 2, 4);
+      // Add engine glow effect
+      this.ctx.shadowColor = "#ffaa00";
+      this.ctx.shadowBlur = 8;
+      this.drawCustomIcon(centerX, centerY, "rocket", 24, "#ffffff");
+
+      this.ctx.restore();
     };
 
     this.drawWeaponIcon(
@@ -1312,18 +1527,19 @@ export class RendererService {
       y,
       iconSize,
       this.gameStore.isMissileReady,
-      "", // Remove key label
-      "rgba(255, 68, 68, 0.8)",
+      "SPACE", // Space key label for missiles
+      "rgba(255, 140, 0, 0.9)", // Orange theme for missiles
       drawMissileIcon,
       this.gameStore.missileCooldownPercent,
-      this.gameStore.missileCooldowRemaining
+      this.gameStore.missileCooldowRemaining,
+      "MISSILES" // Description text
     );
 
     // Draw missile level indicator in top right corner
     const player = this.gameStore.gameState.players[this.gameStore.playerId];
     if (player) {
       const missileLevel = player.missileUpgradeLevel || 1;
-      this.drawLevelIndicator(x, y, iconSize, missileLevel, "#FF9800"); // Orange color for missile
+      this.drawLevelIndicator(x, y, iconSize, missileLevel, "#FF8C00"); // Consistent orange color
     }
   }
 
@@ -1336,7 +1552,8 @@ export class RendererService {
     backgroundColor: string,
     iconDrawFunction: (centerX: number, centerY: number) => void,
     cooldownPercent?: number,
-    cooldownTimeLeft?: number
+    cooldownTimeLeft?: number,
+    descriptionText?: string
   ) {
     // Background circle
     this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
@@ -1386,11 +1603,50 @@ export class RendererService {
       }
     }
 
-    // Key indicator
+    // Key indicator - handle special case for mouse icon
+    if (keyLabel === "MOUSE") {
+      this.drawMouseIcon(centerX, y - 18);
+    } else if (keyLabel) {
+      this.ctx.fillStyle = "#fff";
+      this.ctx.font = "10px Arial";
+      this.ctx.textAlign = "center";
+      this.ctx.fillText(keyLabel, centerX, y - 5);
+    }
+
+    // Optional description text below icon
+    if (descriptionText) {
+      this.ctx.fillStyle = "#cccccc";
+      this.ctx.font = "8px Arial";
+      this.ctx.textAlign = "center";
+      this.ctx.fillText(descriptionText, centerX, y + iconSize + 12);
+    }
+  }
+
+  private drawMouseIcon(centerX: number, centerY: number) {
+    this.ctx.save();
+
+    // Mouse body outline only
+    this.ctx.fillStyle = "transparent";
+    this.ctx.strokeStyle = "#fff";
+    this.ctx.lineWidth = 1.5;
+    this.ctx.strokeRect(centerX - 8, centerY - 6, 16, 12);
+
+    // Left button (white filled to indicate it's the active button)
     this.ctx.fillStyle = "#fff";
-    this.ctx.font = "10px Arial";
-    this.ctx.textAlign = "center";
-    this.ctx.fillText(keyLabel, centerX, y - 5);
+    this.ctx.fillRect(centerX - 7, centerY - 5, 7, 4);
+
+    // Right button (outline only)
+    this.ctx.fillStyle = "transparent";
+    this.ctx.strokeRect(centerX + 1, centerY - 5, 6, 4);
+
+    // Center divider
+    this.ctx.strokeStyle = "#fff";
+    this.ctx.beginPath();
+    this.ctx.moveTo(centerX, centerY - 5);
+    this.ctx.lineTo(centerX, centerY - 1);
+    this.ctx.stroke();
+
+    this.ctx.restore();
   }
 
   private drawLevelIndicator(
@@ -1400,73 +1656,42 @@ export class RendererService {
     level: number,
     backgroundColor: string = "#4CAF50"
   ) {
-    const circleRadius = 10;
-    const circleX = x + iconSize - circleRadius;
-    const circleY = y + circleRadius;
+    const circleRadius = 8; // Smaller radius
+    const offset = 6; // More offset from the icon edge
+    const circleX = x + iconSize - circleRadius + offset;
+    const circleY = y + circleRadius - offset;
 
     this.ctx.save();
 
-    // Draw 3D shadow
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-    this.ctx.beginPath();
-    this.ctx.arc(circleX + 2, circleY + 2, circleRadius, 0, Math.PI * 2);
-    this.ctx.fill();
-
-    // Draw 3D base gradient (darker bottom for depth)
-    const baseGradient = this.ctx.createRadialGradient(
-      circleX - 3, circleY - 3, 0,
-      circleX, circleY, circleRadius
+    // Bluish gradient background
+    const gradient = this.ctx.createRadialGradient(
+      circleX,
+      circleY - 2,
+      0,
+      circleX,
+      circleY,
+      circleRadius
     );
-    baseGradient.addColorStop(0, backgroundColor);
-    baseGradient.addColorStop(0.7, backgroundColor);
-    baseGradient.addColorStop(1, "#000000");
+    gradient.addColorStop(0, "#6bb6ff"); // Light blue
+    gradient.addColorStop(1, "#1e3a8a"); // Dark blue
 
-    this.ctx.fillStyle = baseGradient;
+    this.ctx.fillStyle = gradient;
     this.ctx.beginPath();
     this.ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
     this.ctx.fill();
 
-    // Draw 3D highlight
-    const highlightGradient = this.ctx.createRadialGradient(
-      circleX - 4, circleY - 4, 0,
-      circleX - 4, circleY - 4, circleRadius * 0.6
-    );
-    highlightGradient.addColorStop(0, "rgba(255, 255, 255, 0.8)");
-    highlightGradient.addColorStop(0.5, "rgba(255, 255, 255, 0.3)");
-    highlightGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
-
-    this.ctx.fillStyle = highlightGradient;
-    this.ctx.beginPath();
-    this.ctx.arc(circleX - 3, circleY - 3, circleRadius * 0.5, 0, Math.PI * 2);
-    this.ctx.fill();
-
-    // Draw 3D border with depth
-    this.ctx.strokeStyle = "#fff";
+    // Simple border
+    this.ctx.strokeStyle = "#ffffff";
     this.ctx.lineWidth = 2;
-    this.ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-    this.ctx.shadowBlur = 3;
-    this.ctx.shadowOffsetX = 1;
-    this.ctx.shadowOffsetY = 1;
     this.ctx.beginPath();
     this.ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
     this.ctx.stroke();
 
-    // Reset shadow for text
-    this.ctx.shadowColor = "transparent";
-    this.ctx.shadowBlur = 0;
-    this.ctx.shadowOffsetX = 0;
-    this.ctx.shadowOffsetY = 0;
-
-    // Draw level number with 3D text effect
-    this.ctx.fillStyle = "#000";
-    this.ctx.font = "bold 12px Arial";
+    // Draw level number - simple flat text
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.font = "bold 11px Arial";
     this.ctx.textAlign = "center";
     this.ctx.textBaseline = "middle";
-    // Text shadow
-    this.ctx.fillText(`${level}`, circleX + 1, circleY + 1);
-    
-    // Main text
-    this.ctx.fillStyle = "#fff";
     this.ctx.fillText(`${level}`, circleX, circleY);
 
     this.ctx.restore();
@@ -1553,22 +1778,23 @@ export class RendererService {
 
     const iconSize = 50;
     const margin = 20;
-    const spacing = 70; // Space between icons
-    const x = this.gameStore.CANVAS_WIDTH - iconSize - margin - spacing;
+    // Move laser to the far right (no spacing)
+    const x = this.gameStore.CANVAS_WIDTH - iconSize - margin;
     const y = this.gameStore.CANVAS_HEIGHT - iconSize - margin;
 
-    // Laser icon drawing function
+    // Laser icon drawing function using custom icons
     const drawLaserIcon = (centerX: number, centerY: number) => {
-      // Draw laser lightning bolt icon
-      this.ctx.beginPath();
-      this.ctx.moveTo(centerX - 8, centerY - 12);
-      this.ctx.lineTo(centerX + 4, centerY - 2);
-      this.ctx.lineTo(centerX - 2, centerY - 2);
-      this.ctx.lineTo(centerX + 8, centerY + 12);
-      this.ctx.lineTo(centerX - 4, centerY + 2);
-      this.ctx.lineTo(centerX + 2, centerY + 2);
-      this.ctx.closePath();
-      this.ctx.fill();
+      this.ctx.save();
+
+      // Draw custom lightning bolt icon
+      this.drawCustomIcon(centerX, centerY, "bolt", 24, "#ff6464");
+
+      // Add energy glow effect around the icon
+      this.ctx.shadowColor = "#ff6464";
+      this.ctx.shadowBlur = 10;
+      this.drawCustomIcon(centerX, centerY, "bolt", 24, "#ffffff");
+
+      this.ctx.restore();
     };
 
     // Use the same weapon icon template as missile
@@ -1577,14 +1803,17 @@ export class RendererService {
       y,
       iconSize,
       true, // Always ready (no cooldown for laser)
-      "", // No key label - we'll draw level in corner
-      "rgba(255, 68, 68, 0.8)", // Same color as missile
-      drawLaserIcon
+      "MOUSE", // Mouse icon to indicate left-click
+      "rgba(255, 64, 64, 0.9)", // Red theme for lasers
+      drawLaserIcon,
+      undefined, // No cooldown percent
+      undefined, // No cooldown time
+      "LASER" // Description text
     );
 
     // Draw laser level indicator in top right corner using template
     const laserLevel = player.laserUpgradeLevel || 0;
-    this.drawLevelIndicator(x, y, iconSize, laserLevel, "#4CAF50"); // Green color for laser
+    this.drawLevelIndicator(x, y, iconSize, laserLevel, "#FF4040"); // Consistent red color
 
     // Special indicator for dual shot + backward laser (level 5)
     if (laserLevel >= 5) {
@@ -1592,87 +1821,63 @@ export class RendererService {
       this.ctx.font = "8px Arial";
       this.ctx.fillText("TRI-SHOT", x + iconSize / 2, y + iconSize + 15);
     }
-
-    // Show tooltip on hover
-    if (this.gameStore.showLaserTooltip) {
-      this.drawLaserTooltip(x - 200, y - 120);
-    }
   }
 
-  private drawLaserTooltip(x: number, y: number) {
+  private drawFlashUpgrade() {
     const player = this.gameStore.gameState.players[this.gameStore.playerId];
     if (!player) return;
 
-    const laserStats = this.getLaserStatsFromPlayer(player);
-    const width = 180;
-    const height = 100;
+    const iconSize = 50;
+    const margin = 20;
+    const spacing = 70; // Space between icons
+    // Move flash to the left position (two spacings from right)
+    const x = this.gameStore.CANVAS_WIDTH - iconSize - margin - spacing * 2;
+    const y = this.gameStore.CANVAS_HEIGHT - iconSize - margin;
 
-    // Tooltip background
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
-    this.ctx.fillRect(x, y, width, height);
+    // Flash icon drawing function using Font Awesome
+    const drawFlashIcon = (centerX: number, centerY: number) => {
+      this.ctx.save();
 
-    // Border
-    this.ctx.strokeStyle = "#ff6464";
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(x, y, width, height);
+      // Draw teleport portal rings as background
+      this.ctx.strokeStyle = "#ffff00";
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.arc(centerX, centerY, 10, 0, Math.PI * 2);
+      this.ctx.stroke();
 
-    // Title
-    this.ctx.fillStyle = "#ff6464";
-    this.ctx.font = "14px Arial";
-    this.ctx.textAlign = "left";
-    this.ctx.fillText("Laser Stats", x + 10, y + 20);
+      this.ctx.lineWidth = 1;
+      this.ctx.beginPath();
+      this.ctx.arc(centerX, centerY, 6, 0, Math.PI * 2);
+      this.ctx.stroke();
 
-    // Stats
-    this.ctx.fillStyle = "#fff";
-    this.ctx.font = "12px Arial";
-    this.ctx.fillText(`Level: ${laserStats.level}`, x + 10, y + 40);
-    this.ctx.fillText(`Speed: ${laserStats.speed}`, x + 10, y + 55);
-    this.ctx.fillText(`Damage: ${laserStats.damage}`, x + 10, y + 70);
-    this.ctx.fillText(`Range: ${laserStats.distance}`, x + 10, y + 85);
+      // Draw custom magic icon in center
+      this.drawCustomIcon(centerX, centerY, "magic", 16, "#ffffff");
 
-    if (laserStats.dualShot) {
-      this.ctx.fillStyle = "#ffff00";
-      this.ctx.fillText("DUAL SHOT!", x + 90, y + 40);
-    }
+      // Add glow effect
+      this.ctx.shadowColor = "#ffff00";
+      this.ctx.shadowBlur = 6;
+      this.drawCustomIcon(centerX, centerY, "magic", 16, "#ffff00");
 
-    if (laserStats.hasBackwardLaser) {
-      this.ctx.fillStyle = "#ff44ff";
-      this.ctx.fillText("REAR LASER!", x + 90, y + 55);
-    }
-  }
-
-  private getLaserStatsFromPlayer(player: any) {
-    const baseSpeed = 400;
-    const baseDamage = 12;
-    const baseDistance = 500;
-    const level = player.laserUpgradeLevel || 1; // Default to level 1
-
-    // Level 1 is the base level with no multipliers
-    if (level <= 1) {
-      return {
-        level: level,
-        speed: baseSpeed,
-        damage: baseDamage,
-        distance: baseDistance,
-        dualShot: false,
-        hasBackwardLaser: false,
-      };
-    }
-
-    // For levels 2+, each level above 1 increases stats by 15%/20%/20%
-    const levelAboveBase = level - 1;
-    const speedMultiplier = 1 + levelAboveBase * 0.15;
-    const damageMultiplier = 1 + levelAboveBase * 0.2;
-    const distanceMultiplier = 1 + levelAboveBase * 0.2;
-
-    return {
-      level: level,
-      speed: Math.floor(baseSpeed * speedMultiplier),
-      damage: Math.floor(baseDamage * damageMultiplier),
-      distance: Math.floor(baseDistance * distanceMultiplier),
-      dualShot: level >= 3,
-      hasBackwardLaser: level >= 5,
+      this.ctx.restore();
     };
+
+    // Use the same weapon icon template with cooldown support from GameStore
+    this.drawWeaponIcon(
+      x,
+      y,
+      iconSize,
+      this.gameStore.isFlashReady,
+      "F", // Key label for flash
+      "rgba(255, 215, 0, 0.9)", // Gold theme for flash
+      drawFlashIcon,
+      this.gameStore.flashCooldownPercent,
+      this.gameStore.flashCooldownRemaining,
+      "FLASH" // Description text
+    );
+
+    // Draw flash level indicator in top right corner
+    const flashLevel = player.flashUpgradeLevel || 1;
+    this.drawLevelIndicator(x, y, iconSize, flashLevel, "#FFD700"); // Consistent gold color
   }
 
   private drawBoostEnergyBar() {
@@ -1697,7 +1902,7 @@ export class RendererService {
     bgGradient.addColorStop(0, "rgba(20, 20, 20, 0.9)");
     bgGradient.addColorStop(0.5, "rgba(40, 40, 40, 0.9)");
     bgGradient.addColorStop(1, "rgba(60, 60, 60, 0.9)");
-    
+
     this.ctx.fillStyle = bgGradient;
     this.ctx.fillRect(x - 3, y - 3, barWidth + 6, barHeight + 6);
 
@@ -1712,7 +1917,7 @@ export class RendererService {
 
     if (fillWidth > 0) {
       let baseColor, lightColor, darkColor;
-      
+
       // Color based on energy level with 3D gradients
       if (energyPercent > 0.6) {
         baseColor = "#00ff88"; // Cyan-green
@@ -1729,7 +1934,12 @@ export class RendererService {
       }
 
       // Create 3D fill gradient
-      const fillGradient = this.ctx.createLinearGradient(x, y, x, y + barHeight);
+      const fillGradient = this.ctx.createLinearGradient(
+        x,
+        y,
+        x,
+        y + barHeight
+      );
       fillGradient.addColorStop(0, lightColor);
       fillGradient.addColorStop(0.3, baseColor);
       fillGradient.addColorStop(0.7, baseColor);
@@ -1748,10 +1958,15 @@ export class RendererService {
       }
 
       // Add 3D highlight on top of energy bar
-      const highlightGradient = this.ctx.createLinearGradient(x, y, x, y + barHeight * 0.4);
+      const highlightGradient = this.ctx.createLinearGradient(
+        x,
+        y,
+        x,
+        y + barHeight * 0.4
+      );
       highlightGradient.addColorStop(0, "rgba(255, 255, 255, 0.6)");
       highlightGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
-      
+
       this.ctx.shadowColor = "transparent";
       this.ctx.shadowBlur = 0;
       this.ctx.fillStyle = highlightGradient;
@@ -1762,7 +1977,7 @@ export class RendererService {
     this.ctx.strokeStyle = "#999";
     this.ctx.lineWidth = 1;
     this.ctx.strokeRect(x - 1, y - 1, barWidth + 2, barHeight + 2);
-    
+
     // Outer border highlight
     this.ctx.strokeStyle = "#ccc";
     this.ctx.lineWidth = 1;
@@ -1780,7 +1995,7 @@ export class RendererService {
       x - margin + 1,
       y + barHeight
     );
-    
+
     // Main text
     this.ctx.fillStyle = "#fff";
     this.ctx.fillText(
@@ -1796,7 +2011,7 @@ export class RendererService {
     this.ctx.textAlign = "left";
     // Icon shadow
     this.ctx.fillText("⚡", x + barWidth + margin + 1, y + barHeight);
-    
+
     // Main icon
     this.ctx.fillStyle = iconColor;
     this.ctx.fillText("⚡", x + barWidth + margin, y + barHeight - 1);
@@ -1824,7 +2039,7 @@ export class RendererService {
     bgGradient.addColorStop(0, "rgba(20, 20, 20, 0.9)");
     bgGradient.addColorStop(0.5, "rgba(40, 40, 40, 0.9)");
     bgGradient.addColorStop(1, "rgba(60, 60, 60, 0.9)");
-    
+
     this.ctx.fillStyle = bgGradient;
     this.ctx.fillRect(x - 3, y - 3, barWidth + 6, barHeight + 6);
 
@@ -1847,7 +2062,12 @@ export class RendererService {
 
     if (fillWidth > 0) {
       // Create 3D XP fill gradient (gold theme)
-      const fillGradient = this.ctx.createLinearGradient(x, y, x, y + barHeight);
+      const fillGradient = this.ctx.createLinearGradient(
+        x,
+        y,
+        x,
+        y + barHeight
+      );
       fillGradient.addColorStop(0, "#ffef94"); // Light gold
       fillGradient.addColorStop(0.3, "#ffd700"); // Gold
       fillGradient.addColorStop(0.7, "#ffd700"); // Gold
@@ -1864,10 +2084,15 @@ export class RendererService {
       this.ctx.fillRect(x, y, fillWidth, barHeight);
 
       // Add 3D highlight on top of XP bar
-      const highlightGradient = this.ctx.createLinearGradient(x, y, x, y + barHeight * 0.4);
+      const highlightGradient = this.ctx.createLinearGradient(
+        x,
+        y,
+        x,
+        y + barHeight * 0.4
+      );
       highlightGradient.addColorStop(0, "rgba(255, 255, 255, 0.7)");
       highlightGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
-      
+
       this.ctx.shadowColor = "transparent";
       this.ctx.shadowBlur = 0;
       this.ctx.fillStyle = highlightGradient;
@@ -1878,7 +2103,7 @@ export class RendererService {
     this.ctx.strokeStyle = "#999";
     this.ctx.lineWidth = 1;
     this.ctx.strokeRect(x - 1, y - 1, barWidth + 2, barHeight + 2);
-    
+
     // Outer border highlight
     this.ctx.strokeStyle = "#ccc";
     this.ctx.lineWidth = 1;
@@ -1892,7 +2117,7 @@ export class RendererService {
     this.ctx.textAlign = "right";
     // Text shadow
     this.ctx.fillText(`LV ${currentLevel}`, x - margin + 1, y + barHeight);
-    
+
     // Main text
     this.ctx.fillStyle = "#fff";
     this.ctx.fillText(`LV ${currentLevel}`, x - margin, y + barHeight - 1);
@@ -1906,7 +2131,7 @@ export class RendererService {
       x + barWidth + margin + 1,
       y + barHeight
     );
-    
+
     // Main XP text
     this.ctx.fillStyle = "#fff";
     this.ctx.fillText(

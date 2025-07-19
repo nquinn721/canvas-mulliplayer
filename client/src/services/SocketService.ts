@@ -168,6 +168,38 @@ export class SocketService {
       this.gameStore.removeProjectile(projectileId);
     });
 
+    // Flash ability event
+    this.socket.on(
+      "flashCompleted",
+      (data: {
+        playerId: string;
+        fromX: number;
+        fromY: number;
+        toX: number;
+        toY: number;
+      }) => {
+        // Create particle effect for flash teleportation
+        this.gameStore.particleSystem.createFlashEffect(
+          data.fromX,
+          data.fromY,
+          data.toX,
+          data.toY
+        );
+
+        // Play flash sound effect
+        if (data.playerId === this.gameStore.playerId) {
+          // Current player flashed - play at full volume
+          soundService.playSound("teleport", 0.8);
+        } else {
+          // Another player flashed - distance-based volume
+          const currentPlayer = this.gameStore.currentPlayer;
+          if (currentPlayer) {
+            soundService.playSound("teleport", 0.5);
+          }
+        }
+      }
+    );
+
     // AI difficulty change confirmation
     this.socket.on(
       "aiDifficultyChanged",

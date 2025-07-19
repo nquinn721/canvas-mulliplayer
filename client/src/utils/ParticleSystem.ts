@@ -8,7 +8,7 @@ export interface Particle {
   size: number;
   color: string;
   alpha: number;
-  type?: "explosion" | "wind"; // Add particle type
+  type?: "explosion" | "wind" | "flash"; // Add particle type
 }
 
 export class ParticleSystem {
@@ -214,6 +214,76 @@ export class ParticleSystem {
           type: "wind",
         });
       }
+    }
+  }
+
+  createFlashEffect(fromX: number, fromY: number, toX: number, toY: number) {
+    // Flash teleport effect - particles disappearing at origin and appearing at destination
+    const flashColors = ["#ffff00", "#ffff88", "#ffffaa", "#ffcc00", "#fff700"];
+    
+    // Disappearing effect at origin
+    for (let i = 0; i < 15; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 80 + Math.random() * 120;
+      const size = 2 + Math.random() * 4;
+      const life = 400 + Math.random() * 300;
+
+      this.particles.push({
+        x: fromX + (Math.random() - 0.5) * 20,
+        y: fromY + (Math.random() - 0.5) * 20,
+        velocityX: Math.cos(angle) * speed,
+        velocityY: Math.sin(angle) * speed,
+        life,
+        maxLife: life,
+        size,
+        color: flashColors[Math.floor(Math.random() * flashColors.length)],
+        alpha: 0.8,
+        type: "flash",
+      });
+    }
+
+    // Appearing effect at destination
+    for (let i = 0; i < 20; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 60 + Math.random() * 80;
+      const size = 1.5 + Math.random() * 3;
+      const life = 500 + Math.random() * 400;
+
+      this.particles.push({
+        x: toX + (Math.random() - 0.5) * 30,
+        y: toY + (Math.random() - 0.5) * 30,
+        velocityX: Math.cos(angle) * speed * 0.3, // Slower expansion
+        velocityY: Math.sin(angle) * speed * 0.3,
+        life,
+        maxLife: life,
+        size,
+        color: flashColors[Math.floor(Math.random() * flashColors.length)],
+        alpha: 0.9,
+        type: "flash",
+      });
+    }
+
+    // Lightning trail between origin and destination
+    const distance = Math.sqrt((toX - fromX) ** 2 + (toY - fromY) ** 2);
+    const trailParticles = Math.min(12, Math.floor(distance / 50));
+    
+    for (let i = 0; i < trailParticles; i++) {
+      const t = i / trailParticles;
+      const x = fromX + (toX - fromX) * t + (Math.random() - 0.5) * 40;
+      const y = fromY + (toY - fromY) * t + (Math.random() - 0.5) * 40;
+      
+      this.particles.push({
+        x,
+        y,
+        velocityX: (Math.random() - 0.5) * 30,
+        velocityY: (Math.random() - 0.5) * 30,
+        life: 300 + Math.random() * 200,
+        maxLife: 300 + Math.random() * 200,
+        size: 1 + Math.random() * 2,
+        color: flashColors[Math.floor(Math.random() * flashColors.length)],
+        alpha: 0.7,
+        type: "flash",
+      });
     }
   }
 

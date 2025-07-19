@@ -21,14 +21,16 @@
 ### Fixed Missing Control
 
 - Added **Spacebar** control for secondary fire (missiles)
-- Now shows all 7 controls:
+- Added **F Key** control for Flash teleport ability
+- Now shows all 8 controls:
   - W: Forward
   - S: Backward
   - A: Strafe Left
   - D: Strafe Right
   - Mouse: Aim & Shoot
   - Shift: Boost
-  - **Space: Secondary Fire (Missiles)** ← NEW
+  - **Space: Secondary Fire (Missiles)** ← PREVIOUS
+  - **F: Flash Teleport** ← NEW
 
 ## 🤖 AI Difficulty Controls
 
@@ -130,5 +132,7 @@
 
 - All controls now properly documented in sidebar
 - Spacebar for missile firing is now visible to players
+- F key for Flash teleport ability is now documented
+- Flash ability requires power-up collection and has 5-second cooldown
 
 The enhanced UI provides much better control over the game experience with professional-looking controls and real-time feedback!

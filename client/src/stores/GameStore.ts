@@ -50,7 +50,6 @@ export class GameStore {
   isMouseDown = false;
   lastLaserTime = 0;
   laserFireRate = 300; // Increased from 150ms to 300ms for slower shooting
-  showLaserTooltip = false;
 
   // Socket reference
   socket: Socket | null = null;
@@ -117,43 +116,24 @@ export class GameStore {
     this.mousePosition.x = x;
     this.mousePosition.y = y;
     this.updatePlayerAngle();
-    this.updateLaserTooltip();
   }
 
   setMouseDown(isDown: boolean) {
     this.isMouseDown = isDown;
   }
 
-  // Check if mouse is hovering over laser upgrade icon
-  updateLaserTooltip() {
-    const iconSize = 50;
-    const margin = 20;
-    const spacing = 70;
-    const x = this.CANVAS_WIDTH - iconSize - margin - spacing;
-    const y = this.CANVAS_HEIGHT - iconSize - margin;
-
-    const mouseX = this.mousePosition.x;
-    const mouseY = this.mousePosition.y;
-
-    this.showLaserTooltip =
-      mouseX >= x &&
-      mouseX <= x + iconSize &&
-      mouseY >= y &&
-      mouseY <= y + iconSize;
-  }
-
   // Camera management
   updateCameraPosition() {
     if (this.playerId && this.gameState.players[this.playerId]) {
       const player = this.gameState.players[this.playerId];
-      
+
       // Set the follow target with boost state for adaptive smoothing
       this.camera.setFollowTarget({
         x: player.x,
         y: player.y,
-        isBoostActive: player.isBoostActive
+        isBoostActive: player.isBoostActive,
       });
-      
+
       // Use smooth camera following for better experience
       this.camera.update(true);
     }
@@ -269,6 +249,55 @@ export class GameStore {
     return true; // Successfully fired missile
   }
 
+  // Flash ability
+  useFlash(): boolean {
+    console.log("useFlash called");
+
+    if (
+      !this.socket ||
+      !this.playerId ||
+      !this.gameState.players[this.playerId]
+    ) {
+      console.log("Flash failed: missing socket, playerId, or player data");
+      return false;
+    }
+
+    const player = this.gameState.players[this.playerId];
+    const currentTime = Date.now();
+
+    // Check if flash is available (manually check cooldown since player is serialized data)
+    const flashCooldown = player.flashCooldown || 5000; // Default 5 second cooldown
+    const lastFlashTime = player.lastFlashTime || 0;
+    const cooldownRemaining = flashCooldown - (currentTime - lastFlashTime);
+
+    console.log(`Flash cooldown check: ${cooldownRemaining}ms remaining`);
+
+    if (currentTime - lastFlashTime < flashCooldown) {
+      console.log(
+        `Flash on cooldown: ${Math.ceil(cooldownRemaining / 1000)}s remaining`
+      );
+      return false; // Still on cooldown
+    }
+
+    const worldMouse = this.camera.screenToWorld(
+      this.mousePosition.x,
+      this.mousePosition.y
+    );
+
+    console.log(
+      `Sending flash request to server: mouse(${worldMouse.x}, ${worldMouse.y})`
+    );
+
+    // Send flash request to server
+    this.socket.emit("flash", {
+      mouseX: worldMouse.x,
+      mouseY: worldMouse.y,
+    });
+
+    console.log("Flash request sent successfully");
+    return true; // Successfully initiated flash
+  }
+
   // Projectile management
   updateProjectiles(deltaTime: number) {
     this.projectileInstances.forEach((projectile, id) => {
@@ -321,6 +350,30 @@ export class GameStore {
 
   get isMissileReady() {
     return this.missileCooldowRemaining === 0;
+  }
+
+  // Flash cooldown properties
+  get flashCooldownRemaining() {
+    const player = this.gameState.players[this.playerId];
+    if (!player) return 0;
+
+    const currentTime = Date.now();
+    const flashCooldown = player.flashCooldown || 5000;
+    const lastFlashTime = player.lastFlashTime || 0;
+    const remaining = flashCooldown - (currentTime - lastFlashTime);
+    return Math.max(0, remaining);
+  }
+
+  get flashCooldownPercent() {
+    const player = this.gameState.players[this.playerId];
+    if (!player) return 1;
+
+    const flashCooldown = player.flashCooldown || 5000;
+    return 1 - this.flashCooldownRemaining / flashCooldown;
+  }
+
+  get isFlashReady() {
+    return this.flashCooldownRemaining === 0;
   }
 
   // Helper methods

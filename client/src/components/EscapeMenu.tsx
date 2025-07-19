@@ -183,6 +183,10 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
                 Secondary Fire (Missiles)
               </div>
               <div className="control-key">
+                <strong>F</strong>
+                Flash Teleport
+              </div>
+              <div className="control-key">
                 <strong>Escape</strong>
                 Menu
               </div>

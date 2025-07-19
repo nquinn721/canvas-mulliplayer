@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import "./HomeMenu.css";
 
 interface HomeMenuProps {
@@ -12,7 +12,17 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<
     "EASY" | "MEDIUM" | "HARD"
   >("MEDIUM");
-  const [playerName, setPlayerName] = useState("");
+  const [playerName, setPlayerName] = useState(() => {
+    // Initialize from localStorage or empty string
+    return localStorage.getItem("canvas-multiplayer-player-name") || "";
+  });
+
+  // Save player name to localStorage whenever it changes
+  useEffect(() => {
+    if (playerName.trim()) {
+      localStorage.setItem("canvas-multiplayer-player-name", playerName.trim());
+    }
+  }, [playerName]);
 
   const difficultyDescriptions = {
     EASY: {
@@ -148,6 +158,7 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
                   <div className="feature-item">🚀 Homing Missiles</div>
                   <div className="feature-item">🛡️ Shield System</div>
                   <div className="feature-item">💨 Boost & Strafe</div>
+                  <div className="feature-item">⚡ Flash Teleport</div>
                   <div className="feature-item">🎯 Smart AI Enemies</div>
                   <div className="feature-item">⭐ Power-ups</div>
                 </div>
@@ -166,6 +177,9 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
                   </div>
                   <div className="control-item">
                     <strong>Space Bar</strong> - Fire Missile
+                  </div>
+                  <div className="control-item">
+                    <strong>F</strong> - Flash Teleport
                   </div>
                   <div className="control-item">
                     <strong>Shift</strong> - Boost speed

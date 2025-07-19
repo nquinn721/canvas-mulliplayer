@@ -394,6 +394,48 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.players.set(client.id, player);
   }
 
+  @SubscribeMessage("flash")
+  handleFlash(
+    @MessageBody() data: { mouseX: number; mouseY: number },
+    @ConnectedSocket() client: Socket
+  ) {
+    const player = this.players.get(client.id);
+    if (!player) return;
+
+    const currentTime = Date.now();
+
+    // Check if flash is available
+    if (!player.canFlash(currentTime)) {
+      return; // Still on cooldown
+    }
+
+    const originalX = player.x;
+    const originalY = player.y;
+
+    // Perform the flash teleportation
+    const flashSuccessful = player.flashTeleport(
+      data.mouseX,
+      data.mouseY,
+      this.WORLD_WIDTH,
+      this.WORLD_HEIGHT,
+      (x, y, radius) => this.checkWallCollision(x, y, radius)
+    );
+
+    if (flashSuccessful) {
+      // Update player in the map
+      this.players.set(client.id, player);
+
+      // Emit flash completed event with positions for particle effects
+      this.server.emit("flashCompleted", {
+        playerId: client.id,
+        fromX: originalX,
+        fromY: originalY,
+        toX: player.x,
+        toY: player.y,
+      });
+    }
+  }
+
   @SubscribeMessage("changeAIDifficulty")
   handleChangeAIDifficulty(
     @MessageBody() data: { difficulty: "EASY" | "MEDIUM" | "HARD" },
@@ -624,6 +666,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
               player.applyLaserUpgrade();
             } else if (powerUp.type === PowerUpType.MISSILE_UPGRADE) {
               player.applyMissileUpgrade();
+            } else if (powerUp.type === PowerUpType.FLASH_UPGRADE) {
+              player.applyFlashUpgrade();
             } else if (powerUp.type === PowerUpType.HEALTH_PICKUP) {
               player.heal(50); // Heal 50 health points
             } else if (powerUp.type === PowerUpType.SHIELD_PICKUP) {
@@ -721,6 +765,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
               aiEnemy.applyLaserUpgrade();
             } else if (powerUp.type === PowerUpType.MISSILE_UPGRADE) {
               aiEnemy.applyMissileUpgrade();
+            } else if (powerUp.type === PowerUpType.FLASH_UPGRADE) {
+              aiEnemy.applyFlashUpgrade();
             } else if (powerUp.type === PowerUpType.HEALTH_PICKUP) {
               aiEnemy.heal(50); // Heal 50 health points
             } else if (powerUp.type === PowerUpType.SHIELD_PICKUP) {
@@ -924,16 +970,18 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
 
     const powerUpId = `powerup_${this.powerUpIdCounter++}`;
-    // Randomly choose between all power-up types (20% each)
+    // Randomly choose between all power-up types (~16.67% each)
     const randomValue = Math.random();
     let powerUpType: PowerUpType;
-    if (randomValue < 0.2) {
+    if (randomValue < 0.167) {
       powerUpType = PowerUpType.BOOST_UPGRADE;
-    } else if (randomValue < 0.4) {
+    } else if (randomValue < 0.334) {
       powerUpType = PowerUpType.LASER_UPGRADE;
-    } else if (randomValue < 0.6) {
+    } else if (randomValue < 0.501) {
       powerUpType = PowerUpType.MISSILE_UPGRADE;
-    } else if (randomValue < 0.8) {
+    } else if (randomValue < 0.668) {
+      powerUpType = PowerUpType.FLASH_UPGRADE;
+    } else if (randomValue < 0.834) {
       powerUpType = PowerUpType.HEALTH_PICKUP;
     } else {
       powerUpType = PowerUpType.SHIELD_PICKUP;

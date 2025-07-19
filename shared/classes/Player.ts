@@ -46,6 +46,9 @@ export class Player {
   public hasShield: boolean; // Whether player currently has a shield
   public experience: number; // Total experience points
   public level: number; // Player level based on experience
+  public flashUpgradeLevel: number; // Flash ability upgrade level
+  public lastFlashTime: number; // Last time flash was used
+  public flashCooldown: number; // Flash cooldown duration in milliseconds
 
   constructor(
     id: string,
@@ -89,6 +92,9 @@ export class Player {
     this.hasShield = false;
     this.experience = 0;
     this.level = 1;
+    this.flashUpgradeLevel = 1; // Start at level 1
+    this.lastFlashTime = 0;
+    this.flashCooldown = 5000; // 5 second cooldown
   }
 
   // Update player position with bounds checking
@@ -300,6 +306,143 @@ export class Player {
   // Check if player has missile upgrade active
   hasMissileUpgrade(): boolean {
     return this.missileUpgradeLevel > 1; // Removed expiration check
+  }
+
+  // Apply flash upgrade
+  applyFlashUpgrade(): void {
+    this.flashUpgradeLevel = Math.min(5, this.flashUpgradeLevel + 1); // Max level 5
+    this.addExperience(10); // 10 XP for upgrade
+  }
+
+  // Check if player has flash upgrade active
+  hasFlashUpgrade(): boolean {
+    return this.flashUpgradeLevel > 1;
+  }
+
+  // Check if flash is available (not on cooldown)
+  canFlash(currentTime: number): boolean {
+    return currentTime - this.lastFlashTime >= this.flashCooldown;
+  }
+
+  // Get flash cooldown remaining time
+  getFlashCooldownRemaining(currentTime: number): number {
+    const remaining = this.flashCooldown - (currentTime - this.lastFlashTime);
+    return Math.max(0, remaining);
+  }
+
+  // Get flash cooldown percentage (0 = ready, 1 = just used)
+  getFlashCooldownPercent(currentTime: number): number {
+    const elapsed = currentTime - this.lastFlashTime;
+    return Math.max(0, Math.min(1, 1 - elapsed / this.flashCooldown));
+  }
+
+  // Get flash stats based on upgrade level
+  getFlashStats(): {
+    distance: number;
+    cooldown: number;
+  } {
+    const baseDistance = 500;
+    const baseCooldown = 5000;
+
+    // Level 1 is the base level
+    if (this.flashUpgradeLevel <= 1) {
+      return {
+        distance: baseDistance,
+        cooldown: baseCooldown,
+      };
+    }
+
+    // For levels 2+, each level increases distance by 20% and reduces cooldown by 10%
+    const levelAboveBase = this.flashUpgradeLevel - 1;
+    const distanceMultiplier = 1 + levelAboveBase * 0.2;
+    const cooldownMultiplier = 1 - levelAboveBase * 0.1;
+
+    return {
+      distance: Math.floor(baseDistance * distanceMultiplier),
+      cooldown: Math.floor(baseCooldown * cooldownMultiplier),
+    };
+  }
+
+  // Perform flash teleportation
+  flashTeleport(
+    mouseX: number,
+    mouseY: number,
+    worldWidth: number,
+    worldHeight: number,
+    checkWallCollision?: (x: number, y: number, radius: number) => boolean
+  ): { x: number; y: number; success: boolean } {
+    const currentTime = Date.now();
+
+    // Check if flash is on cooldown
+    if (!this.canFlash(currentTime)) {
+      return { x: this.x, y: this.y, success: false };
+    }
+
+    const flashStats = this.getFlashStats();
+
+    // Calculate direction to mouse
+    const directionToMouse = Math.atan2(mouseY - this.y, mouseX - this.x);
+
+    // Calculate target position
+    let targetX = this.x + Math.cos(directionToMouse) * flashStats.distance;
+    let targetY = this.y + Math.sin(directionToMouse) * flashStats.distance;
+
+    // Clamp to world bounds
+    targetX = Math.max(
+      this.radius,
+      Math.min(worldWidth - this.radius, targetX)
+    );
+    targetY = Math.max(
+      this.radius,
+      Math.min(worldHeight - this.radius, targetY)
+    );
+
+    // Check for wall collision at target position
+    if (
+      checkWallCollision &&
+      checkWallCollision(targetX, targetY, this.radius)
+    ) {
+      // Try to find a valid position by reducing distance gradually
+      for (
+        let distance = flashStats.distance * 0.8;
+        distance > 100;
+        distance -= 50
+      ) {
+        const testX = this.x + Math.cos(directionToMouse) * distance;
+        const testY = this.y + Math.sin(directionToMouse) * distance;
+
+        // Clamp to world bounds
+        const clampedX = Math.max(
+          this.radius,
+          Math.min(worldWidth - this.radius, testX)
+        );
+        const clampedY = Math.max(
+          this.radius,
+          Math.min(worldHeight - this.radius, testY)
+        );
+
+        if (!checkWallCollision(clampedX, clampedY, this.radius)) {
+          targetX = clampedX;
+          targetY = clampedY;
+          break;
+        }
+      }
+
+      // If still colliding, flash fails
+      if (checkWallCollision(targetX, targetY, this.radius)) {
+        return { x: this.x, y: this.y, success: false };
+      }
+    }
+
+    // Update last flash time and cooldown
+    this.lastFlashTime = currentTime;
+    this.flashCooldown = flashStats.cooldown;
+
+    // Teleport to target position
+    this.x = targetX;
+    this.y = targetY;
+
+    return { x: targetX, y: targetY, success: true };
   }
 
   // Update roll animation
