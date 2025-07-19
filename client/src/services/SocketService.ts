@@ -11,15 +11,28 @@ export class SocketService {
     this.gameStore = gameStore;
   }
 
-  connect(url: string = "http://localhost:3001") {
+  connect(url?: string) {
     if (this.socket?.connected) {
       console.log("Already connected to server");
       return;
     }
 
-    this.socket = io(url);
+    // Automatically determine server URL based on environment
+    const serverUrl = url || this.getServerUrl();
+
+    this.socket = io(serverUrl);
     this.gameStore.setSocket(this.socket);
     this.setupEventListeners();
+  }
+
+  private getServerUrl(): string {
+    // In production, use the same domain as the client
+    if (window.location.hostname !== 'localhost') {
+      return `${window.location.protocol}//${window.location.host}`;
+    }
+    
+    // In development, use the local server
+    return "http://localhost:3001";
   }
 
   private setupEventListeners() {

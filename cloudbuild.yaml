@@ -1,0 +1,47 @@
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-t', 'gcr.io/$PROJECT_ID/canvas-multiplayer:$COMMIT_SHA',
+      '-t', 'gcr.io/$PROJECT_ID/canvas-multiplayer:latest',
+      '.'
+    ]
+
+  # Push the image to Google Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/canvas-multiplayer:$COMMIT_SHA']
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/canvas-multiplayer:latest']
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args: [
+      'run', 'deploy', 'canvas-multiplayer',
+      '--image=gcr.io/$PROJECT_ID/canvas-multiplayer:$COMMIT_SHA',
+      '--region=us-central1',
+      '--platform=managed',
+      '--allow-unauthenticated',
+      '--memory=1Gi',
+      '--cpu=1',
+      '--max-instances=10',
+      '--min-instances=0',
+      '--concurrency=80',
+      '--timeout=3600',
+      '--set-env-vars=NODE_ENV=production'
+    ]
+
+# Store images in Google Container Registry
+images:
+  - 'gcr.io/$PROJECT_ID/canvas-multiplayer:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/canvas-multiplayer:latest'
+
+# Build configuration
+options:
+  machineType: 'E2_HIGHCPU_8'
+  diskSizeGb: 100
+  
+# Timeout for the entire build
+timeout: '1200s'
