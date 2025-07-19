@@ -369,10 +369,10 @@ export class SoundService {
 
   setMuted(muted: boolean): void {
     const wasPlaying = this.isBackgroundMusicPlaying();
-    
+
     this.isMuted = muted;
     this.saveMuteState(); // Save to localStorage
-    
+
     if (muted) {
       this.stopBackgroundMusic();
       this.stopAllContinuousSounds();

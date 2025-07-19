@@ -179,6 +179,54 @@ export class SocketService {
       }
     );
 
+    // Star event listeners
+    this.socket.on(
+      "starSpawned",
+      (data: { starId: string; x: number; y: number; lifespan: number }) => {
+        console.log(`Star ${data.starId} spawned at (${data.x}, ${data.y})`);
+        // Stars are handled through gameState updates, no need for special action
+      }
+    );
+
+    this.socket.on(
+      "starExplosion",
+      (data: {
+        starId: string;
+        x: number;
+        y: number;
+        radius: number;
+        damage: number;
+      }) => {
+        console.log(`Star ${data.starId} exploded with ${data.damage} damage!`);
+        // Play explosion sound
+        soundService.playSound("explosion", 0.6);
+
+        // Add explosion particles if needed
+        // You could add visual effects here
+      }
+    );
+
+    this.socket.on(
+      "starDamage",
+      (data: {
+        starId: string;
+        playerId: string;
+        damage: number;
+        x: number;
+        y: number;
+      }) => {
+        if (data.playerId === this.gameStore.playerId) {
+          console.log(`You took ${data.damage} damage from star explosion!`);
+          // Could add screen shake or damage indicator
+        }
+      }
+    );
+
+    this.socket.on("starExpired", (starId: string) => {
+      console.log(`Star ${starId} expired`);
+      // Stars are removed through gameState updates
+    });
+
     // Error handling
     this.socket.on("connect_error", (error) => {
       console.error("Connection error:", error);

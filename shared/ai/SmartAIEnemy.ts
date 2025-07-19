@@ -1,19 +1,20 @@
 import { AIEnemy } from "../classes/AIEnemy";
 import {
-  BehaviorNode,
+  AttackNearestEnemyNode,
   BehaviorContext,
+  BehaviorNode,
   BehaviorResult,
-  SelectorNode,
-  SequenceNode,
+  DifficultyProfile,
+  DifficultyProfiles,
+  FleeFromEnemyNode,
   IsEnemyNearbyNode,
   IsHealthLowNode,
   IsPowerUpNearbyNode,
-  AttackNearestEnemyNode,
-  FleeFromEnemyNode,
-  SeekPowerUpNode,
   PatrolNode,
-  DifficultyProfile,
-  DifficultyProfiles
+  PursueNearestEnemyNode,
+  SeekPowerUpNode,
+  SelectorNode,
+  SequenceNode,
 } from "./BehaviorTree";
 
 export class SmartAIEnemy extends AIEnemy {
@@ -24,6 +25,8 @@ export class SmartAIEnemy extends AIEnemy {
   private shouldShootLaser: boolean = false;
   private shouldShootMissile: boolean = false;
   private lastDebugLogTime: number = 0;
+  public isInPursuit: boolean = false; // Used by behavior tree to override patrol limits
+  public aggroTarget: any = null; // Current target being pursued/attacked
 
   constructor(
     id: string,
@@ -33,10 +36,10 @@ export class SmartAIEnemy extends AIEnemy {
     color: string = "#ff4444"
   ) {
     super(id, x, y, color);
-    
+
     this.difficultyProfile = DifficultyProfiles[difficulty];
     this.behaviorTree = this.createBehaviorTree();
-    
+
     // Adjust AI stats based on difficulty
     this.adjustStatsForDifficulty();
   }
@@ -48,42 +51,46 @@ export class SmartAIEnemy extends AIEnemy {
     // Selector (choose one that succeeds)
     //   ├── Sequence: If health low → Flee
     //   ├── Sequence: If enemy nearby → Attack
-    //   ├── Sequence: If power-up nearby → Seek power-up  
+    //   ├── Sequence: If enemy detected but far → Pursue
+    //   ├── Sequence: If power-up nearby → Seek power-up
     //   └── Patrol (default behavior)
 
     return new SelectorNode([
       // Survival behavior: Flee when health is low
       new SequenceNode([
         new IsHealthLowNode(profile.fleeThreshold),
-        new FleeFromEnemyNode()
+        new FleeFromEnemyNode(),
       ]),
 
       // Combat behavior: Attack nearby enemies
       new SequenceNode([
         new IsEnemyNearbyNode(profile.combatRange),
-        new AttackNearestEnemyNode(profile.combatRange, profile.level)
+        new AttackNearestEnemyNode(profile.combatRange, profile.level),
+      ]),
+
+      // Pursuit behavior: Chase distant enemies (larger detection range)
+      new SequenceNode([
+        new IsEnemyNearbyNode(profile.combatRange * 3), // 3x combat range for detection
+        new PursueNearestEnemyNode(profile.combatRange * 3),
       ]),
 
       // Utility behavior: Seek power-ups (only if not too aggressive)
-      new SequenceNode([
-        new IsPowerUpNearbyNode(200),
-        new SeekPowerUpNode()
-      ]),
+      new SequenceNode([new IsPowerUpNearbyNode(200), new SeekPowerUpNode()]),
 
       // Default behavior: Patrol
-      new PatrolNode(profile.level)
+      new PatrolNode(profile.level),
     ]);
   }
 
   private adjustStatsForDifficulty(): void {
     const profile = this.difficultyProfile;
-    
+
     // Adjust shooting cooldown based on difficulty
     this.shootCooldown = 3000 + (1 - profile.level) * 2000; // 3-5 seconds
-    
+
     // Adjust detection range
     this.detectionRange = profile.combatRange;
-    
+
     // Adjust speed slightly (easier AI moves a bit slower)
     this.speed = 200 + profile.level * 50; // 200-250 speed
   }
@@ -110,19 +117,17 @@ export class SmartAIEnemy extends AIEnemy {
       worldHeight,
       deltaTime,
       currentTime: Date.now(),
-      checkWallCollision
+      checkWallCollision,
     };
 
     // Execute behavior tree
     const treeResult = this.behaviorTree.execute(context);
-    
-    // Debug logging disabled for cleaner console output
-    // Uncomment the following lines if you need to debug AI behavior:
-    // const now = Date.now();
-    // if (now - this.lastDebugLogTime > 5000) {
-    //   console.log(`AI ${this.id} behavior tree result: ${treeResult}, flags: laser=${this.shouldShootLaser}, missile=${this.shouldShootMissile}`);
-    //   this.lastDebugLogTime = now;
-    // }
+
+    // Reset pursuit state if not actively pursuing
+    if (treeResult !== BehaviorResult.RUNNING || !this.isInPursuit) {
+      this.isInPursuit = false;
+      this.aggroTarget = null;
+    }
 
     // Handle shooting actions determined by behavior tree
     this.handleShooting();
@@ -154,13 +159,17 @@ export class SmartAIEnemy extends AIEnemy {
     const currentTime = Date.now();
 
     // Change direction periodically
-    if (currentTime - this.changeDirectionTime >= this.directionChangeInterval) {
+    if (
+      currentTime - this.changeDirectionTime >=
+      this.directionChangeInterval
+    ) {
       this.changeDirection(players, powerUps);
       this.changeDirectionTime = currentTime;
     }
 
     // AI boost logic - only use boost when it's full and in combat
-    const shouldUseBoost = this.boostEnergy >= this.maxBoostEnergy && this.aggroTarget;
+    const shouldUseBoost =
+      this.boostEnergy >= this.maxBoostEnergy && this.aggroTarget;
 
     if (shouldUseBoost && this.canUseBoost()) {
       this.activateBoost();
@@ -178,15 +187,15 @@ export class SmartAIEnemy extends AIEnemy {
     const moveX = Math.cos(this.currentMoveAngle) * moveSpeed;
     const moveY = Math.sin(this.currentMoveAngle) * moveSpeed;
 
-    // Check patrol radius before moving
+    // Check patrol radius before moving (unless in pursuit mode)
     const newX = this.x + moveX;
     const newY = this.y + moveY;
     const distanceFromSpawn = Math.sqrt(
       (newX - this.spawnX) ** 2 + (newY - this.spawnY) ** 2
     );
 
-    // Only move if within patrol radius, otherwise turn around
-    if (distanceFromSpawn <= this.patrolRadius) {
+    // Move if within patrol radius OR if in pursuit mode
+    if (distanceFromSpawn <= this.patrolRadius || this.isInPursuit) {
       this.updatePosition(
         moveX,
         moveY,
@@ -195,7 +204,7 @@ export class SmartAIEnemy extends AIEnemy {
         checkWallCollision
       );
     } else {
-      // Turn around if hitting patrol limit
+      // Turn around if hitting patrol limit (only when not pursuing)
       this.currentMoveAngle += Math.PI + (Math.random() - 0.5) * 0.5;
     }
 
@@ -209,7 +218,7 @@ export class SmartAIEnemy extends AIEnemy {
 
   private handleShooting(): void {
     const now = Date.now();
-    
+
     // Check cooldown
     if (now - this.lastShootTime < this.shootCooldown) {
       return;
@@ -238,12 +247,12 @@ export class SmartAIEnemy extends AIEnemy {
       this.shouldShootLaser = false;
       return { weapon: "laser", angle: this.angle };
     }
-    
+
     if (this.shouldShootMissile) {
       this.shouldShootMissile = false;
       return { weapon: "missile", angle: this.angle };
     }
-    
+
     return null;
   }
 

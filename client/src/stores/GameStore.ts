@@ -58,8 +58,10 @@ export class GameStore {
   // World constants
   readonly WORLD_WIDTH = 5000;
   readonly WORLD_HEIGHT = 5000;
-  readonly CANVAS_WIDTH = Math.max(600, window.innerWidth - 360); // 320 controls + 40 padding, min 600px
-  readonly CANVAS_HEIGHT = Math.max(400, window.innerHeight - 90); // 50 header + 40 padding, min 400px
+
+  // Canvas dimensions (dynamic, updates with window resize)
+  CANVAS_WIDTH = window.innerWidth;
+  CANVAS_HEIGHT = window.innerHeight - 50; // Account for header
 
   constructor() {
     makeAutoObservable(this);
@@ -76,6 +78,15 @@ export class GameStore {
   // Actions for updating state
   setSocket(socket: Socket) {
     this.socket = socket;
+  }
+
+  // Update canvas dimensions when window resizes
+  updateCanvasDimensions(width: number, height: number) {
+    this.CANVAS_WIDTH = width;
+    this.CANVAS_HEIGHT = height;
+    // Update camera dimensions as well
+    this.camera.viewportWidth = width;
+    this.camera.viewportHeight = height;
   }
 
   setPlayerId(id: string) {

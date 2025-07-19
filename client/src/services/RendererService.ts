@@ -915,20 +915,31 @@ export class RendererService {
   }
 
   private drawStars() {
+    const totalStars = this.gameStore.gameState.stars?.length || 0;
+    let visibleStars = 0;
+    let explodingStars = 0;
+
     this.gameStore.gameState.stars?.forEach((star: any) => {
       this.ctx.save();
 
       // Check if star is in view
       const isInView = this.gameStore.camera.isInView(
-        star.x,
-        star.y,
-        star.explosionRadius + 20
+        {
+          x: star.x - star.explosionRadius,
+          y: star.y - star.explosionRadius,
+          width: star.explosionRadius * 2,
+          height: star.explosionRadius * 2,
+        },
+        20 // padding
       );
 
       if (!isInView) {
         this.ctx.restore();
         return;
       }
+
+      visibleStars++;
+      if (star.isExploding) explodingStars++;
 
       this.ctx.translate(star.x, star.y);
 
@@ -938,46 +949,40 @@ export class RendererService {
           (Date.now() - star.explosionStartTime) / star.explosionDuration;
         const explosionRadius = star.explosionRadius * progress;
 
-        // Outer explosion ring
-        this.ctx.globalAlpha = 0.6 * (1 - progress);
+        // Reset any previous canvas state
+        this.ctx.shadowColor = "transparent";
+        this.ctx.shadowBlur = 0;
+        this.ctx.globalCompositeOperation = "source-over";
+
+        // Make explosion MUCH more visible
+        const baseRadius = Math.max(explosionRadius, 50); // Minimum 50px radius
+
+        // Massive outer explosion ring (bright yellow)
+        this.ctx.globalAlpha = Math.max(0.8 * (1 - progress), 0.3);
         this.ctx.fillStyle = "#ffff00";
         this.ctx.shadowColor = "#ffff00";
-        this.ctx.shadowBlur = 20;
+        this.ctx.shadowBlur = 40;
         this.ctx.beginPath();
-        this.ctx.arc(0, 0, explosionRadius, 0, Math.PI * 2);
+        this.ctx.arc(0, 0, baseRadius * 1.5, 0, Math.PI * 2);
         this.ctx.fill();
 
-        // Inner explosion core
-        this.ctx.globalAlpha = 0.8 * (1 - progress);
+        // Bright white core
+        this.ctx.globalAlpha = Math.max(0.9 * (1 - progress), 0.4);
         this.ctx.fillStyle = "#ffffff";
+        this.ctx.shadowColor = "#ffffff";
+        this.ctx.shadowBlur = 50;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Red outer ring for contrast
+        this.ctx.globalAlpha = Math.max(0.6 * (1 - progress), 0.2);
+        this.ctx.fillStyle = "#ff4400";
+        this.ctx.shadowColor = "#ff4400";
         this.ctx.shadowBlur = 30;
         this.ctx.beginPath();
-        this.ctx.arc(0, 0, explosionRadius * 0.6, 0, Math.PI * 2);
+        this.ctx.arc(0, 0, baseRadius * 2, 0, Math.PI * 2);
         this.ctx.fill();
-
-        // Explosion shockwave
-        this.ctx.globalAlpha = 0.4 * (1 - progress);
-        this.ctx.strokeStyle = "#ff8800";
-        this.ctx.lineWidth = 4;
-        this.ctx.shadowBlur = 15;
-        this.ctx.beginPath();
-        this.ctx.arc(0, 0, explosionRadius * 0.8, 0, Math.PI * 2);
-        this.ctx.stroke();
-
-        // Add explosion particles
-        for (let i = 0; i < 8; i++) {
-          const angle = (i / 8) * Math.PI * 2;
-          const distance = explosionRadius * 0.9;
-          const x = Math.cos(angle) * distance;
-          const y = Math.sin(angle) * distance;
-
-          this.ctx.globalAlpha = 0.7 * (1 - progress);
-          this.ctx.fillStyle = i % 2 === 0 ? "#ffaa00" : "#ff6600";
-          this.ctx.shadowBlur = 10;
-          this.ctx.beginPath();
-          this.ctx.arc(x, y, 3, 0, Math.PI * 2);
-          this.ctx.fill();
-        }
       } else {
         // Draw normal star
         const timeUntilExplosion =

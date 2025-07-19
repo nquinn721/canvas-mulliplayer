@@ -1,10 +1,12 @@
 /* Game layout styles */
 .game-container {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   width: 100vw;
   background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
 }
 
 .game-header {
@@ -25,6 +27,46 @@
 .header-status {
   display: flex;
   align-items: center;
+  gap: 20px;
+}
+
+.status-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status-label {
+  color: #888;
+  font-weight: 500;
+}
+
+.status-value {
+  color: #4ade80;
+  font-weight: bold;
+  min-width: 20px;
+  text-align: center;
+}
+
+.status-indicator {
+  color: #888;
+  font-size: 12px;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.esc-hint {
+  color: #888;
+  font-size: 11px;
+  font-style: italic;
+  opacity: 0.8;
 }
 
 .game-title {
@@ -42,34 +84,21 @@
 }
 
 .game-main-fullscreen {
-  display: flex;
-  width: 100%;
-  height: 100vh;
-  padding-top: 50px; /* Account for header height */
-  align-items: center;
-  justify-content: center;
-  background: #0a0a0a;
-}
-
-.canvas-container {
   flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: #0a0a0a;
-  min-width: 0; /* Allow flex item to shrink */
   width: 100%;
-  height: 100%;
+  background: #0a0a0a;
+  overflow: hidden;
 }
 
 .game-canvas {
-  border: 2px solid #333;
-  border-radius: 8px;
+  width: 100%;
+  height: 100%;
   cursor: crosshair;
   background-color: #000;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   display: block;
+  border: none;
+  outline: none;
 }
 
 .controls-panel {

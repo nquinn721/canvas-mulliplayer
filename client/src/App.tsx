@@ -1,10 +1,10 @@
 import { observer } from "mobx-react-lite";
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
+import EscapeMenu from "./components/EscapeMenu";
 import { Game } from "./game/Game";
 import { soundService } from "./services/SoundService";
 import { GameStore } from "./stores/GameStore";
-import EscapeMenu from "./components/EscapeMenu";
 
 const App = observer(() => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -24,15 +24,9 @@ const App = observer(() => {
   const [isEscapeMenuOpen, setIsEscapeMenuOpen] = useState(false); // Escape menu state
   const [canvasDimensions, setCanvasDimensions] = useState(() => {
     const HEADER_HEIGHT = 50;
-    const PADDING = 40;
-    const MIN_WIDTH = 600;
-    const MIN_HEIGHT = 400;
     return {
-      width: Math.max(MIN_WIDTH, window.innerWidth - PADDING),
-      height: Math.max(
-        MIN_HEIGHT,
-        window.innerHeight - HEADER_HEIGHT - PADDING
-      ),
+      width: window.innerWidth,
+      height: window.innerHeight - HEADER_HEIGHT,
     };
   });
 
@@ -40,17 +34,8 @@ const App = observer(() => {
   useEffect(() => {
     const handleResize = () => {
       const HEADER_HEIGHT = 50;
-      const PADDING = 40;
-      const MIN_WIDTH = 600;
-      const MIN_HEIGHT = 400;
-      const newWidth = Math.max(
-        MIN_WIDTH,
-        window.innerWidth - PADDING
-      );
-      const newHeight = Math.max(
-        MIN_HEIGHT,
-        window.innerHeight - HEADER_HEIGHT - PADDING
-      );
+      const newWidth = window.innerWidth;
+      const newHeight = window.innerHeight - HEADER_HEIGHT;
       setCanvasDimensions({ width: newWidth, height: newHeight });
     };
 
@@ -61,14 +46,24 @@ const App = observer(() => {
   // Handle escape key for menu
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsEscapeMenuOpen(prev => !prev);
+      if (event.key === "Escape") {
+        setIsEscapeMenuOpen((prev) => !prev);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  // Update GameStore canvas dimensions when they change
+  useEffect(() => {
+    if (gameStore) {
+      gameStore.updateCanvasDimensions(
+        canvasDimensions.width,
+        canvasDimensions.height
+      );
+    }
+  }, [canvasDimensions, gameStore]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -132,10 +127,22 @@ const App = observer(() => {
       <header className="game-header">
         <h1 className="game-title">🎮 Canvas Multiplayer</h1>
         <div className="header-status">
-          <div style={{ fontSize: "12px", color: "#888" }}>
-            {gameStore?.isConnected ? "🟢 Online" : "🔴 Offline"}
+          <div className="status-group">
+            <span className="status-label">Players:</span>
+            <span className="status-value">
+              {Object.keys(gameStore?.gameState?.players || {}).length}
+            </span>
           </div>
-          <div style={{ fontSize: "12px", color: "#888", marginLeft: "20px" }}>
+          <div className="status-group">
+            <span className="status-label">FPS:</span>
+            <span className="status-value">{gameStore?.stats?.fps || 0}</span>
+          </div>
+          <div className="status-group">
+            <span className="status-indicator">
+              {gameStore?.isConnected ? "🟢 Online" : "🔴 Offline"}
+            </span>
+          </div>
+          <div className="esc-hint">
             Press <strong>ESC</strong> for menu
           </div>
         </div>

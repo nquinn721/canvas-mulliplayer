@@ -59,7 +59,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private lastMeteorSpawn = Date.now();
   private meteorSpawnInterval = 8000; // 8 seconds
   private lastStarSpawn = Date.now();
-  private starSpawnInterval = 20000; // 20 seconds
+  private starSpawnInterval = 20000; // 20 seconds (normal gameplay)
 
   // World bounds
   private readonly WORLD_WIDTH = 5000;
