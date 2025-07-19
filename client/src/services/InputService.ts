@@ -101,7 +101,7 @@ export class InputService {
   private handleMouseDown = (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation(); // Prevent event bubbling that could trigger focus changes
-    
+
     if (e.button === 0) {
       // Left mouse button - laser
       this.gameStore.setMouseDown(true);

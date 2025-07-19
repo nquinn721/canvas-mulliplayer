@@ -1,4 +1,15 @@
+import {
+  faBolt,
+  faCog,
+  faGamepad,
+  faGun,
+  faRobot,
+  faRocket,
+  faTimes,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useEffect, useState } from "react";
+import BackgroundCanvas from "./BackgroundCanvas";
 import "./HomeMenu.css";
 
 interface HomeMenuProps {
@@ -16,6 +27,7 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
     // Initialize from localStorage or empty string
     return localStorage.getItem("canvas-multiplayer-player-name") || "";
   });
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // Save player name to localStorage whenever it changes
   useEffect(() => {
@@ -44,30 +56,41 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
 
   return (
     <div className="home-menu">
+      <BackgroundCanvas />
+
       <div className="stars-background">
-        {Array.from({ length: 50 }).map((_, i) => (
+        {Array.from({ length: 30 }).map((_, i) => (
           <div
             key={i}
             className="star"
             style={{
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`,
-              animationDuration: `${2 + Math.random() * 4}s`,
+              animationDelay: `${Math.random() * 4}s`,
+              animationDuration: `${3 + Math.random() * 6}s`,
             }}
           />
         ))}
       </div>
 
+      {/* Settings Cog Button */}
+      <button
+        className="settings-cog"
+        onClick={() => setShowSettingsModal(true)}
+        title="Game Settings & Controls"
+      >
+        <FontAwesomeIcon icon={faCog} />
+      </button>
+
       <div className="home-content">
         <header className="home-header">
           <h1 className="game-logo">
-            <span className="logo-icon">🚀</span>
+            <span className="logo-icon">
+              <FontAwesomeIcon icon={faRocket} />
+            </span>
             Canvas Multiplayer
           </h1>
-          <p className="game-subtitle">
-            Battle in space with lasers, missiles, and AI enemies!
-          </p>
+          <p className="game-subtitle">Space Combat Game</p>
         </header>
 
         <div className="game-setup">
@@ -92,7 +115,7 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
           </div>
 
           <div className="setup-section">
-            <label className="setup-label">AI Difficulty</label>
+            <label className="setup-label">Difficulty</label>
             <div className="difficulty-selector">
               {(
                 Object.keys(difficultyDescriptions) as Array<
@@ -103,98 +126,10 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
                   key={difficulty}
                   className={`difficulty-button ${selectedDifficulty === difficulty ? "selected" : ""}`}
                   onClick={() => setSelectedDifficulty(difficulty)}
-                  style={{
-                    borderColor:
-                      selectedDifficulty === difficulty
-                        ? difficultyDescriptions[difficulty].color
-                        : "transparent",
-                  }}
                 >
-                  <div className="difficulty-header">
-                    <span
-                      className="difficulty-dot"
-                      style={{
-                        backgroundColor:
-                          difficultyDescriptions[difficulty].color,
-                      }}
-                    />
-                    <span className="difficulty-name">{difficulty}</span>
-                  </div>
-                  <p className="difficulty-description">
-                    {difficultyDescriptions[difficulty].description}
-                  </p>
+                  <span className="difficulty-name">{difficulty}</span>
                 </button>
               ))}
-            </div>
-
-            <div className="difficulty-details">
-              <h4>
-                <span
-                  className="details-dot"
-                  style={{
-                    backgroundColor:
-                      difficultyDescriptions[selectedDifficulty].color,
-                  }}
-                />
-                {selectedDifficulty} Settings
-              </h4>
-              <ul className="difficulty-stats">
-                {difficultyDescriptions[selectedDifficulty].details.map(
-                  (detail, index) => (
-                    <li key={index}>{detail}</li>
-                  )
-                )}
-              </ul>
-            </div>
-          </div>
-
-          <div className="game-features">
-            <h3>🎮 Game Features & Controls</h3>
-            <div className="features-controls-grid">
-              <div className="features-section">
-                <h4>Features</h4>
-                <div className="features-list">
-                  <div className="feature-item">⚡ Laser Weapons</div>
-                  <div className="feature-item">🚀 Homing Missiles</div>
-                  <div className="feature-item">🛡️ Shield System</div>
-                  <div className="feature-item">💨 Boost & Strafe</div>
-                  <div className="feature-item">⚡ Flash Teleport</div>
-                  <div className="feature-item">🎯 Smart AI Enemies</div>
-                  <div className="feature-item">⭐ Power-ups</div>
-                </div>
-              </div>
-              <div className="controls-section">
-                <h4>Controls</h4>
-                <div className="controls-list">
-                  <div className="control-item">
-                    <strong>W/S</strong> - Move Forward/Backward
-                  </div>
-                  <div className="control-item">
-                    <strong>A/D</strong> - Slow Strafe Left/Right
-                  </div>
-                  <div className="control-item">
-                    <strong>Q/E</strong> - Fast Strafe Left/Right
-                  </div>
-                  <div className="control-item">
-                    <strong>Mouse</strong> - Aim direction
-                  </div>
-                  <div className="control-item">
-                    <strong>Left Click</strong> - Fire Laser
-                  </div>
-                  <div className="control-item">
-                    <strong>Right Click</strong> - Fire Missile
-                  </div>
-                  <div className="control-item">
-                    <strong>F</strong> - Flash Teleport
-                  </div>
-                  <div className="control-item">
-                    <strong>Shift</strong> - Boost speed
-                  </div>
-                  <div className="control-item">
-                    <strong>ESC</strong> - Game menu
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -203,11 +138,181 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
             onClick={() => onStartGame(playerName.trim(), selectedDifficulty)}
             disabled={!playerName.trim() || playerName.trim().length < 3}
           >
-            <span className="start-button-icon">🎮</span>
             Start Game
           </button>
         </div>
       </div>
+
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <div
+          className="modal-overlay"
+          onClick={() => setShowSettingsModal(false)}
+        >
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="modal-close"
+              onClick={() => setShowSettingsModal(false)}
+            >
+              <FontAwesomeIcon icon={faTimes} />
+            </button>
+
+            <div className="modal-header">
+              <h2>
+                <FontAwesomeIcon icon={faCog} /> Game Settings & Controls
+              </h2>
+            </div>
+
+            <div className="modal-body">
+              <div className="settings-section">
+                <h3>
+                  <FontAwesomeIcon icon={faRobot} /> AI Bot Difficulty Settings
+                </h3>
+                <div className="settings-grid">
+                  <div className="setting-item easy">
+                    <div className="setting-header">
+                      <span className="difficulty-dot easy-dot"></span>
+                      <strong>EASY</strong>
+                    </div>
+                    <ul>
+                      <li>Detection Range: 800px</li>
+                      <li>Accuracy: 60%</li>
+                      <li>Reaction Speed: Slow</li>
+                      <li>Aggression: Low</li>
+                    </ul>
+                  </div>
+
+                  <div className="setting-item medium">
+                    <div className="setting-header">
+                      <span className="difficulty-dot medium-dot"></span>
+                      <strong>MEDIUM</strong>
+                    </div>
+                    <ul>
+                      <li>Detection Range: 1200px</li>
+                      <li>Accuracy: 75%</li>
+                      <li>Reaction Speed: Normal</li>
+                      <li>Aggression: Balanced</li>
+                    </ul>
+                  </div>
+
+                  <div className="setting-item hard">
+                    <div className="setting-header">
+                      <span className="difficulty-dot hard-dot"></span>
+                      <strong>HARD</strong>
+                    </div>
+                    <ul>
+                      <li>Detection Range: 1600px</li>
+                      <li>Accuracy: 90%</li>
+                      <li>Reaction Speed: Fast</li>
+                      <li>Aggression: High</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="settings-section">
+                <h3>
+                  <FontAwesomeIcon icon={faRocket} /> Weapons & Combat Systems
+                </h3>
+                <div className="weapons-grid">
+                  <div className="weapon-item">
+                    <div className="weapon-header">
+                      <span className="weapon-icon">
+                        <FontAwesomeIcon icon={faGun} />
+                      </span>
+                      <strong>Laser Cannons</strong>
+                    </div>
+                    <p>
+                      Primary weapon with unlimited ammo. Fast firing rate,
+                      moderate damage.
+                    </p>
+                    <span className="weapon-key">Left Click</span>
+                  </div>
+
+                  <div className="weapon-item">
+                    <div className="weapon-header">
+                      <span className="weapon-icon">
+                        <FontAwesomeIcon icon={faRocket} />
+                      </span>
+                      <strong>Homing Missiles</strong>
+                    </div>
+                    <p>
+                      Heat-seeking missiles that track enemies. High damage,
+                      limited ammo.
+                    </p>
+                    <span className="weapon-key">Right Click</span>
+                  </div>
+
+                  <div className="weapon-item">
+                    <div className="weapon-header">
+                      <span className="weapon-icon">
+                        <FontAwesomeIcon icon={faBolt} />
+                      </span>
+                      <strong>Flash Teleport</strong>
+                    </div>
+                    <p>
+                      Instant teleportation ability. Cooldown-based defensive
+                      maneuver.
+                    </p>
+                    <span className="weapon-key">F Key</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="settings-section">
+                <h3>
+                  <FontAwesomeIcon icon={faGamepad} /> Flight Controls
+                </h3>
+                <div className="controls-grid">
+                  <div className="control-group">
+                    <h4>Movement Controls</h4>
+                    <div className="control-item">
+                      <span className="control-key">W / S</span>
+                      <span>Thrust Forward / Reverse</span>
+                    </div>
+                    <div className="control-item">
+                      <span className="control-key">A / D</span>
+                      <span>Precision Strafe Left / Right</span>
+                    </div>
+                    <div className="control-item">
+                      <span className="control-key">Q / E</span>
+                      <span>Combat Strafe Left / Right</span>
+                    </div>
+                    <div className="control-item">
+                      <span className="control-key">Shift</span>
+                      <span>Afterburner Boost</span>
+                    </div>
+                  </div>
+
+                  <div className="control-group">
+                    <h4>Combat Controls</h4>
+                    <div className="control-item">
+                      <span className="control-key">Mouse</span>
+                      <span>Target Acquisition & Aiming</span>
+                    </div>
+                    <div className="control-item">
+                      <span className="control-key">Left Click</span>
+                      <span>Fire Laser Cannons</span>
+                    </div>
+                    <div className="control-item">
+                      <span className="control-key">Right Click</span>
+                      <span>Launch Homing Missile</span>
+                    </div>
+                    <div className="control-item">
+                      <span className="control-key">F</span>
+                      <span>Flash Teleport</span>
+                    </div>
+                    <div className="control-item">
+                      <span className="control-key">ESC</span>
+                      <span>Tactical Pause Menu</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
