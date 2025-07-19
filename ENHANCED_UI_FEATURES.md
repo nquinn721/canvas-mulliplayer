@@ -20,7 +20,7 @@
 
 ### Fixed Missing Control
 
-- Added **Spacebar** control for secondary fire (missiles)
+- Added **Right Click** control for secondary fire (missiles)
 - Added **F Key** control for Flash teleport ability
 - Now shows all 8 controls:
   - W: Forward
@@ -131,7 +131,7 @@
 ### Controls
 
 - All controls now properly documented in sidebar
-- Spacebar for missile firing is now visible to players
+- Right click for missile firing is now visible to players
 - F key for Flash teleport ability is now documented
 - Flash ability requires power-up collection and has 5-second cooldown
 

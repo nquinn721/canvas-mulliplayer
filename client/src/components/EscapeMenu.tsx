@@ -179,7 +179,7 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
                 Boost
               </div>
               <div className="control-key">
-                <strong>Space</strong>
+                <strong>Right Click</strong>
                 Secondary Fire (Missiles)
               </div>
               <div className="control-key">

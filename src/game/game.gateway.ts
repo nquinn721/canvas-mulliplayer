@@ -8,7 +8,6 @@ import {
   WebSocketServer,
 } from "@nestjs/websockets";
 import {
-  AIEnemy,
   GameState,
   Laser,
   Meteor,
@@ -784,7 +783,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
-  private findClosestPlayerToAI(aiEnemy: AIEnemy): Player | null {
+  private findClosestPlayerToAI(aiEnemy: EnhancedAIEnemy): Player | null {
     let closestPlayer: Player | null = null;
     let closestDistance = Infinity;
 

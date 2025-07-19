@@ -176,7 +176,7 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
                     <strong>Left Click</strong> - Fire Laser
                   </div>
                   <div className="control-item">
-                    <strong>Space Bar</strong> - Fire Missile
+                    <strong>Right Click</strong> - Fire Missile
                   </div>
                   <div className="control-item">
                     <strong>F</strong> - Flash Teleport

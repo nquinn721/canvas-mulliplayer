@@ -4,10 +4,8 @@
 export type { GameState, MeteorData, StarData } from "./types/GameState";
 
 // Classes with their interfaces
-export { AIEnemy } from "./classes/AIEnemy";
 export { Camera } from "./classes/Camera";
 export { EnhancedAIEnemy } from "./classes/EnhancedAIEnemy";
-export { Game } from "./classes/Game";
 export { Meteor } from "./classes/Meteor";
 export { Player } from "./classes/Player";
 export type { KeyState } from "./classes/Player";

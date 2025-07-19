@@ -41,17 +41,6 @@ export class InputService {
       this.gameStore.setKeyState("shift", true);
     }
 
-    // Missile ability (key 1 or spacebar)
-    if (e.key === "1" || e.key === " ") {
-      const missileFired = this.gameStore.shootMissile();
-      if (missileFired) {
-        const player = this.gameStore.currentPlayer;
-        if (player) {
-          soundService.playSound("missile", 0.8);
-        }
-      }
-    }
-
     // Flash ability (key F)
     if (e.key === "f" || e.key === "F") {
       console.log("F key pressed - attempting Flash ability");
@@ -74,8 +63,6 @@ export class InputService {
         "s",
         "d",
         "shift",
-        "1",
-        " ",
         "f",
         "arrowup",
         "arrowdown",
@@ -110,13 +97,23 @@ export class InputService {
   };
 
   private handleMouseDown = (e: MouseEvent) => {
-    // Only handle left mouse button
-    if (e.button !== 0) return;
-
     e.preventDefault();
     e.stopPropagation(); // Prevent event bubbling that could trigger focus changes
-    this.gameStore.setMouseDown(true);
-    this.gameStore.shoot(); // Fire immediately on first click
+    
+    if (e.button === 0) {
+      // Left mouse button - laser
+      this.gameStore.setMouseDown(true);
+      this.gameStore.shoot(); // Fire immediately on first click
+    } else if (e.button === 2) {
+      // Right mouse button - missile
+      const missileFired = this.gameStore.shootMissile();
+      if (missileFired) {
+        const player = this.gameStore.currentPlayer;
+        if (player) {
+          soundService.playSound("missile", 0.8);
+        }
+      }
+    }
   };
 
   private handleMouseUp = (e: MouseEvent) => {

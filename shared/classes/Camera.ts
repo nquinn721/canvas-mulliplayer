@@ -30,7 +30,9 @@ export class Camera {
   }
 
   // Set the target to follow (usually a player)
-  setFollowTarget(target: { x: number; y: number; isBoostActive?: boolean } | null): void {
+  setFollowTarget(
+    target: { x: number; y: number; isBoostActive?: boolean } | null
+  ): void {
     this.followTarget = target;
   }
 
@@ -43,10 +45,10 @@ export class Camera {
 
     if (useSmoothing) {
       // Use different smoothing based on boost state
-      const currentSmoothing = this.followTarget.isBoostActive 
-        ? this.boostSmoothing 
+      const currentSmoothing = this.followTarget.isBoostActive
+        ? this.boostSmoothing
         : this.smoothing;
-      
+
       // Smooth camera movement
       this.x += (targetX - this.x) * currentSmoothing;
       this.y += (targetY - this.y) * currentSmoothing;

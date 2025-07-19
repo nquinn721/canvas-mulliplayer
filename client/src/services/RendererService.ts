@@ -1527,7 +1527,7 @@ export class RendererService {
       y,
       iconSize,
       this.gameStore.isMissileReady,
-      "SPACE", // Space key label for missiles
+      "RIGHT CLICK", // Right click label for missiles
       "rgba(255, 140, 0, 0.9)", // Orange theme for missiles
       drawMissileIcon,
       this.gameStore.missileCooldownPercent,

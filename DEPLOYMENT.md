@@ -122,7 +122,7 @@ The following environment variables are available:
 - **Movement**: WASD or Arrow Keys
 - **Aim**: Mouse
 - **Shoot**: Left Mouse Button (hold for continuous fire)
-- **Missile**: Spacebar or 1 key
+- **Missile**: Right Click
 - **Boost**: Shift key
 - **Strafe**: A/D keys (with cooldown)
 

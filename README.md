@@ -32,7 +32,7 @@ A space-themed multiplayer game with intelligent AI bots featuring advanced path
 - **WASD**: Move and strafe
 - **Mouse**: Aim direction
 - **Left Click**: Fire laser
-- **Space**: Fire homing missile
+- **Right Click**: Fire homing missile
 - **Shift**: Boost speed
 - **ESC**: Game menu
 
