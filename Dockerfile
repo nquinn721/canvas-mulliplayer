@@ -67,7 +67,7 @@ RUN addgroup -g 1001 -S nodejs && \
 # Change ownership of the app directory
 RUN chown -R nestjs:nodejs /app
 USER nestjs
-pm ru
+
 # Set default environment to production (can be overridden by Cloud Run)
 ENV NODE_ENV=production
 
