@@ -4,7 +4,7 @@
   height: 100vh;
   width: 100vw;
   background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .game-header {
@@ -43,6 +43,9 @@
   justify-content: center;
   padding: 20px;
   background: #0a0a0a;
+  min-width: 0; /* Allow flex item to shrink */
+  width: 100%;
+  height: 100%;
 }
 
 .game-canvas {
@@ -51,18 +54,20 @@
   cursor: crosshair;
   background-color: #000;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  display: block;
 }
 
 .controls-panel {
   width: 320px;
   background: rgba(20, 20, 20, 0.95);
   backdrop-filter: blur(10px);
-  border-left: 1px solid #333;
+  border-right: 1px solid #333;
   padding: 20px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  flex-shrink: 0; /* Prevent controls panel from shrinking */
 }
 
 .control-section {

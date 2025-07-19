@@ -56,8 +56,8 @@ export class GameStore {
   // World constants
   readonly WORLD_WIDTH = 5000;
   readonly WORLD_HEIGHT = 5000;
-  readonly CANVAS_WIDTH = 1200;
-  readonly CANVAS_HEIGHT = 800;
+  readonly CANVAS_WIDTH = Math.max(600, window.innerWidth - 360); // 320 controls + 40 padding, min 600px
+  readonly CANVAS_HEIGHT = Math.max(400, window.innerHeight - 90); // 50 header + 40 padding, min 400px
 
   constructor() {
     makeAutoObservable(this);

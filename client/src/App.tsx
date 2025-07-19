@@ -1,13 +1,42 @@
 import { observer } from "mobx-react-lite";
 import { useEffect, useRef, useState } from "react";
+import "./App.css";
 import { Game } from "./game/Game";
 import { soundService } from "./services/SoundService";
-import "./App.css";
 
 const App = observer(() => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
   const [isMuted, setIsMuted] = useState(() => soundService.isSoundMuted()); // Initialize with localStorage value
+  const [canvasDimensions, setCanvasDimensions] = useState(() => {
+    const CONTROLS_WIDTH = 320;
+    const HEADER_HEIGHT = 50;
+    const PADDING = 40;
+    const MIN_WIDTH = 600;
+    const MIN_HEIGHT = 400;
+    return {
+      width: Math.max(MIN_WIDTH, window.innerWidth - CONTROLS_WIDTH - PADDING),
+      height: Math.max(MIN_HEIGHT, window.innerHeight - HEADER_HEIGHT - PADDING),
+    };
+  });
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      const CONTROLS_WIDTH = 320;
+      const HEADER_HEIGHT = 50;
+      const PADDING = 40;
+      const MIN_WIDTH = 600;
+      const MIN_HEIGHT = 400;
+      const newWidth = Math.max(MIN_WIDTH, window.innerWidth - CONTROLS_WIDTH - PADDING);
+      const newHeight = Math.max(MIN_HEIGHT, window.innerHeight - HEADER_HEIGHT - PADDING);
+
+      setCanvasDimensions({ width: newWidth, height: newHeight });
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -47,9 +76,6 @@ const App = observer(() => {
     }
   };
 
-  const CANVAS_WIDTH = 1000;
-  const CANVAS_HEIGHT = 700;
-
   return (
     <div className="game-container">
       {/* Header */}
@@ -62,17 +88,6 @@ const App = observer(() => {
 
       {/* Main game area */}
       <div className="game-main">
-        {/* Canvas area */}
-        <div className="canvas-container">
-          <canvas
-            ref={canvasRef}
-            width={CANVAS_WIDTH}
-            height={CANVAS_HEIGHT}
-            onClick={handleUserInteraction}
-            className="game-canvas"
-          />
-        </div>
-
         {/* Controls panel */}
         <div className="controls-panel">
           {/* Audio Controls */}
@@ -80,7 +95,7 @@ const App = observer(() => {
             <h3>🎵 Audio</h3>
             <button
               onClick={toggleMute}
-              className={`control-button ${isMuted ? 'muted' : ''}`}
+              className={`control-button ${isMuted ? "muted" : ""}`}
             >
               {isMuted ? "🔇 Sound Off" : "🔊 Sound On"}
             </button>
@@ -97,7 +112,9 @@ const App = observer(() => {
               <>
                 <div className="status-item">
                   <span className="status-label">Connection</span>
-                  <span className={`status-value ${!gameRef.current.isConnected ? 'disconnected' : ''}`}>
+                  <span
+                    className={`status-value ${!gameRef.current.isConnected ? "disconnected" : ""}`}
+                  >
                     {gameRef.current.isConnected ? "Connected" : "Disconnected"}
                   </span>
                 </div>
@@ -164,10 +181,20 @@ const App = observer(() => {
               • Use boost to escape dangerous situations
               <br />
               • Strafe to dodge incoming projectiles
-              <br />
-              • Watch out for AI enemies!
+              <br />• Watch out for AI enemies!
             </div>
           </div>
+        </div>
+
+        {/* Canvas area */}
+        <div className="canvas-container">
+          <canvas
+            ref={canvasRef}
+            width={canvasDimensions.width}
+            height={canvasDimensions.height}
+            onClick={handleUserInteraction}
+            className="game-canvas"
+          />
         </div>
       </div>
     </div>
