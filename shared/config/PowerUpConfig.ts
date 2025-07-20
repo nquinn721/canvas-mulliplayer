@@ -132,7 +132,7 @@ export const POWER_UP_CONFIG = {
     drainReductionPerLevel: 0.3, // 30% less drain per level
     regenMultiplierPerLevel: 0.5, // 50% faster regen per level
     energyRefillPercentage: 1.0, // 100% energy refill
-    maxLevel: 3,
+    maxLevel: 4,
     durationMs: 0, // 0 = permanent upgrade (no expiration)
     experienceReward: 10,
   } as BoostUpgradeConfig,

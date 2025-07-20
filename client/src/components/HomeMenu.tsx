@@ -6,10 +6,13 @@ import {
   faRobot,
   faRocket,
   faTimes,
+  faVolumeUp,
+  faVolumeMute,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useEffect, useState } from "react";
 import BackgroundCanvas from "./BackgroundCanvas";
+import { soundService } from "../services/SoundService";
 import "./HomeMenu.css";
 
 interface HomeMenuProps {
@@ -28,6 +31,13 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
     return localStorage.getItem("canvas-multiplayer-player-name") || "";
   });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [isMuted, setIsMuted] = useState(() => soundService.isSoundMuted());
+
+  // Volume toggle handler
+  const handleVolumeToggle = () => {
+    const newMutedState = soundService.toggleMute();
+    setIsMuted(newMutedState);
+  };
 
   // Save player name to localStorage whenever it changes
   useEffect(() => {
@@ -80,6 +90,15 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
         title="Game Settings & Controls"
       >
         <FontAwesomeIcon icon={faCog} />
+      </button>
+
+      {/* Volume Toggle Button */}
+      <button
+        className={`volume-toggle ${isMuted ? 'muted' : 'unmuted'}`}
+        onClick={handleVolumeToggle}
+        title={isMuted ? "Unmute Sound" : "Mute Sound"}
+      >
+        <FontAwesomeIcon icon={isMuted ? faVolumeMute : faVolumeUp} />
       </button>
 
       <div className="home-content">
