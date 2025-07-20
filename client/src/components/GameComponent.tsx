@@ -173,6 +173,9 @@ const GameComponent = observer(
     // Handle respawn
     const handleRespawn = () => {
       if (gameStore?.socket && gameStore.isConnected) {
+        // Clear all key states to prevent stuck movement from death menu
+        gameStore.clearAllKeys();
+
         // Request respawn from server
         gameStore.socket.emit("respawn", { playerName });
         // Don't set isPlayerDead to false here - wait for server confirmation
@@ -230,16 +233,16 @@ const GameComponent = observer(
             width={canvasDimensions.width}
             height={canvasDimensions.height}
             className="game-canvas"
-            style={{ 
-              pointerEvents: isPlayerDead ? 'none' : 'auto',
-              filter: isPlayerDead ? 'grayscale(50%) brightness(70%)' : 'none'
+            style={{
+              pointerEvents: isPlayerDead ? "none" : "auto",
+              filter: isPlayerDead ? "grayscale(50%) brightness(70%)" : "none",
             }}
           />
         </div>
 
         {/* Death Menu */}
         {isPlayerDead && (
-          <DeathMenu 
+          <DeathMenu
             onRespawn={handleRespawn}
             onReturnToHome={handleReturnToHome}
           />
@@ -253,8 +256,12 @@ const GameComponent = observer(
             connectionStatus={
               gameStore?.isConnected ? "Connected" : "Disconnected"
             }
-            playerCount={Object.keys(gameStore?.gameState?.players || {}).length}
-            enemyCount={Object.keys(gameStore?.gameState?.aiEnemies || {}).length}
+            playerCount={
+              Object.keys(gameStore?.gameState?.players || {}).length
+            }
+            enemyCount={
+              Object.keys(gameStore?.gameState?.aiEnemies || {}).length
+            }
             isConnected={gameStore?.isConnected || false}
             isMuted={isMuted}
             onMuteToggle={toggleMute}

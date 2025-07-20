@@ -18,7 +18,7 @@
   border-radius: 15px;
   padding: 40px;
   text-align: center;
-  box-shadow: 
+  box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.5),
     0 0 20px rgba(255, 68, 68, 0.3);
   max-width: 400px;
@@ -46,11 +46,12 @@
 }
 
 @keyframes pulseRed {
-  0%, 100% {
+  0%,
+  100% {
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
   }
   50% {
-    text-shadow: 
+    text-shadow:
       2px 2px 4px rgba(0, 0, 0, 0.7),
       0 0 15px rgba(255, 68, 68, 0.6);
   }
@@ -86,13 +87,13 @@
 }
 
 .respawn-button {
-  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
   color: white;
   box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
 }
 
 .respawn-button:hover {
-  background: linear-gradient(135deg, #5cbf60 0%, #4CAF50 100%);
+  background: linear-gradient(135deg, #5cbf60 0%, #4caf50 100%);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
 }
@@ -135,7 +136,8 @@
 }
 
 @keyframes skull-pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
   }
   50% {
@@ -160,15 +162,15 @@
     padding: 30px 20px;
     max-width: 350px;
   }
-  
+
   .death-menu-header h2 {
     font-size: 2rem;
   }
-  
+
   .death-menu-header p {
     font-size: 1rem;
   }
-  
+
   .death-menu-button {
     font-size: 1rem;
     padding: 12px 20px;

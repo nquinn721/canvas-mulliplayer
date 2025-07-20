@@ -1,6 +1,11 @@
-import React from "react";
+import {
+  faGamepad,
+  faHome,
+  faRedo,
+  faSkull,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSkull, faRedo, faHome, faGamepad } from "@fortawesome/free-solid-svg-icons";
+import React from "react";
 import "./DeathMenu.css";
 
 interface DeathMenuProps {
@@ -14,30 +19,30 @@ const DeathMenu: React.FC<DeathMenuProps> = ({ onRespawn, onReturnToHome }) => {
       <div className="death-menu">
         <div className="death-menu-header">
           <h2>
-            <FontAwesomeIcon icon={faSkull} className="death-icon" /> 
+            <FontAwesomeIcon icon={faSkull} className="death-icon" />
             You Died!
           </h2>
           <p>Your ship was destroyed in battle</p>
         </div>
-        
+
         <div className="death-menu-buttons">
-          <button 
-            className="death-menu-button respawn-button" 
+          <button
+            className="death-menu-button respawn-button"
             onClick={onRespawn}
           >
             <FontAwesomeIcon icon={faRedo} className="button-icon" />
             Respawn
           </button>
-          
-          <button 
-            className="death-menu-button home-button" 
+
+          <button
+            className="death-menu-button home-button"
             onClick={onReturnToHome}
           >
             <FontAwesomeIcon icon={faHome} className="button-icon" />
             Return to Home
           </button>
         </div>
-        
+
         <div className="death-menu-stats">
           <p>
             <FontAwesomeIcon icon={faGamepad} className="hint-icon" />

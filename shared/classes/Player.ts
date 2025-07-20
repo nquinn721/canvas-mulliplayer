@@ -192,9 +192,11 @@ export class Player {
       }
     } else if (!this.isBoostActive && this.boostEnergy < this.maxBoostEnergy) {
       // Regenerate boost energy only after 2 seconds of not using boost
-      const timeSinceBoostDeactivated = currentTime - (this.lastBoostDeactivatedTime || 0);
-      
-      if (timeSinceBoostDeactivated > 2000) { // 2 seconds delay
+      const timeSinceBoostDeactivated =
+        currentTime - (this.lastBoostDeactivatedTime || 0);
+
+      if (timeSinceBoostDeactivated > 2000) {
+        // 2 seconds delay
         this.boostEnergy = Math.min(
           this.maxBoostEnergy,
           this.boostEnergy + (regenRate * deltaTime) / 1000
@@ -565,7 +567,7 @@ export class Player {
 
   // Apply strafe impulse when roll starts (Q/E keys - fast strafe)
   applyStrafe(direction: number): void {
-    const strafeSpeed = 850; // Increased velocity magnitude for more pronounced strafe movement
+    const strafeSpeed = 1200; // Increased velocity magnitude for more pronounced strafe movement
     const perpAngle = this.angle + (direction * Math.PI) / 2; // Perpendicular to facing direction
     this.strafeVelocityX = Math.cos(perpAngle) * strafeSpeed;
     this.strafeVelocityY = Math.sin(perpAngle) * strafeSpeed;

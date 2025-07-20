@@ -6,13 +6,13 @@ import {
   faRobot,
   faRocket,
   faTimes,
-  faVolumeUp,
   faVolumeMute,
+  faVolumeUp,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useEffect, useState } from "react";
-import BackgroundCanvas from "./BackgroundCanvas";
 import { soundService } from "../services/SoundService";
+import BackgroundCanvas from "./BackgroundCanvas";
 import "./HomeMenu.css";
 
 interface HomeMenuProps {
@@ -94,7 +94,7 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
 
       {/* Volume Toggle Button */}
       <button
-        className={`volume-toggle ${isMuted ? 'muted' : 'unmuted'}`}
+        className={`volume-toggle ${isMuted ? "muted" : "unmuted"}`}
         onClick={handleVolumeToggle}
         title={isMuted ? "Unmute Sound" : "Mute Sound"}
       >

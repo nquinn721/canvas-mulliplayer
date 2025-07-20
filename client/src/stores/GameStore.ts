@@ -114,6 +114,23 @@ export class GameStore {
     this.keys[key] = pressed;
   }
 
+  // Clear all key states (useful for respawn to prevent stuck movement)
+  clearAllKeys() {
+    this.keys = {
+      w: false,
+      a: false,
+      s: false,
+      d: false,
+      q: false,
+      e: false,
+      shift: false,
+      ArrowUp: false,
+      ArrowLeft: false,
+      ArrowDown: false,
+      ArrowRight: false,
+    };
+  }
+
   setMousePosition(x: number, y: number) {
     this.mousePosition.x = x;
     this.mousePosition.y = y;

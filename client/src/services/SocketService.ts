@@ -55,19 +55,22 @@ export class SocketService {
       this.gameStore.setGameState(gameState);
     });
 
-    this.socket.on("playerRespawned", (data: {
-      playerId: string;
-      playerName: string;
-      x: number;
-      y: number;
-    }) => {
-      // Player respawned notification - could add visual effects here
-      if (data.playerId === this.gameStore.playerId) {
-        // Current player respawned successfully
-        console.log("You respawned!");
-        // The death menu will automatically hide when health > 0 due to the useEffect in GameComponent
+    this.socket.on(
+      "playerRespawned",
+      (data: {
+        playerId: string;
+        playerName: string;
+        x: number;
+        y: number;
+      }) => {
+        // Player respawned notification - could add visual effects here
+        if (data.playerId === this.gameStore.playerId) {
+          // Current player respawned successfully
+          console.log("You respawned!");
+          // The death menu will automatically hide when health > 0 due to the useEffect in GameComponent
+        }
       }
-    });
+    );
 
     // Projectile events
     this.socket.on(

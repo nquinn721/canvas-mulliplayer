@@ -128,7 +128,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     } else {
       player.deactivateBoost();
     }
-
     // Remove roll animation update - no longer needed
 
     // Update strafe velocity and get movement delta
@@ -499,19 +498,21 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // Find a safe spawn location
     const spawnLocation = this.findSafeSpawnLocation();
-    
+
     // Reset player to full health and move to spawn location
     player.x = spawnLocation.x;
     player.y = spawnLocation.y;
     player.health = player.maxHealth;
     player.boostEnergy = player.maxBoostEnergy;
-    
+
     // Reset any temporary effects but keep upgrades
     player.shieldHealth = 0;
     player.hasShield = false;
     player.shieldExpiration = 0;
-    
-    console.log(`Player ${player.name} respawned at (${spawnLocation.x}, ${spawnLocation.y})`);
+
+    console.log(
+      `Player ${player.name} respawned at (${spawnLocation.x}, ${spawnLocation.y})`
+    );
 
     // Notify all clients about the respawn
     this.server.emit("playerRespawned", {
@@ -537,7 +538,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Check distance from other players
       for (const otherPlayer of this.players.values()) {
         if (otherPlayer.isAlive()) {
-          const distance = Math.sqrt((x - otherPlayer.x) ** 2 + (y - otherPlayer.y) ** 2);
+          const distance = Math.sqrt(
+            (x - otherPlayer.x) ** 2 + (y - otherPlayer.y) ** 2
+          );
           if (distance < SAFE_DISTANCE) {
             isSafe = false;
             break;
@@ -548,7 +551,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Check distance from AI enemies
       if (isSafe) {
         for (const aiEnemy of this.aiEnemies.values()) {
-          const distance = Math.sqrt((x - aiEnemy.x) ** 2 + (y - aiEnemy.y) ** 2);
+          const distance = Math.sqrt(
+            (x - aiEnemy.x) ** 2 + (y - aiEnemy.y) ** 2
+          );
           if (distance < SAFE_DISTANCE) {
             isSafe = false;
             break;
