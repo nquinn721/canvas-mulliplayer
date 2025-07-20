@@ -103,12 +103,124 @@ export class RendererService {
   }
 
   private drawWalls() {
-    this.ctx.fillStyle = "#666666";
     this.gameStore.gameState.walls.forEach((wall) => {
       if (this.gameStore.isWallInView(wall)) {
-        this.ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+        this.drawSpaceRockWall(wall.x, wall.y, wall.width, wall.height);
       }
     });
+  }
+
+  private drawSpaceRockWall(x: number, y: number, width: number, height: number) {
+    this.ctx.save();
+    
+    // Create a seeded random function for consistent rock patterns
+    const seed = x * 1000 + y;
+    const random = (offset: number = 0) => {
+      const value = Math.sin(seed + offset) * 43758.5453;
+      return value - Math.floor(value);
+    };
+
+    // Fill the wall area with rock texture
+    const rockSegmentSize = 30; // Size of each rock segment
+    const segmentsX = Math.ceil(width / rockSegmentSize);
+    const segmentsY = Math.ceil(height / rockSegmentSize);
+
+    for (let sx = 0; sx < segmentsX; sx++) {
+      for (let sy = 0; sy < segmentsY; sy++) {
+        const segmentX = x + sx * rockSegmentSize;
+        const segmentY = y + sy * rockSegmentSize;
+        const segmentW = Math.min(rockSegmentSize, x + width - segmentX);
+        const segmentH = Math.min(rockSegmentSize, y + height - segmentY);
+        
+        // Only draw if segment has valid dimensions
+        if (segmentW > 0 && segmentH > 0) {
+          this.drawRockSegment(segmentX, segmentY, segmentW, segmentH, sx + sy * segmentsX, random);
+        }
+      }
+    }
+
+    this.ctx.restore();
+  }
+
+  private drawRockSegment(x: number, y: number, width: number, height: number, index: number, random: (offset?: number) => number) {
+    this.ctx.save();
+    
+    // Base rock colors
+    const baseColors = ["#3a3a3a", "#2d2d2d", "#404040", "#353535"];
+    const baseColor = baseColors[Math.floor(random(index) * baseColors.length)];
+    
+    // Draw base rock shape
+    this.ctx.fillStyle = baseColor;
+    this.ctx.beginPath();
+    
+    // Create irregular rock edges
+    const points = 6 + Math.floor(random(index + 100) * 4); // 6-9 points
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
+    const radiusX = width / 2;
+    const radiusY = height / 2;
+    
+    for (let i = 0; i < points; i++) {
+      const angle = (i / points) * Math.PI * 2;
+      const irregularity = 0.7 + random(index + i * 10) * 0.6; // 0.7 to 1.3 variation
+      const px = centerX + Math.cos(angle) * radiusX * irregularity;
+      const py = centerY + Math.sin(angle) * radiusY * irregularity;
+      
+      if (i === 0) {
+        this.ctx.moveTo(px, py);
+      } else {
+        this.ctx.lineTo(px, py);
+      }
+    }
+    this.ctx.closePath();
+    this.ctx.fill();
+    
+    // Add darker cracks and crevices
+    this.ctx.fillStyle = "#1a1a1a";
+    const numCracks = 2 + Math.floor(random(index + 200) * 3); // 2-4 cracks
+    
+    for (let c = 0; c < numCracks; c++) {
+      const crackX = x + random(index + c * 50) * width;
+      const crackY = y + random(index + c * 51) * height;
+      const crackSize = Math.min(width, height) * (0.1 + random(index + c * 52) * 0.2);
+      
+      this.ctx.beginPath();
+      this.ctx.arc(crackX, crackY, crackSize, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+    
+    // Add lighter rock highlights
+    this.ctx.fillStyle = "#4d4d4d";
+    const numHighlights = 1 + Math.floor(random(index + 300) * 2); // 1-2 highlights
+    
+    for (let h = 0; h < numHighlights; h++) {
+      const highlightX = x + random(index + h * 60) * width;
+      const highlightY = y + random(index + h * 61) * height;
+      const highlightSize = Math.min(width, height) * (0.05 + random(index + h * 62) * 0.15);
+      
+      this.ctx.beginPath();
+      this.ctx.arc(highlightX, highlightY, highlightSize, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+    
+    // Add subtle texture lines
+    this.ctx.strokeStyle = "#2a2a2a";
+    this.ctx.lineWidth = 1;
+    const numLines = 1 + Math.floor(random(index + 400) * 2); // 1-2 lines
+    
+    for (let l = 0; l < numLines; l++) {
+      const startX = x + random(index + l * 70) * width;
+      const startY = y + random(index + l * 71) * height;
+      const endX = x + random(index + l * 72) * width;
+      const endY = y + random(index + l * 73) * height;
+      
+      this.ctx.beginPath();
+      this.ctx.moveTo(startX, startY);
+      this.ctx.lineTo(endX, endY);
+      this.ctx.stroke();
+    }
+    
+    this.ctx.restore();
   }
 
   private drawPowerUps() {
