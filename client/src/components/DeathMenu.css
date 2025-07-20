@@ -1,0 +1,176 @@
+.death-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+}
+
+.death-menu {
+  background: linear-gradient(135deg, #2c1810 0%, #1a1a1a 100%);
+  border: 3px solid #ff4444;
+  border-radius: 15px;
+  padding: 40px;
+  text-align: center;
+  box-shadow: 
+    0 10px 30px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(255, 68, 68, 0.3);
+  max-width: 400px;
+  width: 90%;
+  animation: deathMenuAppear 0.5s ease-out;
+}
+
+@keyframes deathMenuAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.death-menu-header h2 {
+  color: #ff4444;
+  font-size: 2.5rem;
+  margin: 0 0 10px 0;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+  animation: pulseRed 2s ease-in-out infinite;
+}
+
+@keyframes pulseRed {
+  0%, 100% {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+  }
+  50% {
+    text-shadow: 
+      2px 2px 4px rgba(0, 0, 0, 0.7),
+      0 0 15px rgba(255, 68, 68, 0.6);
+  }
+}
+
+.death-menu-header p {
+  color: #cccccc;
+  font-size: 1.2rem;
+  margin: 0 0 30px 0;
+  opacity: 0.9;
+}
+
+.death-menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.death-menu-button {
+  padding: 15px 25px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.respawn-button {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.respawn-button:hover {
+  background: linear-gradient(135deg, #5cbf60 0%, #4CAF50 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.respawn-button:active {
+  transform: translateY(0);
+}
+
+.home-button {
+  background: linear-gradient(135deg, #666666 0%, #555555 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(102, 102, 102, 0.3);
+}
+
+.home-button:hover {
+  background: linear-gradient(135deg, #777777 0%, #666666 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 102, 102, 0.4);
+}
+
+.home-button:active {
+  transform: translateY(0);
+}
+
+.death-menu-stats {
+  color: #888888;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.death-menu-stats p {
+  margin: 0;
+  opacity: 0.8;
+}
+
+/* Font Awesome icon styles */
+.death-icon {
+  margin-right: 10px;
+  animation: skull-pulse 2s ease-in-out infinite;
+}
+
+@keyframes skull-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.button-icon {
+  margin-right: 8px;
+  font-size: 1rem;
+}
+
+.hint-icon {
+  margin-right: 8px;
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+/* Responsive design */
+@media (max-width: 500px) {
+  .death-menu {
+    padding: 30px 20px;
+    max-width: 350px;
+  }
+  
+  .death-menu-header h2 {
+    font-size: 2rem;
+  }
+  
+  .death-menu-header p {
+    font-size: 1rem;
+  }
+  
+  .death-menu-button {
+    font-size: 1rem;
+    padding: 12px 20px;
+  }
+}

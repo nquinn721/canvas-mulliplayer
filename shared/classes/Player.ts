@@ -37,6 +37,7 @@ export class Player {
   public maxBoostEnergy: number;
   public isBoostActive: boolean;
   public lastBoostRegenTime: number;
+  public lastBoostDeactivatedTime: number;
   public boostUpgradeLevel: number;
   public boostUpgradeExpiration: number;
   public laserUpgradeLevel: number;
@@ -83,6 +84,7 @@ export class Player {
     this.maxBoostEnergy = 100;
     this.isBoostActive = false;
     this.lastBoostRegenTime = 0;
+    this.lastBoostDeactivatedTime = 0;
     this.boostUpgradeLevel = 0;
     this.boostUpgradeExpiration = 0;
     this.laserUpgradeLevel = 1; // Start at level 1 instead of 0
@@ -152,6 +154,10 @@ export class Player {
   }
 
   deactivateBoost(): void {
+    // Only set the deactivation time if boost was actually active
+    if (this.isBoostActive) {
+      this.lastBoostDeactivatedTime = Date.now();
+    }
     this.isBoostActive = false;
   }
 
@@ -170,7 +176,7 @@ export class Player {
     // Calculate upgrade multipliers using config
     const boostStats = getBoostStats(this.boostUpgradeLevel);
     const drainRate = boostStats.drainRate;
-    const regenRate = boostStats.regenRate;
+    const regenRate = boostStats.regenRate * 2; // Make base replenish faster (2x)
 
     if (this.isBoostActive && this.boostEnergy > 0) {
       // Drain boost energy when active
@@ -182,16 +188,17 @@ export class Player {
       // Auto-deactivate when energy is depleted
       if (this.boostEnergy <= 0) {
         this.isBoostActive = false;
+        this.lastBoostDeactivatedTime = currentTime;
       }
     } else if (!this.isBoostActive && this.boostEnergy < this.maxBoostEnergy) {
-      // Regenerate boost energy when not active
-      if (currentTime - this.lastBoostRegenTime > 100) {
-        // Small delay before regen starts
+      // Regenerate boost energy only after 2 seconds of not using boost
+      const timeSinceBoostDeactivated = currentTime - (this.lastBoostDeactivatedTime || 0);
+      
+      if (timeSinceBoostDeactivated > 2000) { // 2 seconds delay
         this.boostEnergy = Math.min(
           this.maxBoostEnergy,
           this.boostEnergy + (regenRate * deltaTime) / 1000
         );
-        this.lastBoostRegenTime = currentTime;
       }
     }
   }
@@ -714,6 +721,7 @@ export class Player {
     isBoostActive: boolean;
     boostUpgradeLevel: number;
     boostUpgradeExpiration: number;
+    lastBoostDeactivatedTime: number;
     laserUpgradeLevel: number;
     missileUpgradeLevel: number;
     rollAngle: number;
@@ -746,6 +754,7 @@ export class Player {
       isBoostActive: this.isBoostActive,
       boostUpgradeLevel: this.boostUpgradeLevel,
       boostUpgradeExpiration: this.boostUpgradeExpiration,
+      lastBoostDeactivatedTime: this.lastBoostDeactivatedTime,
       laserUpgradeLevel: this.laserUpgradeLevel,
       missileUpgradeLevel: this.missileUpgradeLevel,
       rollAngle: this.rollAngle,
@@ -781,6 +790,7 @@ export class Player {
     isBoostActive?: boolean;
     boostUpgradeLevel?: number;
     boostUpgradeExpiration?: number;
+    lastBoostDeactivatedTime?: number;
     laserUpgradeLevel?: number;
     missileUpgradeLevel?: number;
     rollAngle?: number;
@@ -814,6 +824,7 @@ export class Player {
     player.isBoostActive = data.isBoostActive || false;
     player.boostUpgradeLevel = data.boostUpgradeLevel || 0;
     player.boostUpgradeExpiration = data.boostUpgradeExpiration || 0;
+    player.lastBoostDeactivatedTime = data.lastBoostDeactivatedTime || 0;
     player.laserUpgradeLevel = data.laserUpgradeLevel || 1; // Default to level 1
     player.missileUpgradeLevel = data.missileUpgradeLevel || 1; // Default to level 1
     player.rollAngle = data.rollAngle || 0;

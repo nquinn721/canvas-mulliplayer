@@ -129,9 +129,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       player.deactivateBoost();
     }
 
-    // Update boost energy
-    player.updateBoostEnergy(deltaTime);
-
     // Remove roll animation update - no longer needed
 
     // Update strafe velocity and get movement delta
@@ -483,6 +480,91 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
+  @SubscribeMessage("respawn")
+  handleRespawn(
+    @MessageBody() data: { playerName: string },
+    @ConnectedSocket() client: Socket
+  ) {
+    const player = this.players.get(client.id);
+    if (!player) {
+      console.log(`No player found for respawn request from ${client.id}`);
+      return;
+    }
+
+    // Only allow respawn if player is actually dead
+    if (player.isAlive()) {
+      console.log(`Player ${player.name} tried to respawn while still alive`);
+      return;
+    }
+
+    // Find a safe spawn location
+    const spawnLocation = this.findSafeSpawnLocation();
+    
+    // Reset player to full health and move to spawn location
+    player.x = spawnLocation.x;
+    player.y = spawnLocation.y;
+    player.health = player.maxHealth;
+    player.boostEnergy = player.maxBoostEnergy;
+    
+    // Reset any temporary effects but keep upgrades
+    player.shieldHealth = 0;
+    player.hasShield = false;
+    player.shieldExpiration = 0;
+    
+    console.log(`Player ${player.name} respawned at (${spawnLocation.x}, ${spawnLocation.y})`);
+
+    // Notify all clients about the respawn
+    this.server.emit("playerRespawned", {
+      playerId: client.id,
+      playerName: player.name,
+      x: player.x,
+      y: player.y,
+    });
+  }
+
+  private findSafeSpawnLocation(): { x: number; y: number } {
+    const WORLD_WIDTH = 5000;
+    const WORLD_HEIGHT = 5000;
+    const SAFE_DISTANCE = 200; // Minimum distance from other entities
+    const MAX_ATTEMPTS = 50;
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const x = Math.random() * (WORLD_WIDTH - 200) + 100;
+      const y = Math.random() * (WORLD_HEIGHT - 200) + 100;
+
+      let isSafe = true;
+
+      // Check distance from other players
+      for (const otherPlayer of this.players.values()) {
+        if (otherPlayer.isAlive()) {
+          const distance = Math.sqrt((x - otherPlayer.x) ** 2 + (y - otherPlayer.y) ** 2);
+          if (distance < SAFE_DISTANCE) {
+            isSafe = false;
+            break;
+          }
+        }
+      }
+
+      // Check distance from AI enemies
+      if (isSafe) {
+        for (const aiEnemy of this.aiEnemies.values()) {
+          const distance = Math.sqrt((x - aiEnemy.x) ** 2 + (y - aiEnemy.y) ** 2);
+          if (distance < SAFE_DISTANCE) {
+            isSafe = false;
+            break;
+          }
+        }
+      }
+
+      if (isSafe) {
+        return { x, y };
+      }
+    }
+
+    // If no safe location found, spawn at world center
+    return { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
+  }
+
   private startGameLoop() {
     this.gameLoopInterval = setInterval(() => {
       this.updateGame();
@@ -563,11 +645,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
               }
             }
 
-            // Respawn player at a safe location
-            player.heal(player.maxHealth); // Fully heal
-            const spawnPos = this.getRandomSpawnPosition();
-            player.x = spawnPos.x;
-            player.y = spawnPos.y;
+            // Player is dead - they will need to use death menu to respawn
+            // Don't auto-respawn here anymore
           }
 
           projectilesToRemove.push(id);
@@ -1164,11 +1243,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           const isDead = player.takeDamage(meteor.damage);
 
           if (isDead) {
-            // Respawn player at a safe location
-            player.heal(player.maxHealth);
-            const spawnPos = this.getRandomSpawnPosition();
-            player.x = spawnPos.x;
-            player.y = spawnPos.y;
+            // Player is dead - they will need to use death menu to respawn
+            // Don't auto-respawn here anymore
           }
 
           meteorsToRemove.push(id);
@@ -1254,11 +1330,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
             });
 
             if (isDead) {
-              // Respawn player
-              const spawnPos = this.getRandomSpawnPosition();
-              player.x = spawnPos.x;
-              player.y = spawnPos.y;
-              player.heal(player.maxHealth);
+              // Player is dead - they will need to use death menu to respawn
+              // Don't auto-respawn here anymore
             }
           }
         });

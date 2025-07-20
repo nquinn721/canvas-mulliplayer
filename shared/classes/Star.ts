@@ -24,13 +24,13 @@ export class Star {
     this.x = x;
     this.y = y;
     this.radius = 3;
-    this.damage = 60; // High damage for area effect
+    this.damage = 50; // Damage for area effect
     this.explosionRadius = 150; // Large explosion radius
     this.createdAt = Date.now();
     this.lifespan = lifespan;
     this.isExploding = false;
     this.explosionStartTime = 0;
-    this.explosionDuration = 2000; // Explosion lasts 2 seconds
+    this.explosionDuration = 800; // Faster explosion - lasts 0.8 seconds
     this.twinklePhase = Math.random() * Math.PI * 2;
     this.brightness = 0.8 + Math.random() * 0.2; // Random brightness variation
   }

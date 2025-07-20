@@ -1603,9 +1603,12 @@ export class RendererService {
     this.ctx.fillRect(x - 1, y - 1, 2, barHeight + 2); // Left inner shadow
 
     // Energy fill with 3D gradient
-    const energyPercent = (player.boostEnergy || 100) / 100;
+    const energyPercent = (player.boostEnergy || 0) / 100;
     const fillWidth = barWidth * energyPercent;
 
+    // Check if energy is empty and boost is being attempted
+    const isEnergyEmpty = energyPercent <= 0;
+    
     if (fillWidth > 0) {
       let baseColor, lightColor, darkColor;
 
@@ -1662,6 +1665,23 @@ export class RendererService {
       this.ctx.shadowBlur = 0;
       this.ctx.fillStyle = highlightGradient;
       this.ctx.fillRect(x, y, fillWidth, barHeight * 0.4);
+    }
+
+    // Show empty energy animation when energy is depleted
+    if (isEnergyEmpty) {
+      // Smooth breathing effect instead of fast flashing
+      const time = Date.now() * 0.002; // Slower animation
+      const breathe = (Math.sin(time) + 1) * 0.5; // Value between 0 and 1
+      const intensity = 0.3 + breathe * 0.4; // Opacity between 0.3 and 0.7
+      
+      // Draw a subtle red overlay with breathing animation
+      this.ctx.fillStyle = `rgba(255, 68, 68, ${intensity})`;
+      this.ctx.fillRect(x, y, barWidth, barHeight);
+      
+      // Add a subtle border pulse
+      this.ctx.strokeStyle = `rgba(255, 68, 68, ${intensity + 0.2})`;
+      this.ctx.lineWidth = 2;
+      this.ctx.strokeRect(x - 1, y - 1, barWidth + 2, barHeight + 2);
     }
 
     // Draw 3D border with depth

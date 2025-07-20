@@ -4,6 +4,7 @@ import "../App.css";
 import { Game } from "../game/Game";
 import { soundService } from "../services/SoundService";
 import { GameStore } from "../stores/GameStore";
+import DeathMenu from "./DeathMenu";
 import EscapeMenu from "./EscapeMenu";
 
 interface GameComponentProps {
@@ -31,6 +32,7 @@ const GameComponent = observer(
     >(aiDifficulty);
     const [gameStore, setGameStore] = useState<GameStore | null>(null);
     const [isEscapeMenuOpen, setIsEscapeMenuOpen] = useState(false);
+    const [isPlayerDead, setIsPlayerDead] = useState(false);
     const [canvasDimensions, setCanvasDimensions] = useState(() => {
       const HEADER_HEIGHT = 50;
       return {
@@ -52,17 +54,23 @@ const GameComponent = observer(
       return () => window.removeEventListener("resize", handleResize);
     }, []);
 
-    // Handle escape key for menu
+    // Handle escape key for menu or respawn when dead
     useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
         if (event.key === "Escape") {
-          setIsEscapeMenuOpen((prev) => !prev);
+          if (isPlayerDead) {
+            // Respawn when dead
+            handleRespawn();
+          } else {
+            // Toggle escape menu when alive
+            setIsEscapeMenuOpen((prev) => !prev);
+          }
         }
       };
 
       window.addEventListener("keydown", handleKeyDown);
       return () => window.removeEventListener("keydown", handleKeyDown);
-    }, []);
+    }, [isPlayerDead]);
 
     // Update GameStore canvas dimensions when they change
     useEffect(() => {
@@ -154,6 +162,24 @@ const GameComponent = observer(
       }
     };
 
+    // Death detection effect
+    useEffect(() => {
+      if (gameStore?.currentPlayer) {
+        const isDead = gameStore.currentPlayer.health <= 0;
+        setIsPlayerDead(isDead);
+      }
+    }, [gameStore?.currentPlayer?.health]);
+
+    // Handle respawn
+    const handleRespawn = () => {
+      if (gameStore?.socket && gameStore.isConnected) {
+        // Request respawn from server
+        gameStore.socket.emit("respawn", { playerName });
+        // Don't set isPlayerDead to false here - wait for server confirmation
+        // The isPlayerDead state will be updated when the player's health changes
+      }
+    };
+
     const handleReturnToHome = () => {
       // Clean up game before returning to home
       if (gameRef.current) {
@@ -204,31 +230,45 @@ const GameComponent = observer(
             width={canvasDimensions.width}
             height={canvasDimensions.height}
             className="game-canvas"
+            style={{ 
+              pointerEvents: isPlayerDead ? 'none' : 'auto',
+              filter: isPlayerDead ? 'grayscale(50%) brightness(70%)' : 'none'
+            }}
           />
         </div>
 
-        {/* Escape Menu */}
-        <EscapeMenu
-          isOpen={isEscapeMenuOpen}
-          onClose={() => setIsEscapeMenuOpen(false)}
-          connectionStatus={
-            gameStore?.isConnected ? "Connected" : "Disconnected"
-          }
-          playerCount={Object.keys(gameStore?.gameState?.players || {}).length}
-          enemyCount={Object.keys(gameStore?.gameState?.aiEnemies || {}).length}
-          isConnected={gameStore?.isConnected || false}
-          isMuted={isMuted}
-          onMuteToggle={toggleMute}
-          masterVolume={masterVolume}
-          sfxVolume={sfxVolume}
-          musicVolume={musicVolume}
-          onMasterVolumeChange={handleMasterVolumeChange}
-          onSfxVolumeChange={handleSfxVolumeChange}
-          onMusicVolumeChange={handleMusicVolumeChange}
-          currentAIDifficulty={currentAIDifficulty}
-          onAIDifficultyChange={changeAIDifficulty}
-          onReturnToHome={handleReturnToHome}
-        />
+        {/* Death Menu */}
+        {isPlayerDead && (
+          <DeathMenu 
+            onRespawn={handleRespawn}
+            onReturnToHome={handleReturnToHome}
+          />
+        )}
+
+        {/* Escape Menu - only show when alive */}
+        {!isPlayerDead && (
+          <EscapeMenu
+            isOpen={isEscapeMenuOpen}
+            onClose={() => setIsEscapeMenuOpen(false)}
+            connectionStatus={
+              gameStore?.isConnected ? "Connected" : "Disconnected"
+            }
+            playerCount={Object.keys(gameStore?.gameState?.players || {}).length}
+            enemyCount={Object.keys(gameStore?.gameState?.aiEnemies || {}).length}
+            isConnected={gameStore?.isConnected || false}
+            isMuted={isMuted}
+            onMuteToggle={toggleMute}
+            masterVolume={masterVolume}
+            sfxVolume={sfxVolume}
+            musicVolume={musicVolume}
+            onMasterVolumeChange={handleMasterVolumeChange}
+            onSfxVolumeChange={handleSfxVolumeChange}
+            onMusicVolumeChange={handleMusicVolumeChange}
+            currentAIDifficulty={currentAIDifficulty}
+            onAIDifficultyChange={changeAIDifficulty}
+            onReturnToHome={handleReturnToHome}
+          />
+        )}
       </div>
     );
   }
