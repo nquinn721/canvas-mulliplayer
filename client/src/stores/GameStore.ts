@@ -96,6 +96,16 @@ export class GameStore {
   }
 
   setGameState(gameState: GameState) {
+    // Check for level-up before updating state
+    const currentPlayer = this.gameState.players[this.playerId];
+    const newPlayer = gameState.players[this.playerId];
+    
+    if (currentPlayer && newPlayer && currentPlayer.level < newPlayer.level) {
+      // Player leveled up! Play level-up sound
+      soundService.playSound("levelup", 0.8);
+      console.log(`Level up! You are now level ${newPlayer.level}`);
+    }
+    
     this.gameState = gameState;
     this.updateCameraPosition();
   }
@@ -298,6 +308,9 @@ export class GameStore {
       mouseX: worldMouse.x,
       mouseY: worldMouse.y,
     });
+
+    // Play flash sound
+    soundService.playFlashSound();
 
     return true; // Successfully initiated flash
   }

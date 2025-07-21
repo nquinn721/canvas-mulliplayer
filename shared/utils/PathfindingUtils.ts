@@ -54,7 +54,15 @@ export class PathfindingUtils {
       const checkX = start.x + stepX * i;
       const checkY = start.y + stepY * i;
 
-      if (this.isPositionBlocked(checkX, checkY, walls, entityRadius, bufferDistance)) {
+      if (
+        this.isPositionBlocked(
+          checkX,
+          checkY,
+          walls,
+          entityRadius,
+          bufferDistance
+        )
+      ) {
         return false;
       }
     }
@@ -142,7 +150,13 @@ export class PathfindingUtils {
 
         // Skip if position is blocked
         if (
-          this.isPositionBlocked(neighbor.x, neighbor.y, walls, entityRadius, bufferDistance)
+          this.isPositionBlocked(
+            neighbor.x,
+            neighbor.y,
+            walls,
+            entityRadius,
+            bufferDistance
+          )
         ) {
           continue;
         }
@@ -271,7 +285,13 @@ export class PathfindingUtils {
       // Find the furthest point we can see from current position
       for (let i = currentIndex + 2; i < path.length; i++) {
         if (
-          this.hasLineOfSight(path[currentIndex], path[i], walls, entityRadius, bufferDistance)
+          this.hasLineOfSight(
+            path[currentIndex],
+            path[i],
+            walls,
+            entityRadius,
+            bufferDistance
+          )
         ) {
           nextIndex = i;
         } else {
@@ -302,7 +322,13 @@ export class PathfindingUtils {
   ): Point {
     // If current position is not blocked, try to find a path
     if (
-      !this.isPositionBlocked(currentPos.x, currentPos.y, walls, entityRadius, bufferDistance)
+      !this.isPositionBlocked(
+        currentPos.x,
+        currentPos.y,
+        walls,
+        entityRadius,
+        bufferDistance
+      )
     ) {
       const path = this.findPath(
         currentPos,

@@ -15,22 +15,22 @@ interface DeathMenuProps {
 
 const DeathMenu: React.FC<DeathMenuProps> = ({ onRespawn, onReturnToHome }) => {
   return (
-    <div className="death-menu-overlay">
-      <div className="death-menu">
-        <div className="death-menu-header">
+    <div className="modal-overlay">
+      <div className="modal-content death-menu">
+        <div className="modal-header death-menu-header">
           <h2>
-            <FontAwesomeIcon icon={faSkull} className="death-icon" />
+            <FontAwesomeIcon icon={faSkull} />
             You Died!
           </h2>
           <p>Your ship was destroyed in battle</p>
         </div>
 
-        <div className="death-menu-buttons">
+        <div className="modal-body death-menu-buttons">
           <button
             className="death-menu-button respawn-button"
             onClick={onRespawn}
           >
-            <FontAwesomeIcon icon={faRedo} className="button-icon" />
+            <FontAwesomeIcon icon={faRedo} />
             Respawn
           </button>
 
@@ -38,14 +38,14 @@ const DeathMenu: React.FC<DeathMenuProps> = ({ onRespawn, onReturnToHome }) => {
             className="death-menu-button home-button"
             onClick={onReturnToHome}
           >
-            <FontAwesomeIcon icon={faHome} className="button-icon" />
+            <FontAwesomeIcon icon={faHome} />
             Return to Home
           </button>
         </div>
 
         <div className="death-menu-stats">
           <p>
-            <FontAwesomeIcon icon={faGamepad} className="hint-icon" />
+            <FontAwesomeIcon icon={faGamepad} />
             Press Escape to respawn quickly
           </p>
         </div>

@@ -18,6 +18,7 @@ import {
   Projectile,
   Star,
   Wall,
+  XP_REWARDS,
 } from "@shared";
 import { EnhancedAIEnemy } from "@shared/classes/EnhancedAIEnemy";
 import { PowerUpType } from "@shared/classes/PowerUp";
@@ -761,7 +762,8 @@ export class GameGateway
             if (projectile.ownerId !== player.id) {
               const killer = this.players.get(projectile.ownerId);
               if (killer) {
-                killer.addExperience(30); // 30 XP for kill
+                killer.addExperience(XP_REWARDS.playerKill); // 50 XP for player kill
+                console.log(`Player ${killer.name} killed ${player.name} and gained ${XP_REWARDS.playerKill} XP`);
               }
             }
 
@@ -788,6 +790,13 @@ export class GameGateway
           const isDead = aiEnemy.takeDamage(projectile.damage);
 
           if (isDead) {
+            // Give XP to the killer (if it's a player's projectile)
+            const killer = this.players.get(projectile.ownerId);
+            if (killer) {
+              killer.addExperience(XP_REWARDS.aiEnemyKill); // 20 XP for killing AI enemy
+              console.log(`Player ${killer.name} killed AI enemy and gained ${XP_REWARDS.aiEnemyKill} XP`);
+            }
+
             // Respawn AI at a safe location
             aiEnemy.heal(aiEnemy.maxHealth);
             const spawnPos = this.getRandomSpawnPosition();

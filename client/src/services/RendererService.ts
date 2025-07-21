@@ -548,6 +548,9 @@ export class RendererService {
 
   private drawPlayers() {
     Object.values(this.gameStore.gameState.players).forEach((player) => {
+      // Don't render dead players (health <= 0)
+      if (player.health <= 0) return;
+      
       if (this.gameStore.isPlayerInView(player)) {
         this.drawSpaceship(player);
 
@@ -578,6 +581,9 @@ export class RendererService {
     if (!this.gameStore.gameState.aiEnemies) return;
 
     Object.values(this.gameStore.gameState.aiEnemies).forEach((aiEnemy) => {
+      // Don't render dead AI enemies (health <= 0)
+      if (aiEnemy.health <= 0) return;
+      
       if (this.gameStore.isPlayerInView(aiEnemy)) {
         this.drawAISpaceship(aiEnemy);
 
@@ -1455,8 +1461,8 @@ export class RendererService {
 
     // Keep non-ability UI elements here
     this.drawBoostEnergyBar();
-    this.drawExperienceBar();
-    this.drawCompactStats();
+    this.drawTopLeftExperience();
+    // this.drawCompactStats(); // Removed FPS and player count display
   }
 
   private drawCompactStats() {
@@ -1748,34 +1754,46 @@ export class RendererService {
     const player = this.gameStore.gameState.players[this.gameStore.playerId];
     if (!player) return;
 
-    // Consistent bar dimensions and spacing
-    const barWidth = 120;
-    const barHeight = 10;
-    const margin = 12; // Consistent margin for spacing
+    // Enhanced bar dimensions with menu-style design
+    const barWidth = 180; // Wider bar
+    const barHeight = 14; // Taller for better visibility
+    const margin = 15;
     const x = (this.gameStore.CANVAS_WIDTH - barWidth) / 2;
-    const y = this.gameStore.CANVAS_HEIGHT - 60; // More space from bottom
+    const y = this.gameStore.CANVAS_HEIGHT - 35; // Moved down to replace experience bar position
 
     this.ctx.save();
 
-    // Draw 3D background shadow
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-    this.ctx.fillRect(x - 1, y + 2, barWidth + 6, barHeight + 6);
+    // Menu-style background with blur effect
+    const bgPadding = 8;
+    const bgX = x - bgPadding;
+    const bgY = y - bgPadding;
+    const bgWidth = barWidth + bgPadding * 2;
+    const bgHeight = barHeight + bgPadding * 2;
 
-    // Draw 3D background with gradient depth
-    const bgGradient = this.ctx.createLinearGradient(x, y, x, y + barHeight);
-    bgGradient.addColorStop(0, "rgba(20, 20, 20, 0.9)");
-    bgGradient.addColorStop(0.5, "rgba(40, 40, 40, 0.9)");
-    bgGradient.addColorStop(1, "rgba(60, 60, 60, 0.9)");
+    // Background with gradient similar to modal styling
+    const bgGradient = this.ctx.createLinearGradient(
+      bgX,
+      bgY,
+      bgX,
+      bgY + bgHeight
+    );
+    bgGradient.addColorStop(0, "rgba(10, 10, 25, 0.95)");
+    bgGradient.addColorStop(1, "rgba(20, 20, 35, 0.9)");
 
     this.ctx.fillStyle = bgGradient;
-    this.ctx.fillRect(x - 3, y - 3, barWidth + 6, barHeight + 6);
+    this.ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
 
-    // Draw 3D inner shadow
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-    this.ctx.fillRect(x - 1, y - 1, barWidth + 2, 2); // Top inner shadow
-    this.ctx.fillRect(x - 1, y - 1, 2, barHeight + 2); // Left inner shadow
+    // Border with cyan accent like menus
+    this.ctx.strokeStyle = "rgba(0, 212, 255, 0.3)";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(bgX, bgY, bgWidth, bgHeight);
 
-    // Energy fill with 3D gradient
+    // Inner border for depth
+    this.ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(bgX + 1, bgY + 1, bgWidth - 2, bgHeight - 2);
+
+    // Energy fill with enhanced styling
     const energyPercent = (player.boostEnergy || 0) / 100;
     const fillWidth = barWidth * energyPercent;
 
@@ -1783,24 +1801,27 @@ export class RendererService {
     const isEnergyEmpty = energyPercent <= 0;
 
     if (fillWidth > 0) {
-      let baseColor, lightColor, darkColor;
+      let baseColor, lightColor, darkColor, shadowColor;
 
-      // Color based on energy level with 3D gradients
+      // Enhanced color scheme with glow effects
       if (energyPercent > 0.6) {
         baseColor = "#00ff88"; // Cyan-green
         lightColor = "#66ffaa";
         darkColor = "#00cc66";
+        shadowColor = "#00ff88";
       } else if (energyPercent > 0.3) {
         baseColor = "#ffaa00"; // Orange
         lightColor = "#ffcc44";
         darkColor = "#cc8800";
+        shadowColor = "#ffaa00";
       } else {
         baseColor = "#ff4444"; // Red
         lightColor = "#ff6666";
         darkColor = "#cc2222";
+        shadowColor = "#ff4444";
       }
 
-      // Create 3D fill gradient
+      // Enhanced 3D fill gradient
       const fillGradient = this.ctx.createLinearGradient(
         x,
         y,
@@ -1808,97 +1829,327 @@ export class RendererService {
         y + barHeight
       );
       fillGradient.addColorStop(0, lightColor);
-      fillGradient.addColorStop(0.3, baseColor);
-      fillGradient.addColorStop(0.7, baseColor);
+      fillGradient.addColorStop(0.2, baseColor);
+      fillGradient.addColorStop(0.8, baseColor);
       fillGradient.addColorStop(1, darkColor);
 
       this.ctx.fillStyle = fillGradient;
       this.ctx.fillRect(x, y, fillWidth, barHeight);
 
-      // Add energy glow effect if boost is active
+      // Enhanced glow effect if boost is active
       if (player.isBoostActive) {
-        this.ctx.shadowColor = baseColor;
-        this.ctx.shadowBlur = 15;
+        this.ctx.shadowColor = shadowColor;
+        this.ctx.shadowBlur = 20;
         this.ctx.shadowOffsetX = 0;
         this.ctx.shadowOffsetY = 0;
         this.ctx.fillRect(x, y, fillWidth, barHeight);
       }
 
-      // Add 3D highlight on top of energy bar
+      // Enhanced highlight with animated shimmer
+      const time = Date.now() * 0.003;
+      const shimmerOffset = Math.sin(time) * 10;
+
       const highlightGradient = this.ctx.createLinearGradient(
-        x,
+        x + shimmerOffset,
         y,
-        x,
-        y + barHeight * 0.4
+        x + shimmerOffset + 40,
+        y + barHeight
       );
-      highlightGradient.addColorStop(0, "rgba(255, 255, 255, 0.6)");
+      highlightGradient.addColorStop(0, "rgba(255, 255, 255, 0)");
+      highlightGradient.addColorStop(0.3, "rgba(255, 255, 255, 0.4)");
+      highlightGradient.addColorStop(0.7, "rgba(255, 255, 255, 0.4)");
       highlightGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
 
       this.ctx.shadowColor = "transparent";
       this.ctx.shadowBlur = 0;
       this.ctx.fillStyle = highlightGradient;
-      this.ctx.fillRect(x, y, fillWidth, barHeight * 0.4);
+      this.ctx.fillRect(x, y, fillWidth, barHeight);
     }
 
-    // Show empty energy animation when energy is depleted
+    // Enhanced empty energy animation
     if (isEnergyEmpty) {
-      // Smooth breathing effect instead of fast flashing
-      const time = Date.now() * 0.002; // Slower animation
-      const breathe = (Math.sin(time) + 1) * 0.5; // Value between 0 and 1
-      const intensity = 0.3 + breathe * 0.4; // Opacity between 0.3 and 0.7
+      const time = Date.now() * 0.002;
+      const breathe = (Math.sin(time) + 1) * 0.5;
+      const intensity = 0.2 + breathe * 0.3;
 
-      // Draw a subtle red overlay with breathing animation
       this.ctx.fillStyle = `rgba(255, 68, 68, ${intensity})`;
       this.ctx.fillRect(x, y, barWidth, barHeight);
 
-      // Add a subtle border pulse
-      this.ctx.strokeStyle = `rgba(255, 68, 68, ${intensity + 0.2})`;
-      this.ctx.lineWidth = 2;
-      this.ctx.strokeRect(x - 1, y - 1, barWidth + 2, barHeight + 2);
+      this.ctx.strokeStyle = `rgba(255, 68, 68, ${intensity + 0.3})`;
+      this.ctx.lineWidth = 1;
+      this.ctx.strokeRect(x, y, barWidth, barHeight);
     }
-
-    // Draw 3D border with depth
-    this.ctx.strokeStyle = "#999";
-    this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(x - 1, y - 1, barWidth + 2, barHeight + 2);
-
-    // Outer border highlight
-    this.ctx.strokeStyle = "#ccc";
-    this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(x - 2, y - 2, barWidth + 4, barHeight + 4);
 
     this.ctx.restore();
 
-    // Level number to the left of the bar with 3D text effect
+    // Enhanced level indicator with menu styling
+    const levelBgX = x - 45;
+    const levelBgY = y - 2;
+    const levelBgWidth = 35;
+    const levelBgHeight = barHeight + 4;
+
+    // Level background with menu styling
+    const levelBgGradient = this.ctx.createLinearGradient(
+      levelBgX,
+      levelBgY,
+      levelBgX,
+      levelBgY + levelBgHeight
+    );
+    levelBgGradient.addColorStop(0, "rgba(0, 212, 255, 0.2)");
+    levelBgGradient.addColorStop(1, "rgba(0, 212, 255, 0.1)");
+
+    this.ctx.fillStyle = levelBgGradient;
+    this.ctx.fillRect(levelBgX, levelBgY, levelBgWidth, levelBgHeight);
+
+    this.ctx.strokeStyle = "rgba(0, 212, 255, 0.4)";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(levelBgX, levelBgY, levelBgWidth, levelBgHeight);
+
+    // Level text with glow
+    this.ctx.fillStyle = "#000";
+    this.ctx.font = "bold 12px Arial";
+    this.ctx.textAlign = "center";
+    this.ctx.fillText(
+      `LV${player.boostUpgradeLevel + 1}`,
+      levelBgX + levelBgWidth / 2 + 1,
+      y + barHeight / 2 + 5
+    );
+
+    this.ctx.fillStyle = "#00d4ff";
+    this.ctx.fillText(
+      `LV${player.boostUpgradeLevel + 1}`,
+      levelBgX + levelBgWidth / 2,
+      y + barHeight / 2 + 4
+    );
+
+    // Enhanced boost icon with menu styling
+    const iconBgX = x + barWidth + 10;
+    const iconBgY = y - 2;
+    const iconBgWidth = 35;
+    const iconBgHeight = barHeight + 4;
+
+    this.ctx.fillStyle = levelBgGradient;
+    this.ctx.fillRect(iconBgX, iconBgY, iconBgWidth, iconBgHeight);
+
+    this.ctx.strokeStyle = "rgba(0, 212, 255, 0.4)";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(iconBgX, iconBgY, iconBgWidth, iconBgHeight);
+
+    // Enhanced boost icon
+    const iconColor = player.isBoostActive ? "#00ffff" : "#00d4ff";
+    this.ctx.fillStyle = "#000";
+    this.ctx.font = "16px Arial";
+    this.ctx.textAlign = "center";
+    this.ctx.fillText(
+      "⚡",
+      iconBgX + iconBgWidth / 2 + 1,
+      y + barHeight / 2 + 6
+    );
+
+    this.ctx.fillStyle = iconColor;
+    this.ctx.fillText("⚡", iconBgX + iconBgWidth / 2, y + barHeight / 2 + 5);
+
+    // Add text shadow/glow for boost icon
+    if (player.isBoostActive) {
+      this.ctx.shadowColor = iconColor;
+      this.ctx.shadowBlur = 10;
+      this.ctx.fillText("⚡", iconBgX + iconBgWidth / 2, y + barHeight / 2 + 5);
+      this.ctx.shadowBlur = 0;
+    }
+  }
+
+  private drawTopLeftExperience() {
+    const player = this.gameStore.gameState.players[this.gameStore.playerId];
+    if (!player) return;
+
+    const margin = 20;
+    const containerWidth = 220;
+    const containerHeight = 60;
+    const x = margin;
+    const y = margin;
+
+    this.ctx.save();
+
+    // Menu-style background with modal styling
+    const bgGradient = this.ctx.createLinearGradient(
+      x,
+      y,
+      x,
+      y + containerHeight
+    );
+    bgGradient.addColorStop(0, "rgba(10, 10, 25, 0.95)");
+    bgGradient.addColorStop(1, "rgba(20, 20, 35, 0.9)");
+
+    this.ctx.fillStyle = bgGradient;
+    this.ctx.fillRect(x, y, containerWidth, containerHeight);
+
+    // Border with cyan accent like menus
+    this.ctx.strokeStyle = "rgba(0, 212, 255, 0.3)";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x, y, containerWidth, containerHeight);
+
+    // Inner border for depth
+    this.ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x + 1, y + 1, containerWidth - 2, containerHeight - 2);
+
+    // User icon (rounded avatar)
+    const iconSize = 40;
+    const iconX = x + 15;
+    const iconY = y + 10;
+
+    // Icon background circle with gradient
+    const iconGradient = this.ctx.createRadialGradient(
+      iconX + iconSize / 2,
+      iconY + iconSize / 2,
+      0,
+      iconX + iconSize / 2,
+      iconY + iconSize / 2,
+      iconSize / 2
+    );
+    iconGradient.addColorStop(0, "#4a90e2");
+    iconGradient.addColorStop(0.7, "#357abd");
+    iconGradient.addColorStop(1, "#1e3a8a");
+
+    this.ctx.fillStyle = iconGradient;
+    this.ctx.beginPath();
+    this.ctx.arc(
+      iconX + iconSize / 2,
+      iconY + iconSize / 2,
+      iconSize / 2,
+      0,
+      Math.PI * 2
+    );
+    this.ctx.fill();
+
+    // Icon border
+    this.ctx.strokeStyle = "rgba(0, 212, 255, 0.6)";
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.arc(
+      iconX + iconSize / 2,
+      iconY + iconSize / 2,
+      iconSize / 2,
+      0,
+      Math.PI * 2
+    );
+    this.ctx.stroke();
+
+    // User icon symbol (simplified person silhouette)
+    this.ctx.fillStyle = "#ffffff";
+    const centerX = iconX + iconSize / 2;
+    const centerY = iconY + iconSize / 2;
+
+    // Head
+    this.ctx.beginPath();
+    this.ctx.arc(centerX, centerY - 8, 6, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    // Body
+    this.ctx.fillRect(centerX - 4, centerY - 2, 8, 12);
+
+    // Arms
+    this.ctx.fillRect(centerX - 8, centerY + 2, 4, 8);
+    this.ctx.fillRect(centerX + 4, centerY + 2, 4, 8);
+
+    // Experience info section
+    const textX = iconX + iconSize + 15;
+    const textY = iconY + 12;
+
+    // Level display
+    this.ctx.fillStyle = "#000";
+    this.ctx.font = "bold 16px Arial";
+    this.ctx.textAlign = "left";
+    this.ctx.fillText(`Level ${player.level || 1}`, textX + 1, textY + 1);
+
+    this.ctx.fillStyle = "#00d4ff";
+    this.ctx.fillText(`Level ${player.level || 1}`, textX, textY);
+
+    // Experience points
     this.ctx.fillStyle = "#000";
     this.ctx.font = "12px Arial";
-    this.ctx.textAlign = "right";
-    // Text shadow
-    this.ctx.fillText(
-      `${player.boostUpgradeLevel + 1}`,
-      x - margin + 1,
-      y + barHeight
-    );
+    this.ctx.fillText(`${player.experience || 0} XP`, textX + 1, textY + 18);
 
-    // Main text
-    this.ctx.fillStyle = "#fff";
-    this.ctx.fillText(
-      `${player.boostUpgradeLevel + 1}`,
-      x - margin,
-      y + barHeight - 1
-    );
+    this.ctx.fillStyle = "#ffd700";
+    this.ctx.fillText(`${player.experience || 0} XP`, textX, textY + 17);
 
-    // Boost icon to the right of the bar with 3D effect
-    const iconColor = player.isBoostActive ? "#00ffff" : "#fff";
+    // Experience progress bar
+    const barWidth = 120;
+    const barHeight = 6;
+    const barX = textX;
+    const barY = textY + 25;
+
+    // Calculate XP progress using new exponential system
+    const currentLevel = player.level || 1;
+    
+    // Calculate current and next level XP requirements using exponential progression
+    let currentLevelXP = 0;
+    let nextLevelXP = 0;
+    const baseXP = 100;
+    const multiplier = 1.5;
+    
+    // Calculate total XP needed for current level
+    for (let level = 1; level < currentLevel; level++) {
+      currentLevelXP += Math.floor(baseXP * Math.pow(multiplier, level - 1));
+    }
+    
+    // Calculate XP needed for next level
+    nextLevelXP = currentLevelXP + Math.floor(baseXP * Math.pow(multiplier, currentLevel - 1));
+    
+    const progressXP = (player.experience || 0) - currentLevelXP;
+    const xpNeededForLevel = nextLevelXP - currentLevelXP;
+    const progress = Math.max(0, Math.min(1, progressXP / xpNeededForLevel));
+
+    // Progress bar background
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    this.ctx.fillRect(barX, barY, barWidth, barHeight);
+
+    // Progress bar border
+    this.ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+    // Progress fill
+    const fillWidth = barWidth * progress;
+    if (fillWidth > 0) {
+      const progressGradient = this.ctx.createLinearGradient(
+        barX,
+        barY,
+        barX,
+        barY + barHeight
+      );
+      progressGradient.addColorStop(0, "#ffef94");
+      progressGradient.addColorStop(0.5, "#ffd700");
+      progressGradient.addColorStop(1, "#b8860b");
+
+      this.ctx.fillStyle = progressGradient;
+      this.ctx.fillRect(barX, barY, fillWidth, barHeight);
+
+      // Progress bar glow
+      this.ctx.shadowColor = "#ffd700";
+      this.ctx.shadowBlur = 8;
+      this.ctx.fillRect(barX, barY, fillWidth, barHeight);
+      this.ctx.shadowBlur = 0;
+    }
+
+    // Progress text (current/next XP)
     this.ctx.fillStyle = "#000";
-    this.ctx.font = "14px Arial";
-    this.ctx.textAlign = "left";
-    // Icon shadow
-    this.ctx.fillText("⚡", x + barWidth + margin + 1, y + barHeight);
+    this.ctx.font = "10px Arial";
+    this.ctx.textAlign = "right";
+    this.ctx.fillText(
+      `${progressXP}/${nextLevelXP - currentLevelXP}`,
+      barX + barWidth + 1,
+      barY + barHeight + 1
+    );
 
-    // Main icon
-    this.ctx.fillStyle = iconColor;
-    this.ctx.fillText("⚡", x + barWidth + margin, y + barHeight - 1);
+    this.ctx.fillStyle = "#cccccc";
+    this.ctx.fillText(
+      `${progressXP}/${nextLevelXP - currentLevelXP}`,
+      barX + barWidth,
+      barY + barHeight
+    );
+
+    this.ctx.restore();
   }
 
   private drawExperienceBar() {
@@ -1932,15 +2183,26 @@ export class RendererService {
     this.ctx.fillRect(x - 1, y - 1, barWidth + 2, 2); // Top inner shadow
     this.ctx.fillRect(x - 1, y - 1, 2, barHeight + 2); // Left inner shadow
 
-    // Calculate XP progress manually (since player object may not have methods)
+    // Calculate XP progress using new exponential system
     const currentLevel = player.level || 1;
-    const currentLevelXP = (currentLevel - 1) * 100;
-    const nextLevelXP = currentLevel * 100;
+    
+    // Calculate current and next level XP requirements using exponential progression
+    let currentLevelXP = 0;
+    let nextLevelXP = 0;
+    const baseXP = 100;
+    const multiplier = 1.5;
+    
+    // Calculate total XP needed for current level
+    for (let level = 1; level < currentLevel; level++) {
+      currentLevelXP += Math.floor(baseXP * Math.pow(multiplier, level - 1));
+    }
+    
+    // Calculate XP needed for next level
+    nextLevelXP = currentLevelXP + Math.floor(baseXP * Math.pow(multiplier, currentLevel - 1));
+    
     const progressXP = (player.experience || 0) - currentLevelXP;
-    const progress = Math.max(
-      0,
-      Math.min(1, progressXP / (nextLevelXP - currentLevelXP))
-    );
+    const xpNeededForLevel = nextLevelXP - currentLevelXP;
+    const progress = Math.max(0, Math.min(1, progressXP / xpNeededForLevel));
 
     const fillWidth = barWidth * progress;
 

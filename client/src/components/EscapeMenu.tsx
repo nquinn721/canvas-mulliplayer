@@ -1,3 +1,12 @@
+import {
+  faGamepad,
+  faHome,
+  faRobot,
+  faTimes,
+  faVolumeUp,
+  faWifi,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React from "react";
 import "./EscapeMenu.css";
 
@@ -18,6 +27,8 @@ interface EscapeMenuProps {
   onMasterVolumeChange: (volume: number) => void;
   onSfxVolumeChange: (volume: number) => void;
   onMusicVolumeChange: (volume: number) => void;
+  selectedMusicTrack: number;
+  onMusicTrackChange: (trackNumber: number) => void;
 
   // AI difficulty controls
   currentAIDifficulty: string;
@@ -42,6 +53,8 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
   onMasterVolumeChange,
   onSfxVolumeChange,
   onMusicVolumeChange,
+  selectedMusicTrack,
+  onMusicTrackChange,
   currentAIDifficulty,
   onAIDifficultyChange,
   onReturnToHome,
@@ -55,52 +68,77 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
   };
 
   return (
-    <div className="escape-menu-backdrop" onClick={handleBackdropClick}>
-      <div className="escape-menu">
-        <div className="escape-menu-header">
-          <h2>⚙️ Game Menu</h2>
-          <button className="close-button" onClick={onClose}>
-            ✕
-          </button>
+    <div className="modal-overlay" onClick={handleBackdropClick}>
+      <div className="modal-content">
+        <button className="modal-close" onClick={onClose}>
+          <FontAwesomeIcon icon={faTimes} />
+        </button>
+
+        <div className="modal-header">
+          <h2>
+            <FontAwesomeIcon icon={faGamepad} /> Game Menu
+          </h2>
         </div>
 
-        <div className="escape-menu-content">
+        <div className="modal-body">
+          {/* Exit to Main Menu Button */}
+          <div className="settings-section">
+            <button className="exit-main-menu-button" onClick={onReturnToHome}>
+              <FontAwesomeIcon icon={faHome} /> Exit to Main Menu
+            </button>
+          </div>
+
           {/* Connection Status */}
-          <div className="menu-section">
-            <h3>🌐 Connection</h3>
-            <div className="status-item">
-              <span className="status-label">Server</span>
-              <span
-                className={`status-value ${isConnected ? "connected" : "disconnected"}`}
-              >
-                {connectionStatus}
-              </span>
-            </div>
-            <div className="status-item">
-              <span className="status-label">Players</span>
-              <span className="status-value">{playerCount}</span>
-            </div>
-            <div className="status-item">
-              <span className="status-label">Enemies</span>
-              <span className="status-value">{enemyCount}</span>
+          <div className="settings-section">
+            <h3>
+              <FontAwesomeIcon icon={faWifi} /> Connection Status
+            </h3>
+            <div className="settings-grid">
+              <div className="setting-item">
+                <div className="setting-header">
+                  <strong>Server Status</strong>
+                </div>
+                <span
+                  className={`status-value ${isConnected ? "connected" : "disconnected"}`}
+                >
+                  {connectionStatus}
+                </span>
+              </div>
+              <div className="setting-item">
+                <div className="setting-header">
+                  <strong>Players Online</strong>
+                </div>
+                <span className="status-value">{playerCount}</span>
+              </div>
+              <div className="setting-item">
+                <div className="setting-header">
+                  <strong>AI Enemies</strong>
+                </div>
+                <span className="status-value">{enemyCount}</span>
+              </div>
             </div>
           </div>
 
           {/* Audio Controls */}
-          <div className="menu-section">
-            <h3>🔊 Audio</h3>
+          <div className="settings-section">
+            <h3>
+              <FontAwesomeIcon icon={faVolumeUp} /> Audio Controls
+            </h3>
             <div className="audio-controls">
               <button
                 onClick={onMuteToggle}
                 className={`mute-button ${isMuted ? "muted" : ""}`}
               >
-                {isMuted ? "🔇 Unmute" : "🔊 Mute"}
+                <FontAwesomeIcon icon={faVolumeUp} />{" "}
+                {isMuted ? "Unmute All" : "Mute All"}
               </button>
 
               {!isMuted && (
                 <div className="volume-controls">
                   <div className="volume-control">
-                    <label>Master: {Math.round(masterVolume * 100)}%</label>
+                    <label>
+                      Master Volume: {Math.round(masterVolume * 100)}%
+                    </label>
                     <input
                       type="range"
                       min="0"
@@ -114,7 +152,7 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
                     />
                   </div>
                   <div className="volume-control">
-                    <label>SFX: {Math.round(sfxVolume * 100)}%</label>
+                    <label>Sound Effects: {Math.round(sfxVolume * 100)}%</label>
                     <input
                       type="range"
                       min="0"
@@ -128,7 +166,9 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
                     />
                   </div>
                   <div className="volume-control">
-                    <label>Music: {Math.round(musicVolume * 100)}%</label>
+                    <label>
+                      Music Volume: {Math.round(musicVolume * 100)}%
+                    </label>
                     <input
                       type="range"
                       min="0"
@@ -141,18 +181,64 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
                       className="volume-slider"
                     />
                   </div>
+
+                  {/* Music Track Selection */}
+                  <div className="music-track-selection">
+                    <label>Background Music Track:</label>
+                    <div className="music-tracks">
+                      {[1, 2, 3, 4].map((trackNumber) => (
+                        <button
+                          key={trackNumber}
+                          className={`music-track-button ${
+                            selectedMusicTrack === trackNumber ? "selected" : ""
+                          }`}
+                          onClick={() => onMusicTrackChange(trackNumber)}
+                        >
+                          Track {trackNumber}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
-            <div className="menu-tip">
-              <span className="tip-icon">💡</span>
-              Click canvas to start ambient music
+          </div>
+
+          {/* AI Difficulty Controls */}
+          <div className="settings-section">
+            <h3>
+              <FontAwesomeIcon icon={faRobot} /> AI Difficulty
+            </h3>
+            <div className="difficulty-controls">
+              <div className="current-difficulty">
+                Current:{" "}
+                <span
+                  className={`difficulty-badge ${currentAIDifficulty.toLowerCase()}`}
+                >
+                  {currentAIDifficulty}
+                </span>
+              </div>
+              <div className="difficulty-buttons">
+                {(["EASY", "MEDIUM", "HARD"] as const).map((difficulty) => (
+                  <button
+                    key={difficulty}
+                    className={`difficulty-button ${
+                      currentAIDifficulty === difficulty ? "selected" : ""
+                    }`}
+                    onClick={() => onAIDifficultyChange(difficulty)}
+                  >
+                    {difficulty}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           {/* Controls Guide */}
-          <div className="menu-section">
-            <h3>🎮 Controls</h3>
+          <div className="settings-section">
+            <h3>
+              <FontAwesomeIcon icon={faGamepad} /> Controls Guide
+            </h3>
             <div className="controls-grid">
               <div className="control-key">
                 <strong>W</strong>
@@ -200,82 +286,6 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
               </div>
             </div>
           </div>
-
-          {/* AI Difficulty Controls */}
-          <div className="menu-section">
-            <h3>🤖 AI Difficulty</h3>
-            <div className="ai-difficulty-controls">
-              <button
-                onClick={() => onAIDifficultyChange("EASY")}
-                className={`difficulty-button easy ${currentAIDifficulty === "EASY" ? "active" : ""}`}
-              >
-                🟢 Easy
-                {currentAIDifficulty === "EASY" && (
-                  <span className="selected-indicator"> ✓</span>
-                )}
-              </button>
-              <button
-                onClick={() => onAIDifficultyChange("MEDIUM")}
-                className={`difficulty-button medium ${currentAIDifficulty === "MEDIUM" ? "active" : ""}`}
-              >
-                🟡 Medium
-                {currentAIDifficulty === "MEDIUM" && (
-                  <span className="selected-indicator"> ✓</span>
-                )}
-              </button>
-              <button
-                onClick={() => onAIDifficultyChange("HARD")}
-                className={`difficulty-button hard ${currentAIDifficulty === "HARD" ? "active" : ""}`}
-              >
-                🔴 Hard
-                {currentAIDifficulty === "HARD" && (
-                  <span className="selected-indicator"> ✓</span>
-                )}
-              </button>
-            </div>
-            <div className="menu-tip">
-              <span className="tip-icon">💡</span>
-              Current: <strong>{currentAIDifficulty}</strong> - Changes AI
-              behavior for new enemies
-            </div>
-          </div>
-
-          {/* Weapons */}
-          <div className="menu-section">
-            <h3>⚔️ Weapons</h3>
-            <div className="status-item">
-              <span className="status-label">Primary</span>
-              <span className="status-value">Laser Cannon</span>
-            </div>
-            <div className="status-item">
-              <span className="status-label">Secondary</span>
-              <span className="status-value">Missiles</span>
-            </div>
-          </div>
-
-          {/* Game Tips */}
-          <div className="menu-section">
-            <h3>💡 Tips</h3>
-            <div className="menu-tip">
-              • Collect power-ups to upgrade your weapons
-              <br />
-              • Use boost to escape dangerous situations
-              <br />
-              • Strafe to dodge incoming projectiles
-              <br />
-              • Watch out for AI enemies!
-              <br />• Press Escape to pause and open this menu
-            </div>
-          </div>
-
-          {/* Return to Home */}
-          {onReturnToHome && (
-            <div className="menu-section">
-              <button className="return-home-button" onClick={onReturnToHome}>
-                🏠 Return to Home Menu
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

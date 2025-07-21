@@ -32,11 +32,20 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
   });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isMuted, setIsMuted] = useState(() => soundService.isSoundMuted());
+  const [selectedMusicTrack, setSelectedMusicTrack] = useState(() =>
+    soundService.getMusicTrack()
+  );
 
   // Volume toggle handler
   const handleVolumeToggle = () => {
     const newMutedState = soundService.toggleMute();
     setIsMuted(newMutedState);
+  };
+
+  // Music track selection handler
+  const handleMusicTrackChange = (trackNumber: number) => {
+    setSelectedMusicTrack(trackNumber);
+    soundService.setMusicTrack(trackNumber);
   };
 
   // Save player name to localStorage whenever it changes
@@ -325,6 +334,28 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
                       <span className="control-key">ESC</span>
                       <span>Tactical Pause Menu</span>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="settings-section">
+                <h3>
+                  <FontAwesomeIcon icon={faVolumeUp} /> Background Music
+                </h3>
+                <div className="music-selection">
+                  <p>Choose your preferred background music track:</p>
+                  <div className="music-tracks">
+                    {[1, 2, 3, 4].map((trackNumber) => (
+                      <button
+                        key={trackNumber}
+                        className={`music-track-button ${
+                          selectedMusicTrack === trackNumber ? "selected" : ""
+                        }`}
+                        onClick={() => handleMusicTrackChange(trackNumber)}
+                      >
+                        Track {trackNumber}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>

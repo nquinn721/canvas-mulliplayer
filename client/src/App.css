@@ -69,6 +69,44 @@
   opacity: 0.8;
 }
 
+.menu-button {
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  border-radius: 8px;
+  color: white;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(74, 222, 128, 0.2);
+}
+
+.menu-button:hover {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(74, 222, 128, 0.3);
+  border-color: rgba(74, 222, 128, 0.5);
+}
+
+.menu-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(74, 222, 128, 0.2);
+}
+
+.menu-button svg {
+  font-size: 10px;
+}
+
+.menu-button span {
+  font-size: 11px;
+}
+
 .game-title {
   font-size: 18px;
   font-weight: 600;
@@ -89,6 +127,7 @@
   width: 100%;
   background: #0a0a0a;
   overflow: hidden;
+  margin-top: 43px; /* Account for fixed header height */
 }
 
 .game-canvas {

@@ -126,31 +126,48 @@ export class InputService {
     this.gameStore.setMouseDown(false);
   };
 
-  // Check for boost state changes and play sound
-  updateBoostSound() {
+  // Check for boost and movement state changes and play sounds
+  updateMovementSounds() {
     const currentPlayer = this.gameStore.currentPlayer;
     if (currentPlayer) {
       const currentBoostState = currentPlayer.isBoostActive;
+      const isMoving = this.isPlayerMoving();
 
-      if (currentBoostState && !soundService.isContinuousSoundPlaying("jet")) {
-        // Boost just activated - start continuous jet sound
-        soundService.startContinuousSound("jet", 0.4);
-      } else if (
-        !currentBoostState &&
-        soundService.isContinuousSoundPlaying("jet")
-      ) {
-        // Boost deactivated - stop jet sound
-        soundService.stopContinuousSound("jet");
+      if (currentBoostState && !soundService.isContinuousSoundPlaying("boost")) {
+        // Boost just activated - start continuous boost sound at full volume
+        soundService.startContinuousSound("boost", 0.4);
+      } else if (!currentBoostState && isMoving && !soundService.isContinuousSoundPlaying("movement")) {
+        // Moving but not boosting - start continuous movement sound at lower volume
+        soundService.startContinuousSound("movement", 0.15); // Reduced from 0.2 for subtler movement sound
+      } else if (!currentBoostState && !isMoving && soundService.isContinuousSoundPlaying("movement")) {
+        // Not moving and not boosting - stop movement sound
+        soundService.stopContinuousSound("movement");
+      }
+
+      // Stop boost sound when boost deactivates
+      if (!currentBoostState && soundService.isContinuousSoundPlaying("boost")) {
+        soundService.stopContinuousSound("boost");
       }
 
       this.previousBoostState = currentBoostState;
     }
   }
 
+  // Helper method to check if player is moving
+  private isPlayerMoving(): boolean {
+    const keys = this.gameStore.keys;
+    const currentPlayer = this.gameStore.currentPlayer;
+    const hasStrafing =
+      currentPlayer &&
+      (Math.abs(currentPlayer.strafeVelocityX) > 10 ||
+        Math.abs(currentPlayer.strafeVelocityY) > 10);
+    return keys.w || keys.s || keys.a || keys.d || hasStrafing;
+  }
+
   // Cleanup method to remove event listeners
   cleanup() {
     // Stop any continuous sounds
-    soundService.stopContinuousSound("jet");
+    soundService.stopContinuousSound("boost");
 
     window.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("keyup", this.handleKeyUp);

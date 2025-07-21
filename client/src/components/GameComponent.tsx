@@ -6,6 +6,8 @@ import { soundService } from "../services/SoundService";
 import { GameStore } from "../stores/GameStore";
 import DeathMenu from "./DeathMenu";
 import EscapeMenu from "./EscapeMenu";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBars } from "@fortawesome/free-solid-svg-icons";
 
 interface GameComponentProps {
   playerName: string;
@@ -27,6 +29,9 @@ const GameComponent = observer(
     const [musicVolume, setMusicVolume] = useState(() =>
       soundService.getMusicVolume()
     );
+    const [selectedMusicTrack, setSelectedMusicTrack] = useState(() =>
+      soundService.getMusicTrack()
+    );
     const [currentAIDifficulty, setCurrentAIDifficulty] = useState<
       "EASY" | "MEDIUM" | "HARD"
     >(aiDifficulty);
@@ -34,7 +39,7 @@ const GameComponent = observer(
     const [isEscapeMenuOpen, setIsEscapeMenuOpen] = useState(false);
     const [isPlayerDead, setIsPlayerDead] = useState(false);
     const [canvasDimensions, setCanvasDimensions] = useState(() => {
-      const HEADER_HEIGHT = 50;
+      const HEADER_HEIGHT = 43;
       return {
         width: window.innerWidth,
         height: window.innerHeight - HEADER_HEIGHT,
@@ -44,7 +49,7 @@ const GameComponent = observer(
     // Handle window resize
     useEffect(() => {
       const handleResize = () => {
-        const HEADER_HEIGHT = 50;
+        const HEADER_HEIGHT = 43;
         const newWidth = window.innerWidth;
         const newHeight = window.innerHeight - HEADER_HEIGHT;
         setCanvasDimensions({ width: newWidth, height: newHeight });
@@ -154,6 +159,11 @@ const GameComponent = observer(
       setMusicVolume(value);
     };
 
+    const handleMusicTrackChange = (trackNumber: number) => {
+      setSelectedMusicTrack(trackNumber);
+      soundService.setMusicTrack(trackNumber);
+    };
+
     const changeAIDifficulty = (difficulty: "EASY" | "MEDIUM" | "HARD") => {
       if (gameStore?.socket) {
         gameStore.socket.emit("changeAIDifficulty", { difficulty });
@@ -166,9 +176,16 @@ const GameComponent = observer(
     useEffect(() => {
       if (gameStore?.currentPlayer) {
         const isDead = gameStore.currentPlayer.health <= 0;
+        const wasAliveBefore = !isPlayerDead;
+
         setIsPlayerDead(isDead);
+
+        // Play death sound when player dies (transition from alive to dead)
+        if (isDead && wasAliveBefore) {
+          soundService.playDeathSound();
+        }
       }
-    }, [gameStore?.currentPlayer?.health]);
+    }, [gameStore?.currentPlayer?.health, isPlayerDead]);
 
     // Handle respawn
     const handleRespawn = () => {
@@ -178,6 +195,10 @@ const GameComponent = observer(
 
         // Request respawn from server
         gameStore.socket.emit("respawn", { playerName });
+
+        // Restart background music
+        soundService.handleRevive();
+
         // Don't set isPlayerDead to false here - wait for server confirmation
         // The isPlayerDead state will be updated when the player's health changes
       }
@@ -191,6 +212,10 @@ const GameComponent = observer(
         gameRef.current = null;
         setGameStore(null);
       }
+
+      // Restart background music for home menu if not muted
+      soundService.handleRevive();
+
       onReturnToHome();
     };
 
@@ -220,9 +245,14 @@ const GameComponent = observer(
                 {gameStore?.isConnected ? "🟢 Online" : "🔴 Offline"}
               </span>
             </div>
-            <div className="esc-hint">
-              Press <strong>ESC</strong> for menu
-            </div>
+            <button 
+              className="menu-button"
+              onClick={() => setIsEscapeMenuOpen(true)}
+              title="Open Menu (ESC)"
+            >
+              <FontAwesomeIcon icon={faBars} />
+              <span>Menu</span>
+            </button>
           </div>
         </header>
 
@@ -271,6 +301,8 @@ const GameComponent = observer(
             onMasterVolumeChange={handleMasterVolumeChange}
             onSfxVolumeChange={handleSfxVolumeChange}
             onMusicVolumeChange={handleMusicVolumeChange}
+            selectedMusicTrack={selectedMusicTrack}
+            onMusicTrackChange={handleMusicTrackChange}
             currentAIDifficulty={currentAIDifficulty}
             onAIDifficultyChange={changeAIDifficulty}
             onReturnToHome={handleReturnToHome}

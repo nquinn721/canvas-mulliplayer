@@ -4,6 +4,7 @@ export class SoundService {
   private sfxVolume: number = 0.7;
   private musicVolume: number = 0.3;
   private isMuted: boolean = false;
+  private selectedMusicTrack: number = 1; // Default to track 1
   private backgroundMusicSource: AudioBufferSourceNode | null = null;
   private backgroundMusicGain: GainNode | null = null;
   private soundBuffers: Map<string, AudioBuffer> = new Map();
@@ -86,6 +87,14 @@ export class SoundService {
           Math.min(1, parseFloat(savedMusicVolume))
         );
       }
+
+      const savedMusicTrack = localStorage.getItem("soundService_musicTrack");
+      if (savedMusicTrack !== null) {
+        this.selectedMusicTrack = Math.max(
+          1,
+          Math.min(4, parseInt(savedMusicTrack))
+        );
+      }
     } catch (error) {
       console.warn("Failed to load volume settings from localStorage:", error);
     }
@@ -103,6 +112,10 @@ export class SoundService {
         "soundService_musicVolume",
         this.musicVolume.toString()
       );
+      localStorage.setItem(
+        "soundService_musicTrack",
+        this.selectedMusicTrack.toString()
+      );
     } catch (error) {
       console.warn("Failed to save volume settings to localStorage:", error);
     }
@@ -119,16 +132,38 @@ export class SoundService {
       powerup: "/sounds/power-up.mp3",
       hit: "/sounds/laser-hit.mp3",
       move: "/sounds/player-move.mp3",
-      background: "/sounds/background-music.mp3",
+      boost: "/sounds/boost.mp3", // Boost thruster sound
+      levelup: "/sounds/level-up.mp3", // Level up sound
+      background: "/sounds/background-music-1.mp3",
+      background2: "/sounds/background-music-2.mp3",
+      background3: "/sounds/background-music-3.mp3",
+      background4: "/sounds/background-music-4.mp3",
+      death: "/sounds/death.mp3",
+      flash: "/sounds/flash.mp3",
+      kill: "/sounds/kill.mp3",
     };
 
     const loadPromises = Object.entries(soundFiles).map(
       async ([name, path]) => {
         try {
+          console.log(`Loading sound: ${name} from ${path}`);
           const response = await fetch(path);
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          console.log(
+            `Fetch successful for ${name}, size: ${response.headers.get("content-length")} bytes`
+          );
           const arrayBuffer = await response.arrayBuffer();
+          console.log(
+            `ArrayBuffer created for ${name}, size: ${arrayBuffer.byteLength} bytes`
+          );
+
           const audioBuffer =
             await this.audioContext!.decodeAudioData(arrayBuffer);
+          console.log(`Successfully decoded ${name}`);
           this.soundBuffers.set(name, audioBuffer);
           this.loadedSounds.add(name);
         } catch (error) {
@@ -155,11 +190,15 @@ export class SoundService {
       missile: "missile",
       explosion: "explosion",
       powerup: "powerup",
-      boost: "move", // Use move sound for boost
+      boost: "boost", // Use dedicated boost sound
       roll: "move", // Use move sound for roll
+      movement: "move", // Use move sound for regular movement (at half volume)
       damage: "hit",
-      death: "explosion",
+      death: "death", // Use dedicated death sound
       hit: "hit",
+      flash: "flash", // Use dedicated flash sound
+      kill: "kill", // Use dedicated kill sound
+      levelup: "levelup", // Use dedicated level-up sound
     };
 
     const mappedSoundName = soundMap[soundName] || soundName;
@@ -206,8 +245,9 @@ export class SoundService {
     this.stopContinuousSound(soundName);
 
     const soundMap: { [key: string]: string } = {
-      boost: "move",
-      jet: "move",
+      boost: "boost", // Use dedicated boost sound
+      jet: "boost", // Also map jet to boost sound
+      movement: "move", // Use move sound for regular movement
     };
 
     const mappedSoundName = soundMap[soundName] || soundName;
@@ -239,8 +279,16 @@ export class SoundService {
       const volume = this.masterVolume * this.sfxVolume * volumeMultiplier;
       gainNode.gain.value = Math.min(1, volume);
 
-      // Loop the sound
-      source.loop = true;
+      // Special handling for boost sound - only play first 25%
+      if (soundName === "boost" || soundName === "jet") {
+        const duration25Percent = soundBuffer.duration * 0.25;
+        source.loop = true;
+        source.loopStart = 0;
+        source.loopEnd = duration25Percent;
+      } else {
+        // Normal looping for other sounds
+        source.loop = true;
+      }
 
       // Store reference for later control
       this.continuousSounds.set(soundName, { source, gain: gainNode });
@@ -294,10 +342,16 @@ export class SoundService {
   startBackgroundMusic(): void {
     if (!this.audioContext || this.isMuted) return;
 
-    // Use loaded background music instead of generated buffer
-    const backgroundBuffer = this.soundBuffers.get("background");
+    // Get the selected background music track
+    const trackKey =
+      this.selectedMusicTrack === 1
+        ? "background"
+        : `background${this.selectedMusicTrack}`;
+    const backgroundBuffer = this.soundBuffers.get(trackKey);
     if (!backgroundBuffer) {
-      console.warn("Background music not loaded");
+      console.warn(
+        `Background music track ${this.selectedMusicTrack} not loaded`
+      );
       return;
     }
 
@@ -389,6 +443,58 @@ export class SoundService {
     for (const [soundName] of this.continuousSounds) {
       this.stopContinuousSound(soundName);
     }
+  }
+
+  // Handle death - stop music and play death sound
+  playDeathSound(): void {
+    // Stop background music
+    this.stopBackgroundMusic();
+
+    // Play death sound
+    this.playSound("death", 1.0);
+  }
+
+  // Handle respawn or return to home - restart background music
+  handleRevive(): void {
+    if (!this.isMuted) {
+      // Small delay to let death sound finish
+      setTimeout(() => {
+        this.startBackgroundMusic();
+      }, 500);
+    }
+  }
+
+  // Music track selection
+  setMusicTrack(trackNumber: number): void {
+    console.log(`Setting music track to ${trackNumber}`);
+    this.selectedMusicTrack = Math.max(1, Math.min(4, trackNumber));
+    this.saveVolumeSettings();
+
+    // Always stop current music first if playing
+    const wasPlaying = this.isBackgroundMusicPlaying();
+    console.log(`Was playing: ${wasPlaying}, isMuted: ${this.isMuted}`);
+    if (wasPlaying) {
+      this.stopBackgroundMusic();
+    }
+
+    // Always start the new track (unless muted)
+    if (!this.isMuted) {
+      // Small delay to ensure the previous track is fully stopped
+      setTimeout(() => {
+        console.log(
+          `Starting background music for track ${this.selectedMusicTrack}`
+        );
+        this.startBackgroundMusic();
+      }, 50);
+    }
+  }
+  getMusicTrack(): number {
+    return this.selectedMusicTrack;
+  }
+
+  // Play flash sound with quicker timing
+  playFlashSound(): void {
+    this.playSound("flash", 0.8); // Slightly quieter and quicker
   }
 
   // Getters

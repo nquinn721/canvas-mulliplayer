@@ -60,7 +60,7 @@ export class GameLoopService {
 
     // Update input-related sounds
     if (this.inputService) {
-      this.inputService.updateBoostSound();
+      this.inputService.updateMovementSounds();
     }
 
     // Calculate FPS

@@ -22,3 +22,16 @@ export { Laser } from "./weapons/Laser";
 export { Missile } from "./weapons/Missile";
 export { Projectile } from "./weapons/Projectile";
 export type { ProjectileData } from "./weapons/Projectile";
+
+// Configuration files
+export { POWER_UP_CONFIG } from "./config/PowerUpConfig";
+export { 
+  EXPERIENCE_CONFIG, 
+  XP_REWARDS, 
+  LEVEL_PROGRESSION,
+  getExperienceRequiredForLevel,
+  getExperienceRequiredForNextLevel,
+  calculateLevelFromExperience,
+  getLevelProgressionInfo,
+  getXPReward
+} from "./config/ExperienceConfig";

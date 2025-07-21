@@ -42,6 +42,9 @@ export class Missile extends Projectile {
     players.forEach((player, playerId) => {
       // Don't track the missile owner
       if (playerId === this.ownerId) return;
+      
+      // Only target players that are alive (health > 0)
+      if (player.health <= 0) return;
 
       const distance = Math.sqrt(
         (player.x - this.x) ** 2 + (player.y - this.y) ** 2
@@ -53,6 +56,15 @@ export class Missile extends Projectile {
         this.targetId = playerId;
       }
     });
+
+    // Check if current target is still alive, clear if dead
+    if (this.targetId) {
+      const currentTarget = players.get(this.targetId);
+      if (!currentTarget || currentTarget.health <= 0) {
+        this.targetId = null;
+        closestEnemy = null;
+      }
+    }
 
     // If we have a target, adjust trajectory
     if (closestEnemy) {

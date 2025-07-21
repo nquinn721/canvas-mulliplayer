@@ -318,10 +318,41 @@ export class Player {
     this.updateLevel();
   }
 
-  // Calculate level based on experience (100 XP per level)
+  // Calculate level based on experience using the new progression system
   private updateLevel(): void {
-    const newLevel = Math.floor(this.experience / 100) + 1;
+    const oldLevel = this.level;
+    
+    // Import the calculateLevelFromExperience function
+    // Note: We'll use a simple calculation here to avoid circular imports
+    // The proper calculation is: Math.floor(Math.sqrt(this.experience / 50)) + 1
+    // This creates a curve where levels require: 100, 200, 350, 550, 800, 1100, 1450, etc. XP
+    let newLevel = 1;
+    let totalXPNeeded = 0;
+    const baseXP = 100;
+    const multiplier = 1.5;
+    
+    // Calculate level based on exponential progression
+    while (newLevel < 100) { // Max level 100
+      const xpForNextLevel = Math.floor(baseXP * Math.pow(multiplier, newLevel - 1));
+      if (this.experience >= totalXPNeeded + xpForNextLevel) {
+        totalXPNeeded += xpForNextLevel;
+        newLevel++;
+      } else {
+        break;
+      }
+    }
+    
     this.level = newLevel;
+    
+    // Check if player leveled up
+    if (newLevel > oldLevel) {
+      this.onLevelUp(newLevel, oldLevel);
+    }
+  }
+
+  // Override this method in client-side player implementations to handle level-up events
+  protected onLevelUp(newLevel: number, oldLevel: number): void {
+    // Base implementation does nothing - override in client
   }
 
   // Get experience needed for next level
