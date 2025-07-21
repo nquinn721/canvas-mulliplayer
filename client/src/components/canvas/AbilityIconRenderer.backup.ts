@@ -5,14 +5,14 @@ import { CanvasComponent } from "./CanvasComponent";
  */
 export class AbilityIconRenderer extends CanvasComponent {
   render(): void {
-    // Main render method - draws all ability icons (left to right order)
-    this.drawLaserAbility();    // First icon (leftmost)
-    this.drawFlashAbility();    // Second icon (middle) 
-    this.drawMissileAbility();  // Third icon (rightmost)
+    // Main render method - draws all ability icons
+    this.drawLaserAbility();
+    this.drawMissileAbility();
+    this.drawFlashAbility();
   }
 
   /**
-   * Draw weapon/ability icon with square design and new styling
+   * Draw weapon/ability icon with 3D effects and cooldown
    */
   drawWeaponIcon(
     x: number,
@@ -27,7 +27,7 @@ export class AbilityIconRenderer extends CanvasComponent {
     descriptionText: string
   ): void {
     this.withCanvasState(() => {
-      const halfSize = size / 2;
+      const radius = size / 2;
 
       // 3D Shadow effect
       this.ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
@@ -35,35 +35,30 @@ export class AbilityIconRenderer extends CanvasComponent {
       this.ctx.shadowOffsetX = 3;
       this.ctx.shadowOffsetY = 3;
 
-      // Square background with blue/blueish-green gradient (matching menu style)
-      const gradient = this.ctx.createLinearGradient(
-        x - halfSize,
-        y - halfSize,
-        x + halfSize,
-        y + halfSize
+      // Background circle with 3D gradient
+      const gradient = this.ctx.createRadialGradient(
+        x - radius * 0.3,
+        y - radius * 0.3,
+        0,
+        x,
+        y,
+        radius
       );
 
       if (isReady) {
-        // Active state - use menu-like blue gradient
-        gradient.addColorStop(0, "rgba(0, 212, 255, 0.3)");
-        gradient.addColorStop(0.5, "rgba(0, 212, 255, 0.2)");
-        gradient.addColorStop(1, "rgba(10, 10, 25, 0.8)");
+        gradient.addColorStop(0, "rgba(255, 255, 255, 0.3)");
+        gradient.addColorStop(0.7, themeColor);
+        gradient.addColorStop(1, "rgba(0, 0, 0, 0.3)");
       } else {
-        // Disabled state - darker version
         gradient.addColorStop(0, "rgba(100, 100, 100, 0.2)");
-        gradient.addColorStop(0.5, "rgba(60, 60, 60, 0.3)");
-        gradient.addColorStop(1, "rgba(10, 10, 25, 0.8)");
+        gradient.addColorStop(0.7, "rgba(60, 60, 60, 0.8)");
+        gradient.addColorStop(1, "rgba(0, 0, 0, 0.5)");
       }
 
       this.ctx.fillStyle = gradient;
-      this.ctx.fillRect(x - halfSize, y - halfSize, size, size);
-
-      // Border with blue theme
-      this.ctx.strokeStyle = isReady 
-        ? "rgba(0, 212, 255, 0.6)" 
-        : "rgba(100, 100, 100, 0.4)";
-      this.ctx.lineWidth = 2;
-      this.ctx.strokeRect(x - halfSize, y - halfSize, size, size);
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+      this.ctx.fill();
 
       // Reset shadow for icon
       this.ctx.shadowColor = "transparent";
@@ -71,103 +66,22 @@ export class AbilityIconRenderer extends CanvasComponent {
       this.ctx.shadowOffsetX = 0;
       this.ctx.shadowOffsetY = 0;
 
-      // Draw the icon (with theme color for active state)
-      if (isReady) {
-        this.withCanvasState(() => {
-          // Use the power-up theme color for the icon when ready
-          iconDrawFunction();
-        });
-      } else {
-        this.withCanvasState(() => {
-          // Use grey for disabled state
-          iconDrawFunction();
-        });
-      }
+      // Draw the icon
+      iconDrawFunction();
 
-      // Draw cooldown overlay for square
+      // Draw cooldown overlay
       if (!isReady && cooldownPercent > 0) {
-        this.drawSquareCooldownOverlay(x, y, halfSize, cooldownPercent);
+        this.drawCooldownOverlay(x, y, radius, cooldownPercent);
       }
 
-      // Draw key label with new positioning for square
-      this.drawSquareKeyLabel(x, y, halfSize, keyLabel, isReady);
+      // Draw key label with 3D text effect
+      this.drawKeyLabel(x, y, radius, keyLabel, isReady);
 
-      // Draw description text below the square
-      this.drawSquareDescriptionText(x, y, halfSize, descriptionText, isReady);
-    });
-  }
+      // Draw description text
+      this.drawDescriptionText(x, y, radius, descriptionText, isReady);
 
-  /**
-   * Draw cooldown overlay with square progress
-   */
-  private drawSquareCooldownOverlay(
-    x: number,
-    y: number,
-    halfSize: number,
-    cooldownPercent: number
-  ): void {
-    this.withCanvasState(() => {
-      // Semi-transparent overlay
-      this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-      this.ctx.fillRect(x - halfSize, y - halfSize, halfSize * 2, halfSize * 2);
-
-      // Progress indicator (fill from bottom to top)
-      const progressHeight = (halfSize * 2) * (1 - cooldownPercent);
-      this.ctx.fillStyle = "rgba(0, 212, 255, 0.3)";
-      this.ctx.fillRect(
-        x - halfSize,
-        y + halfSize - progressHeight,
-        halfSize * 2,
-        progressHeight
-      );
-    });
-  }
-
-  /**
-   * Draw key label for square design
-   */
-  private drawSquareKeyLabel(
-    x: number,
-    y: number,
-    halfSize: number,
-    keyLabel: string,
-    isReady: boolean
-  ): void {
-    this.withCanvasState(() => {
-      this.ctx.font = "bold 10px Arial";
-      this.ctx.textAlign = "center";
-      this.ctx.textBaseline = "middle";
-
-      // Background for key label
-      this.ctx.fillStyle = isReady 
-        ? "rgba(0, 212, 255, 0.8)" 
-        : "rgba(100, 100, 100, 0.6)";
-      const labelY = y + halfSize + 8;
-      const textWidth = this.ctx.measureText(keyLabel).width;
-      this.ctx.fillRect(x - textWidth/2 - 3, labelY - 6, textWidth + 6, 12);
-
-      // Key label text
-      this.ctx.fillStyle = "#ffffff";
-      this.ctx.fillText(keyLabel, x, labelY);
-    });
-  }
-
-  /**
-   * Draw description text for square design
-   */
-  private drawSquareDescriptionText(
-    x: number,
-    y: number,
-    halfSize: number,
-    descriptionText: string,
-    isReady: boolean
-  ): void {
-    this.withCanvasState(() => {
-      this.ctx.font = "8px Arial";
-      this.ctx.textAlign = "center";
-      this.ctx.textBaseline = "middle";
-      this.ctx.fillStyle = isReady ? "#ffffff" : "#888888";
-      this.ctx.fillText(descriptionText, x, y + halfSize + 25);
+      // Draw level indicator if applicable
+      this.drawLevelIndicator(x, y, radius, descriptionText);
     });
   }
 
@@ -330,16 +244,16 @@ export class AbilityIconRenderer extends CanvasComponent {
    * Draw laser ability icon
    */
   private drawLaserAbility(): void {
-    const iconSize = 50; // Square size
-    const startX = this.gameStore.CANVAS_WIDTH - (iconSize * 3); // Space for 3 icons
-    const y = this.gameStore.CANVAS_HEIGHT - 70; // Position from bottom
-    const x = startX + iconSize / 2; // First icon position
+    const spacing = 70;
+    const iconSize = 48;
+    const x = this.gameStore.CANVAS_WIDTH - spacing * 3;
+    const y = this.gameStore.CANVAS_HEIGHT - 60;
 
     const drawLaserIcon = () => {
       // Use same lightning bolt shape as power-up laser icon
       this.withCanvasState(() => {
         this.ctx.translate(x, y);
-        this.ctx.fillStyle = "#ff6464"; // Red theme matching laser power-up
+        this.ctx.fillStyle = "#ffffff";
         this.ctx.beginPath();
         this.ctx.moveTo(-3, -12);
         this.ctx.lineTo(5, -2);
@@ -367,61 +281,19 @@ export class AbilityIconRenderer extends CanvasComponent {
   }
 
   /**
-   * Draw flash ability icon
-   */
-  private drawFlashAbility(): void {
-    const iconSize = 50; // Square size
-    const startX = this.gameStore.CANVAS_WIDTH - (iconSize * 3); // Space for 3 icons
-    const y = this.gameStore.CANVAS_HEIGHT - 70; // Position from bottom
-    const x = startX + iconSize + iconSize / 2; // Second icon position (touching first)
-
-    const drawFlashIcon = () => {
-      const centerX = x;
-      const centerY = y;
-      this.withCanvasState(() => {
-        this.ctx.translate(centerX, centerY);
-        this.ctx.fillStyle = "#ffff64"; // Yellow theme matching flash power-up
-        // Draw bolt icon
-        this.ctx.beginPath();
-        this.ctx.moveTo(-2, -10);
-        this.ctx.lineTo(4, -3);
-        this.ctx.lineTo(-1, -3);
-        this.ctx.lineTo(2, 10);
-        this.ctx.lineTo(-4, 3);
-        this.ctx.lineTo(1, 3);
-        this.ctx.closePath();
-        this.ctx.fill();
-      });
-    };
-
-    this.drawWeaponIcon(
-      x,
-      y,
-      iconSize,
-      this.gameStore.isFlashReady,
-      "F",
-      "rgba(255, 255, 0, 0.9)", // Yellow theme matching flash power-up
-      drawFlashIcon,
-      this.gameStore.flashCooldownPercent,
-      this.gameStore.flashCooldownRemaining,
-      "FLASH"
-    );
-  }
-
-  /**
    * Draw missile ability icon
    */
   private drawMissileAbility(): void {
-    const iconSize = 50; // Square size
-    const startX = this.gameStore.CANVAS_WIDTH - (iconSize * 3); // Space for 3 icons
-    const y = this.gameStore.CANVAS_HEIGHT - 70; // Position from bottom
-    const x = startX + iconSize * 2 + iconSize / 2; // Third icon position (touching second)
+    const spacing = 70;
+    const iconSize = 48;
+    const x = this.gameStore.CANVAS_WIDTH - spacing;
+    const y = this.gameStore.CANVAS_HEIGHT - 60;
 
     const drawMissileIcon = () => {
       // Use same rocket shape as power-up missile icon
       this.withCanvasState(() => {
         this.ctx.translate(x, y);
-        this.ctx.fillStyle = "#ffa564"; // Orange theme matching missile power-up
+        this.ctx.fillStyle = "#ffffff";
         // Missile body
         this.ctx.fillRect(-2, -10, 4, 14);
         // Nose cone
@@ -448,6 +320,35 @@ export class AbilityIconRenderer extends CanvasComponent {
       this.gameStore.missileCooldownPercent,
       this.gameStore.missileCooldowRemaining,
       "MISSILES"
+    );
+  }
+
+  /**
+   * Draw flash ability icon
+   */
+  private drawFlashAbility(): void {
+    const spacing = 70;
+    const iconSize = 48;
+    const x = this.gameStore.CANVAS_WIDTH - spacing * 2;
+    const y = this.gameStore.CANVAS_HEIGHT - 60;
+
+    const drawFlashIcon = () => {
+      const centerX = x;
+      const centerY = y;
+      this.drawCustomIcon(centerX, centerY, "bolt", 24, "#ffffff");
+    };
+
+    this.drawWeaponIcon(
+      x,
+      y,
+      iconSize,
+      this.gameStore.isFlashReady,
+      "F",
+      "rgba(255, 255, 0, 0.9)", // Yellow theme matching flash power-up
+      drawFlashIcon,
+      this.gameStore.flashCooldownPercent,
+      this.gameStore.flashCooldownRemaining,
+      "FLASH"
     );
   }
 }
