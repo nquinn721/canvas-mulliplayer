@@ -433,6 +433,7 @@ export class EnhancedAIEnemy extends Player {
   private settings: EnhancedDifficultySettings;
   private behaviorTree: EnhancedBehaviorNode;
   private lastShootTime: number = 0;
+  private lastLaserTime: number = 0;
   private spawnX: number;
   private spawnY: number;
   private patrolAngle: number = 0;
@@ -470,9 +471,11 @@ export class EnhancedAIEnemy extends Player {
     this.laserUpgradeLevel =
       difficulty === "HARD" ? 3 : difficulty === "MEDIUM" ? 2 : 1;
     this.missileUpgradeLevel = difficulty === "HARD" ? 2 : 1;
+    this.flashUpgradeLevel = difficulty === "HARD" ? 2 : 1;
 
     this.buildBehaviorTree();
     this.lastShootTime = Date.now() - this.settings.shootCooldown;
+    this.lastLaserTime = Date.now() - 500; // Initialize laser cooldown
   }
 
   private buildBehaviorTree(): void {
@@ -584,12 +587,8 @@ export class EnhancedAIEnemy extends Player {
       20 // Buffer distance to keep bots 20px away from walls
     );
 
-    // Only shoot if we have line of sight, player is in range, and we're off cooldown
-    if (
-      !hasLineOfSight ||
-      distance > this.settings.detectionRange ||
-      currentTime - this.lastShootTime < this.settings.shootCooldown
-    ) {
+    // Only shoot if we have line of sight and player is in range
+    if (!hasLineOfSight || distance > this.settings.detectionRange) {
       return null;
     }
 
@@ -602,7 +601,7 @@ export class EnhancedAIEnemy extends Player {
       ((Math.random() - 0.5) * (1 - this.settings.accuracy) * Math.PI) / 4;
     const angle = baseAngle + accuracyOffset;
 
-    // Choose weapon based on distance and difficulty-based missile preference
+    // Choose weapon based on distance, difficulty-based missile preference, and cooldowns
     let missileChance = 0;
     switch (this.difficulty) {
       case "EASY":
@@ -621,7 +620,30 @@ export class EnhancedAIEnemy extends Player {
       missileChance *= 1.5; // 1.5x more likely to use missile at long range
     }
 
-    const weapon = Math.random() < missileChance ? "missile" : "laser";
+    // Check ability cooldowns and choose available weapon
+    const missileStats = this.getMissileStats();
+    const flashStats = this.getFlashStats();
+
+    const canUseMissile = this.canShootMissile(
+      currentTime,
+      missileStats.cooldown
+    );
+    const canUseLaser = currentTime - this.lastLaserTime >= 500; // Laser has 500ms cooldown
+
+    // If we want to use missile but it's on cooldown, use laser if available
+    const preferMissile = Math.random() < missileChance;
+
+    let weapon: "laser" | "missile";
+    if (preferMissile && canUseMissile) {
+      weapon = "missile";
+      this.updateMissileTime(currentTime);
+    } else if (canUseLaser) {
+      weapon = "laser";
+      this.lastLaserTime = currentTime;
+    } else {
+      // Both weapons on cooldown, don't shoot
+      return null;
+    }
 
     this.lastShootTime = currentTime;
     return { angle, weapon };

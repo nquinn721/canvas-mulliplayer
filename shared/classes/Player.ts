@@ -664,6 +664,7 @@ export class Player {
     distance: number;
     trackingRange: number;
     turnRate: number;
+    cooldown: number;
     dualShot: boolean;
     missileCount: number;
   } {

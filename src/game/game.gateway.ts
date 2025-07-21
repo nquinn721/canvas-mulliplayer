@@ -340,8 +340,8 @@ export class GameGateway
 
     // Check missile cooldown
     if (data.weapon === "missile") {
-      const MISSILE_COOLDOWN = 2000; // 2 seconds
-      if (!player.canShootMissile(currentTime, MISSILE_COOLDOWN)) {
+      const missileStats = player.getMissileStats();
+      if (!player.canShootMissile(currentTime, missileStats.cooldown)) {
         return; // Still on cooldown
       }
       player.updateMissileTime(currentTime);

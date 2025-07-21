@@ -22,11 +22,13 @@ export interface MissileUpgradeConfig {
   baseDistance: number;
   baseTrackingRange: number;
   baseTurnRate: number;
+  baseCooldown: number; // Base cooldown in milliseconds
   speedMultiplierPerLevel: number;
   damageMultiplierPerLevel: number;
   distanceMultiplierPerLevel: number;
   trackingRangeMultiplierPerLevel: number;
   turnRateMultiplierPerLevel: number;
+  cooldownReductionPerLevel: number; // Cooldown reduction per level
   dualShotLevel: number;
   tripleShotLevel: number;
   maxLevel: number;
@@ -102,11 +104,13 @@ export const POWER_UP_CONFIG = {
     baseDistance: 600,
     baseTrackingRange: 300,
     baseTurnRate: 3,
+    baseCooldown: 3000, // 3 seconds base cooldown
     speedMultiplierPerLevel: 0.1, // 10% increase per level
     damageMultiplierPerLevel: 0.15, // 15% increase per level
     distanceMultiplierPerLevel: 0.15, // 15% increase per level
     trackingRangeMultiplierPerLevel: 0.1, // 10% increase per level
     turnRateMultiplierPerLevel: 0.2, // 20% increase per level
+    cooldownReductionPerLevel: 0.1, // 10% faster cooldown per level
     dualShotLevel: 3, // Level 3+ fires 2 missiles
     tripleShotLevel: 5, // Level 5 fires 3 missiles
     maxLevel: 5,
@@ -226,6 +230,7 @@ export function getMissileStats(level: number) {
       distance: config.baseDistance,
       trackingRange: config.baseTrackingRange,
       turnRate: config.baseTurnRate,
+      cooldown: config.baseCooldown,
       missileCount,
       dualShot: level >= config.dualShotLevel,
     };
@@ -250,6 +255,10 @@ export function getMissileStats(level: number) {
     turnRate:
       config.baseTurnRate *
       (1 + levelAboveBase * config.turnRateMultiplierPerLevel),
+    cooldown: Math.floor(
+      config.baseCooldown /
+        (1 + levelAboveBase * config.cooldownReductionPerLevel)
+    ),
     missileCount,
     dualShot: level >= config.dualShotLevel,
   };
