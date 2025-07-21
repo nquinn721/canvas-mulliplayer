@@ -1,5 +1,6 @@
 import { Player } from "../classes/Player";
 import { PathfindingUtils } from "../utils/PathfindingUtils";
+import { getAIConfig, type AIDifficultyConfig } from "../config/AIConfig";
 
 // Enhanced behavior tree node types with pathfinding support
 enum NodeStatus {
@@ -35,60 +36,6 @@ interface EnhancedAIContext {
   currentPath: Point[];
   pathfindingTarget: Point | null;
 }
-
-// Enhanced AI difficulty settings
-interface EnhancedDifficultySettings {
-  detectionRange: number;
-  optimalRange: number;
-  minRange: number;
-  shootCooldown: number;
-  accuracy: number;
-  speed: number;
-  aggressiveness: number;
-  pathfindingEnabled: boolean;
-  avoidanceDistance: number;
-  reactionTime: number;
-}
-
-const ENHANCED_DIFFICULTY_PRESETS: Record<string, EnhancedDifficultySettings> =
-  {
-    EASY: {
-      detectionRange: 800,
-      optimalRange: 300,
-      minRange: 200,
-      shootCooldown: 3000,
-      accuracy: 0.6,
-      speed: 150,
-      aggressiveness: 0.3,
-      pathfindingEnabled: true,
-      avoidanceDistance: 120,
-      reactionTime: 800,
-    },
-    MEDIUM: {
-      detectionRange: 1200,
-      optimalRange: 250,
-      minRange: 150,
-      shootCooldown: 2000,
-      accuracy: 0.75,
-      speed: 180,
-      aggressiveness: 0.6,
-      pathfindingEnabled: true,
-      avoidanceDistance: 100,
-      reactionTime: 400,
-    },
-    HARD: {
-      detectionRange: 1600,
-      optimalRange: 200,
-      minRange: 100,
-      shootCooldown: 1500,
-      accuracy: 0.9,
-      speed: 220,
-      aggressiveness: 0.8,
-      pathfindingEnabled: true,
-      avoidanceDistance: 80,
-      reactionTime: 150,
-    },
-  };
 
 // Base behavior tree node
 abstract class EnhancedBehaviorNode {
@@ -430,7 +377,7 @@ class EnhancedPatrolAction extends EnhancedBehaviorNode {
 // Enhanced AI Enemy class with pathfinding capabilities
 export class EnhancedAIEnemy extends Player {
   private difficulty: string = "MEDIUM";
-  private settings: EnhancedDifficultySettings;
+  private settings: AIDifficultyConfig;
   private behaviorTree: EnhancedBehaviorNode;
   private lastShootTime: number = 0;
   private lastLaserTime: number = 0;
@@ -449,29 +396,32 @@ export class EnhancedAIEnemy extends Player {
     difficulty: string = "MEDIUM",
     color: string = "#ff4444"
   ) {
+    const aiConfig = getAIConfig(difficulty);
+    
     super(
       id,
       "Smart_AI_Bot",
       x,
       y,
       color,
-      100,
-      ENHANCED_DIFFICULTY_PRESETS[difficulty].speed
+      aiConfig.health,
+      aiConfig.speed
     );
 
     this.difficulty = difficulty;
-    this.settings = ENHANCED_DIFFICULTY_PRESETS[difficulty];
+    this.settings = aiConfig;
     this.spawnX = x;
     this.spawnY = y;
     this.patrolCenter = { x, y };
     this.patrolAngle = Math.random() * Math.PI * 2;
-    this.radius = 18;
+    this.radius = aiConfig.radius;
+    this.maxHealth = aiConfig.maxHealth;
 
-    // Set upgrades based on difficulty
-    this.laserUpgradeLevel =
-      difficulty === "HARD" ? 3 : difficulty === "MEDIUM" ? 2 : 1;
-    this.missileUpgradeLevel = difficulty === "HARD" ? 2 : 1;
-    this.flashUpgradeLevel = difficulty === "HARD" ? 2 : 1;
+    // Set upgrades based on difficulty from config
+    this.laserUpgradeLevel = aiConfig.laserUpgradeLevel;
+    this.missileUpgradeLevel = aiConfig.missileUpgradeLevel;
+    this.flashUpgradeLevel = aiConfig.flashUpgradeLevel;
+    this.boostUpgradeLevel = aiConfig.boostUpgradeLevel;
 
     this.buildBehaviorTree();
     this.lastShootTime = Date.now() - this.settings.shootCooldown;
@@ -650,7 +600,7 @@ export class EnhancedAIEnemy extends Player {
   }
 
   // Getter methods for behavior tree access
-  getSettings(): EnhancedDifficultySettings {
+  getSettings(): AIDifficultyConfig {
     return this.settings;
   }
 
@@ -689,10 +639,21 @@ export class EnhancedAIEnemy extends Player {
   }
 
   setDifficulty(difficulty: string): void {
-    if (ENHANCED_DIFFICULTY_PRESETS[difficulty]) {
+    const aiConfig = getAIConfig(difficulty);
+    if (aiConfig) {
       this.difficulty = difficulty;
-      this.settings = ENHANCED_DIFFICULTY_PRESETS[difficulty];
-      this.speed = this.settings.speed;
+      this.settings = aiConfig;
+      this.speed = aiConfig.speed;
+      this.health = aiConfig.health;
+      this.maxHealth = aiConfig.maxHealth;
+      this.radius = aiConfig.radius;
+      
+      // Update ability levels
+      this.laserUpgradeLevel = aiConfig.laserUpgradeLevel;
+      this.missileUpgradeLevel = aiConfig.missileUpgradeLevel;
+      this.flashUpgradeLevel = aiConfig.flashUpgradeLevel;
+      this.boostUpgradeLevel = aiConfig.boostUpgradeLevel;
+      
       // Rebuild behavior tree with new settings
       this.buildBehaviorTree();
     }

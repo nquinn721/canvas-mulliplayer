@@ -75,7 +75,7 @@ export class GameGateway
   private readonly WALL_COUNT = 60;
   private readonly POWERUP_COUNT = 20;
   private readonly AI_ENEMY_COUNT = 5; // Number of AI enemies to spawn
-  private preferredAIDifficulty: "EASY" | "MEDIUM" | "HARD" = "MEDIUM"; // Default difficulty
+  private preferredAIDifficulty: "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE" = "MEDIUM"; // Default difficulty
   private gameLoopActive: boolean = false; // Track if game loop should be running
   private memoryLogInterval: NodeJS.Timeout; // Memory monitoring interval
 
@@ -578,7 +578,7 @@ export class GameGateway
 
   @SubscribeMessage("changeAIDifficulty")
   handleChangeAIDifficulty(
-    @MessageBody() data: { difficulty: "EASY" | "MEDIUM" | "HARD" },
+    @MessageBody() data: { difficulty: "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE" },
     @ConnectedSocket() client: Socket
   ) {
     console.log(
