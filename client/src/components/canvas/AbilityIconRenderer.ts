@@ -153,7 +153,7 @@ export class AbilityIconRenderer extends CanvasComponent {
   }
 
   /**
-   * Draw description text for square design
+   * Draw description text for square design (at the top)
    */
   private drawSquareDescriptionText(
     x: number,
@@ -163,11 +163,12 @@ export class AbilityIconRenderer extends CanvasComponent {
     isReady: boolean
   ): void {
     this.withCanvasState(() => {
-      this.ctx.font = "8px Arial";
+      this.ctx.font = "bold 8px Arial";
       this.ctx.textAlign = "center";
       this.ctx.textBaseline = "middle";
       this.ctx.fillStyle = isReady ? "#ffffff" : "#888888";
-      this.ctx.fillText(descriptionText, x, y + halfSize + 25);
+      // Position text above the square
+      this.ctx.fillText(descriptionText, x, y - halfSize - 8);
     });
   }
 
@@ -331,7 +332,8 @@ export class AbilityIconRenderer extends CanvasComponent {
    */
   private drawLaserAbility(): void {
     const iconSize = 50; // Square size
-    const startX = this.gameStore.CANVAS_WIDTH - (iconSize * 3); // Space for 3 icons
+    const spacing = 8; // Spacing between slots
+    const startX = this.gameStore.CANVAS_WIDTH - (iconSize * 3 + spacing * 2); // Space for 3 icons + 2 gaps
     const y = this.gameStore.CANVAS_HEIGHT - 70; // Position from bottom
     const x = startX + iconSize / 2; // First icon position
 
@@ -371,25 +373,41 @@ export class AbilityIconRenderer extends CanvasComponent {
    */
   private drawFlashAbility(): void {
     const iconSize = 50; // Square size
-    const startX = this.gameStore.CANVAS_WIDTH - (iconSize * 3); // Space for 3 icons
+    const spacing = 8; // Spacing between slots
+    const startX = this.gameStore.CANVAS_WIDTH - (iconSize * 3 + spacing * 2); // Space for 3 icons + 2 gaps
     const y = this.gameStore.CANVAS_HEIGHT - 70; // Position from bottom
-    const x = startX + iconSize + iconSize / 2; // Second icon position (touching first)
+    const x = startX + iconSize + spacing + iconSize / 2; // Second icon position (with spacing)
 
     const drawFlashIcon = () => {
-      const centerX = x;
-      const centerY = y;
       this.withCanvasState(() => {
-        this.ctx.translate(centerX, centerY);
+        this.ctx.translate(x, y);
         this.ctx.fillStyle = "#ffff64"; // Yellow theme matching flash power-up
-        // Draw bolt icon
+        
+        // Draw a distinctive flash/spark icon (star-like burst)
+        const spikes = 8;
+        const outerRadius = 12;
+        const innerRadius = 6;
+        
         this.ctx.beginPath();
-        this.ctx.moveTo(-2, -10);
-        this.ctx.lineTo(4, -3);
-        this.ctx.lineTo(-1, -3);
-        this.ctx.lineTo(2, 10);
-        this.ctx.lineTo(-4, 3);
-        this.ctx.lineTo(1, 3);
+        for (let i = 0; i < spikes * 2; i++) {
+          const radius = i % 2 === 0 ? outerRadius : innerRadius;
+          const angle = (i * Math.PI) / spikes;
+          const px = Math.cos(angle) * radius;
+          const py = Math.sin(angle) * radius;
+          
+          if (i === 0) {
+            this.ctx.moveTo(px, py);
+          } else {
+            this.ctx.lineTo(px, py);
+          }
+        }
         this.ctx.closePath();
+        this.ctx.fill();
+        
+        // Add inner glow effect
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, 4, 0, Math.PI * 2);
+        this.ctx.fillStyle = "#ffffff";
         this.ctx.fill();
       });
     };
@@ -413,9 +431,10 @@ export class AbilityIconRenderer extends CanvasComponent {
    */
   private drawMissileAbility(): void {
     const iconSize = 50; // Square size
-    const startX = this.gameStore.CANVAS_WIDTH - (iconSize * 3); // Space for 3 icons
+    const spacing = 8; // Spacing between slots
+    const startX = this.gameStore.CANVAS_WIDTH - (iconSize * 3 + spacing * 2); // Space for 3 icons + 2 gaps
     const y = this.gameStore.CANVAS_HEIGHT - 70; // Position from bottom
-    const x = startX + iconSize * 2 + iconSize / 2; // Third icon position (touching second)
+    const x = startX + iconSize * 2 + spacing * 2 + iconSize / 2; // Third icon position (with spacing)
 
     const drawMissileIcon = () => {
       // Use same rocket shape as power-up missile icon
