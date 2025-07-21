@@ -24,14 +24,14 @@ export { Projectile } from "./weapons/Projectile";
 export type { ProjectileData } from "./weapons/Projectile";
 
 // Configuration files
-export { POWER_UP_CONFIG } from "./config/PowerUpConfig";
-export { 
-  EXPERIENCE_CONFIG, 
-  XP_REWARDS, 
-  LEVEL_PROGRESSION,
+export {
+  calculateLevelFromExperience,
+  EXPERIENCE_CONFIG,
   getExperienceRequiredForLevel,
   getExperienceRequiredForNextLevel,
-  calculateLevelFromExperience,
   getLevelProgressionInfo,
-  getXPReward
+  getXPReward,
+  LEVEL_PROGRESSION,
+  XP_REWARDS,
 } from "./config/ExperienceConfig";
+export { POWER_UP_CONFIG } from "./config/PowerUpConfig";

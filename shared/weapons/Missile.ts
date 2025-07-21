@@ -42,7 +42,7 @@ export class Missile extends Projectile {
     players.forEach((player, playerId) => {
       // Don't track the missile owner
       if (playerId === this.ownerId) return;
-      
+
       // Only target players that are alive (health > 0)
       if (player.health <= 0) return;
 

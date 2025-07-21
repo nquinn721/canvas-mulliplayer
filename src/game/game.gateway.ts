@@ -763,7 +763,9 @@ export class GameGateway
               const killer = this.players.get(projectile.ownerId);
               if (killer) {
                 killer.addExperience(XP_REWARDS.playerKill); // 50 XP for player kill
-                console.log(`Player ${killer.name} killed ${player.name} and gained ${XP_REWARDS.playerKill} XP`);
+                console.log(
+                  `Player ${killer.name} killed ${player.name} and gained ${XP_REWARDS.playerKill} XP`
+                );
               }
             }
 
@@ -794,7 +796,9 @@ export class GameGateway
             const killer = this.players.get(projectile.ownerId);
             if (killer) {
               killer.addExperience(XP_REWARDS.aiEnemyKill); // 20 XP for killing AI enemy
-              console.log(`Player ${killer.name} killed AI enemy and gained ${XP_REWARDS.aiEnemyKill} XP`);
+              console.log(
+                `Player ${killer.name} killed AI enemy and gained ${XP_REWARDS.aiEnemyKill} XP`
+              );
             }
 
             // Respawn AI at a safe location

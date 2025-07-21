@@ -66,7 +66,6 @@ export class SocketService {
         // Player respawned notification - could add visual effects here
         if (data.playerId === this.gameStore.playerId) {
           // Current player respawned successfully
-          console.log("You respawned!");
           // The death menu will automatically hide when health > 0 due to the useEffect in GameComponent
         }
       }

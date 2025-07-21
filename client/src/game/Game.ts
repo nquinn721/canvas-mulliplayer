@@ -37,8 +37,6 @@ export class Game {
 
       // Start render loop
       this.startRenderLoop();
-
-      console.log("Game started successfully");
     } catch (error) {
       console.error("Failed to start game:", error);
       throw error;
@@ -51,7 +49,6 @@ export class Game {
     this.stopRenderLoop();
     this.socketService.disconnect();
     this.gameStore.reset();
-    console.log("Game stopped");
   }
 
   // Start the render loop (separate from game loop for better performance)

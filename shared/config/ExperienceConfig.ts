@@ -45,7 +45,10 @@ export const EXPERIENCE_CONFIG: ExperienceConfig = {
     baseExperienceRequired: 100, // Level 1 → 2 requires 100 XP
     experienceMultiplier: 1.5, // Each level requires 50% more XP than previous
     maxLevel: 50, // Maximum level 50 (set to 0 for unlimited)
-    experienceFormula: "exponential", // Exponential growth makes higher levels much harder
+    experienceFormula: "exponential", // Options: "linear", "exponential", "custom"
+    // "linear": Even progression (100, 200, 300, 400...)
+    // "exponential": Increasing difficulty (100, 250, 475, 812...)
+    // "custom": Slower start, then accelerates (100, 130, 180, 250...)
   },
 };
 

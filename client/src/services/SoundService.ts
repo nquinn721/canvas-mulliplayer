@@ -146,24 +146,16 @@ export class SoundService {
     const loadPromises = Object.entries(soundFiles).map(
       async ([name, path]) => {
         try {
-          console.log(`Loading sound: ${name} from ${path}`);
           const response = await fetch(path);
 
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
           }
 
-          console.log(
-            `Fetch successful for ${name}, size: ${response.headers.get("content-length")} bytes`
-          );
           const arrayBuffer = await response.arrayBuffer();
-          console.log(
-            `ArrayBuffer created for ${name}, size: ${arrayBuffer.byteLength} bytes`
-          );
 
           const audioBuffer =
             await this.audioContext!.decodeAudioData(arrayBuffer);
-          console.log(`Successfully decoded ${name}`);
           this.soundBuffers.set(name, audioBuffer);
           this.loadedSounds.add(name);
         } catch (error) {
@@ -466,13 +458,11 @@ export class SoundService {
 
   // Music track selection
   setMusicTrack(trackNumber: number): void {
-    console.log(`Setting music track to ${trackNumber}`);
     this.selectedMusicTrack = Math.max(1, Math.min(4, trackNumber));
     this.saveVolumeSettings();
 
     // Always stop current music first if playing
     const wasPlaying = this.isBackgroundMusicPlaying();
-    console.log(`Was playing: ${wasPlaying}, isMuted: ${this.isMuted}`);
     if (wasPlaying) {
       this.stopBackgroundMusic();
     }
@@ -481,9 +471,6 @@ export class SoundService {
     if (!this.isMuted) {
       // Small delay to ensure the previous track is fully stopped
       setTimeout(() => {
-        console.log(
-          `Starting background music for track ${this.selectedMusicTrack}`
-        );
         this.startBackgroundMusic();
       }, 50);
     }

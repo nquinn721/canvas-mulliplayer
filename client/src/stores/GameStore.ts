@@ -99,13 +99,12 @@ export class GameStore {
     // Check for level-up before updating state
     const currentPlayer = this.gameState.players[this.playerId];
     const newPlayer = gameState.players[this.playerId];
-    
+
     if (currentPlayer && newPlayer && currentPlayer.level < newPlayer.level) {
       // Player leveled up! Play level-up sound
       soundService.playSound("levelup", 0.8);
-      console.log(`Level up! You are now level ${newPlayer.level}`);
     }
-    
+
     this.gameState = gameState;
     this.updateCameraPosition();
   }

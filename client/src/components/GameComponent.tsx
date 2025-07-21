@@ -1,3 +1,5 @@
+import { faBars } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { observer } from "mobx-react-lite";
 import { useEffect, useRef, useState } from "react";
 import "../App.css";
@@ -6,8 +8,6 @@ import { soundService } from "../services/SoundService";
 import { GameStore } from "../stores/GameStore";
 import DeathMenu from "./DeathMenu";
 import EscapeMenu from "./EscapeMenu";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBars } from "@fortawesome/free-solid-svg-icons";
 
 interface GameComponentProps {
   playerName: string;
@@ -168,7 +168,6 @@ const GameComponent = observer(
       if (gameStore?.socket) {
         gameStore.socket.emit("changeAIDifficulty", { difficulty });
         setCurrentAIDifficulty(difficulty);
-        console.log(`Changed AI difficulty to ${difficulty}`);
       }
     };
 
@@ -245,7 +244,7 @@ const GameComponent = observer(
                 {gameStore?.isConnected ? "🟢 Online" : "🔴 Offline"}
               </span>
             </div>
-            <button 
+            <button
               className="menu-button"
               onClick={() => setIsEscapeMenuOpen(true)}
               title="Open Menu (ESC)"

@@ -651,7 +651,7 @@ export class EnhancedAIEnemy extends Player {
     players.forEach((player) => {
       // Only target players that are alive (health > 0)
       if (player.health <= 0) return;
-      
+
       const distance = this.getDistanceTo(player.x, player.y);
       if (distance < closestDistance) {
         closestDistance = distance;

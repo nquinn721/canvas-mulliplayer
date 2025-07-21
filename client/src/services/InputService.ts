@@ -133,19 +133,33 @@ export class InputService {
       const currentBoostState = currentPlayer.isBoostActive;
       const isMoving = this.isPlayerMoving();
 
-      if (currentBoostState && !soundService.isContinuousSoundPlaying("boost")) {
+      if (
+        currentBoostState &&
+        !soundService.isContinuousSoundPlaying("boost")
+      ) {
         // Boost just activated - start continuous boost sound at full volume
         soundService.startContinuousSound("boost", 0.4);
-      } else if (!currentBoostState && isMoving && !soundService.isContinuousSoundPlaying("movement")) {
+      } else if (
+        !currentBoostState &&
+        isMoving &&
+        !soundService.isContinuousSoundPlaying("movement")
+      ) {
         // Moving but not boosting - start continuous movement sound at lower volume
         soundService.startContinuousSound("movement", 0.15); // Reduced from 0.2 for subtler movement sound
-      } else if (!currentBoostState && !isMoving && soundService.isContinuousSoundPlaying("movement")) {
+      } else if (
+        !currentBoostState &&
+        !isMoving &&
+        soundService.isContinuousSoundPlaying("movement")
+      ) {
         // Not moving and not boosting - stop movement sound
         soundService.stopContinuousSound("movement");
       }
 
       // Stop boost sound when boost deactivates
-      if (!currentBoostState && soundService.isContinuousSoundPlaying("boost")) {
+      if (
+        !currentBoostState &&
+        soundService.isContinuousSoundPlaying("boost")
+      ) {
         soundService.stopContinuousSound("boost");
       }
 

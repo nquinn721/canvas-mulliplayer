@@ -550,7 +550,7 @@ export class RendererService {
     Object.values(this.gameStore.gameState.players).forEach((player) => {
       // Don't render dead players (health <= 0)
       if (player.health <= 0) return;
-      
+
       if (this.gameStore.isPlayerInView(player)) {
         this.drawSpaceship(player);
 
@@ -583,7 +583,7 @@ export class RendererService {
     Object.values(this.gameStore.gameState.aiEnemies).forEach((aiEnemy) => {
       // Don't render dead AI enemies (health <= 0)
       if (aiEnemy.health <= 0) return;
-      
+
       if (this.gameStore.isPlayerInView(aiEnemy)) {
         this.drawAISpaceship(aiEnemy);
 
@@ -2081,21 +2081,23 @@ export class RendererService {
 
     // Calculate XP progress using new exponential system
     const currentLevel = player.level || 1;
-    
+
     // Calculate current and next level XP requirements using exponential progression
     let currentLevelXP = 0;
     let nextLevelXP = 0;
     const baseXP = 100;
     const multiplier = 1.5;
-    
+
     // Calculate total XP needed for current level
     for (let level = 1; level < currentLevel; level++) {
       currentLevelXP += Math.floor(baseXP * Math.pow(multiplier, level - 1));
     }
-    
+
     // Calculate XP needed for next level
-    nextLevelXP = currentLevelXP + Math.floor(baseXP * Math.pow(multiplier, currentLevel - 1));
-    
+    nextLevelXP =
+      currentLevelXP +
+      Math.floor(baseXP * Math.pow(multiplier, currentLevel - 1));
+
     const progressXP = (player.experience || 0) - currentLevelXP;
     const xpNeededForLevel = nextLevelXP - currentLevelXP;
     const progress = Math.max(0, Math.min(1, progressXP / xpNeededForLevel));
@@ -2185,21 +2187,23 @@ export class RendererService {
 
     // Calculate XP progress using new exponential system
     const currentLevel = player.level || 1;
-    
+
     // Calculate current and next level XP requirements using exponential progression
     let currentLevelXP = 0;
     let nextLevelXP = 0;
     const baseXP = 100;
     const multiplier = 1.5;
-    
+
     // Calculate total XP needed for current level
     for (let level = 1; level < currentLevel; level++) {
       currentLevelXP += Math.floor(baseXP * Math.pow(multiplier, level - 1));
     }
-    
+
     // Calculate XP needed for next level
-    nextLevelXP = currentLevelXP + Math.floor(baseXP * Math.pow(multiplier, currentLevel - 1));
-    
+    nextLevelXP =
+      currentLevelXP +
+      Math.floor(baseXP * Math.pow(multiplier, currentLevel - 1));
+
     const progressXP = (player.experience || 0) - currentLevelXP;
     const xpNeededForLevel = nextLevelXP - currentLevelXP;
     const progress = Math.max(0, Math.min(1, progressXP / xpNeededForLevel));
