@@ -133,6 +133,11 @@ export class AbilityIconRenderer extends CanvasComponent {
     keyLabel: string,
     isReady: boolean
   ): void {
+    // Don't render anything if keyLabel is empty
+    if (!keyLabel || keyLabel.trim() === "") {
+      return;
+    }
+
     this.withCanvasState(() => {
       this.ctx.font = "bold 10px Arial";
       this.ctx.textAlign = "center";
@@ -331,10 +336,11 @@ export class AbilityIconRenderer extends CanvasComponent {
    * Draw laser ability icon
    */
   private drawLaserAbility(): void {
-    const iconSize = 50; // Square size
+    const iconSize = 60; // Bigger square size (was 50)
     const spacing = 8; // Spacing between slots
-    const startX = this.gameStore.CANVAS_WIDTH - (iconSize * 3 + spacing * 2); // Space for 3 icons + 2 gaps
-    const y = this.gameStore.CANVAS_HEIGHT - 70; // Position from bottom
+    const marginFromEdge = 30; // More inward from edge (was about 16)
+    const startX = this.gameStore.CANVAS_WIDTH - (iconSize * 3 + spacing * 2 + marginFromEdge);
+    const y = this.gameStore.CANVAS_HEIGHT - 80; // Position from bottom
     const x = startX + iconSize / 2; // First icon position
 
     const drawLaserIcon = () => {
@@ -359,7 +365,7 @@ export class AbilityIconRenderer extends CanvasComponent {
       y,
       iconSize,
       true, // Laser is always ready (unlimited ammo)
-      "LEFT CLICK",
+      "", // No key label text
       "rgba(255, 100, 100, 0.9)", // Red theme matching laser power-up
       drawLaserIcon,
       0, // No cooldown
@@ -372,10 +378,11 @@ export class AbilityIconRenderer extends CanvasComponent {
    * Draw flash ability icon
    */
   private drawFlashAbility(): void {
-    const iconSize = 50; // Square size
+    const iconSize = 60; // Bigger square size (was 50)
     const spacing = 8; // Spacing between slots
-    const startX = this.gameStore.CANVAS_WIDTH - (iconSize * 3 + spacing * 2); // Space for 3 icons + 2 gaps
-    const y = this.gameStore.CANVAS_HEIGHT - 70; // Position from bottom
+    const marginFromEdge = 30; // More inward from edge
+    const startX = this.gameStore.CANVAS_WIDTH - (iconSize * 3 + spacing * 2 + marginFromEdge);
+    const y = this.gameStore.CANVAS_HEIGHT - 80; // Position from bottom
     const x = startX + iconSize + spacing + iconSize / 2; // Second icon position (with spacing)
 
     const drawFlashIcon = () => {
@@ -417,7 +424,7 @@ export class AbilityIconRenderer extends CanvasComponent {
       y,
       iconSize,
       this.gameStore.isFlashReady,
-      "F",
+      "", // No key label text
       "rgba(255, 255, 0, 0.9)", // Yellow theme matching flash power-up
       drawFlashIcon,
       this.gameStore.flashCooldownPercent,
@@ -430,10 +437,11 @@ export class AbilityIconRenderer extends CanvasComponent {
    * Draw missile ability icon
    */
   private drawMissileAbility(): void {
-    const iconSize = 50; // Square size
+    const iconSize = 60; // Bigger square size (was 50)
     const spacing = 8; // Spacing between slots
-    const startX = this.gameStore.CANVAS_WIDTH - (iconSize * 3 + spacing * 2); // Space for 3 icons + 2 gaps
-    const y = this.gameStore.CANVAS_HEIGHT - 70; // Position from bottom
+    const marginFromEdge = 30; // More inward from edge
+    const startX = this.gameStore.CANVAS_WIDTH - (iconSize * 3 + spacing * 2 + marginFromEdge);
+    const y = this.gameStore.CANVAS_HEIGHT - 80; // Position from bottom
     const x = startX + iconSize * 2 + spacing * 2 + iconSize / 2; // Third icon position (with spacing)
 
     const drawMissileIcon = () => {
@@ -461,7 +469,7 @@ export class AbilityIconRenderer extends CanvasComponent {
       y,
       iconSize,
       this.gameStore.isMissileReady,
-      "RIGHT CLICK",
+      "", // No key label text
       "rgba(255, 165, 0, 0.9)", // Orange theme matching missile power-up
       drawMissileIcon,
       this.gameStore.missileCooldownPercent,
