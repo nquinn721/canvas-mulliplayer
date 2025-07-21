@@ -11,8 +11,10 @@ import {
   faVolumeUp,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { observer } from "mobx-react-lite";
 import React, { useEffect, useState } from "react";
 import { soundService } from "../services/SoundService";
+import { gameStore, socketService } from "../stores";
 import BackgroundCanvas from "./BackgroundCanvas";
 import { ErrorLogs } from "./ErrorLogs";
 import "./HomeMenu.css";
@@ -24,7 +26,7 @@ interface HomeMenuProps {
   ) => void;
 }
 
-const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
+const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<
     "EASY" | "MEDIUM" | "HARD"
   >("MEDIUM");
@@ -56,6 +58,19 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
       localStorage.setItem("canvas-multiplayer-player-name", playerName.trim());
     }
   }, [playerName]);
+
+  // Establish socket connection when component mounts
+  useEffect(() => {
+    console.log('HomeMenu: Checking connection status...');
+    console.log('gameStore.isConnected:', gameStore.isConnected);
+    console.log('socketService.isConnected:', socketService.isConnected);
+    
+    // Connect to the server if not already connected
+    if (!socketService.isConnected) {
+      console.log('HomeMenu: Attempting to connect...');
+      socketService.connect();
+    }
+  }, []);
 
   const difficultyDescriptions = {
     EASY: {
@@ -102,6 +117,18 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
       >
         <FontAwesomeIcon icon={faCog} />
       </button>
+
+      {/* Connection Status Indicator */}
+      <div
+        className={`connection-status ${gameStore.isConnected ? "connected" : "disconnected"}`}
+        title={
+          gameStore.isConnected
+            ? "Connected to server"
+            : "Disconnected from server"
+        }
+      >
+        <div className="connection-light"></div>
+      </div>
 
       {/* Volume Toggle Button */}
       <button
@@ -383,6 +410,6 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
       )}
     </div>
   );
-};
+});
 
 export default HomeMenu;

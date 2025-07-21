@@ -12,12 +12,18 @@ export class Game {
   private inputService: InputService;
   private renderAnimationId: number | null = null;
 
-  constructor(canvas: HTMLCanvasElement) {
-    // Initialize store
-    this.gameStore = new GameStore();
+  constructor(
+    canvas: HTMLCanvasElement,
+    gameStore?: GameStore,
+    socketService?: SocketService
+  ) {
+    // Use provided store or create new one
+    this.gameStore = gameStore || new GameStore();
 
-    // Initialize services
-    this.socketService = new SocketService(this.gameStore);
+    // Use provided socket service or create new one
+    this.socketService = socketService || new SocketService(this.gameStore);
+
+    // Initialize other services
     this.gameLoopService = new GameLoopService(this.gameStore);
     this.rendererService = new RendererService(this.gameStore, canvas);
     this.inputService = new InputService(this.gameStore, canvas);

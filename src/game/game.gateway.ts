@@ -38,7 +38,11 @@ interface KeyState {
     origin:
       process.env.NODE_ENV === "production"
         ? [process.env.CLIENT_URL || "https://your-cloud-run-url.com"]
-        : "http://localhost:5173",
+        : [
+            "http://localhost:5173", // Default Vite dev server
+            "http://localhost:5174", // Alternative Vite dev server port
+            /^http:\/\/localhost:\d+$/, // Allow any localhost port in development
+          ],
     methods: ["GET", "POST"],
   },
 })

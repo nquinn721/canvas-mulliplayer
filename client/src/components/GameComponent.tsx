@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import "../App.css";
 import { Game } from "../game/Game";
 import { soundService } from "../services/SoundService";
-import { GameStore } from "../stores/GameStore";
+import { gameStore, socketService } from "../stores";
 import DeathMenu from "./DeathMenu";
 import EscapeMenu from "./EscapeMenu";
 
@@ -35,7 +35,6 @@ const GameComponent = observer(
     const [currentAIDifficulty, setCurrentAIDifficulty] = useState<
       "EASY" | "MEDIUM" | "HARD"
     >(aiDifficulty);
-    const [gameStore, setGameStore] = useState<GameStore | null>(null);
     const [isEscapeMenuOpen, setIsEscapeMenuOpen] = useState(false);
     const [isPlayerDead, setIsPlayerDead] = useState(false);
     const [canvasDimensions, setCanvasDimensions] = useState(() => {
@@ -90,28 +89,27 @@ const GameComponent = observer(
     useEffect(() => {
       if (!canvasRef.current) return;
 
-      // Initialize game
-      const game = new Game(canvasRef.current);
+      // Initialize game with global store and socket service
+      const game = new Game(canvasRef.current, gameStore, socketService);
       gameRef.current = game;
-      setGameStore(game.store);
 
       // Start the game
       game.start().catch(console.error);
 
       // Set AI difficulty and join with player name when game starts
       setTimeout(() => {
-        if (game.store?.socket) {
-          game.store.socket.emit("changeAIDifficulty", {
+        if (gameStore?.socket) {
+          gameStore.socket.emit("changeAIDifficulty", {
             difficulty: aiDifficulty,
           });
           // Join the game with the player's chosen name
-          if (game.socket.isConnected) {
-            game.socket.joinGame(playerName);
+          if (socketService.isConnected) {
+            socketService.joinGame(playerName);
           } else {
             // Wait for connection and then join
             const checkConnection = setInterval(() => {
-              if (game.socket.isConnected) {
-                game.socket.joinGame(playerName);
+              if (socketService.isConnected) {
+                socketService.joinGame(playerName);
                 clearInterval(checkConnection);
               }
             }, 100);
@@ -135,7 +133,6 @@ const GameComponent = observer(
         soundService.stopBackgroundMusic();
         game.cleanup();
         gameRef.current = null;
-        setGameStore(null);
       };
     }, [aiDifficulty]);
 
@@ -209,7 +206,6 @@ const GameComponent = observer(
         soundService.stopBackgroundMusic();
         gameRef.current.cleanup();
         gameRef.current = null;
-        setGameStore(null);
       }
 
       // Restart background music for home menu if not muted

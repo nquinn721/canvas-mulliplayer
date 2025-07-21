@@ -320,6 +320,88 @@
   z-index: 1001;
 }
 
+/* Connection Status Indicator */
+.connection-status {
+  position: absolute;
+  top: 20px;
+  right: 140px; /* Position to the left of volume toggle */
+  background: rgba(0, 212, 255, 0.2);
+  border: 1px solid rgba(0, 212, 255, 0.5);
+  border-radius: 12px;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  box-shadow:
+    0 4px 16px rgba(0, 212, 255, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  z-index: 1001;
+  transition: all 0.3s ease;
+}
+
+.connection-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+/* Connected state - green light */
+.connection-status.connected {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: rgba(76, 175, 80, 0.5);
+  box-shadow:
+    0 4px 16px rgba(76, 175, 80, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.connection-status.connected .connection-light {
+  background: #4caf50;
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.8);
+  animation: pulse-green 2s infinite;
+}
+
+/* Disconnected state - red light */
+.connection-status.disconnected {
+  background: rgba(244, 67, 54, 0.2);
+  border-color: rgba(244, 67, 54, 0.5);
+  box-shadow:
+    0 4px 16px rgba(244, 67, 54, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.connection-status.disconnected .connection-light {
+  background: #f44336;
+  box-shadow: 0 0 8px rgba(244, 67, 54, 0.8);
+  animation: pulse-red 1s infinite;
+}
+
+@keyframes pulse-green {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes pulse-red {
+  0%,
+  100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
 .volume-toggle svg {
   color: inherit;
 }
@@ -671,6 +753,18 @@
     width: 45px;
     height: 45px;
     font-size: 1.3rem;
+  }
+
+  .connection-status {
+    top: 15px;
+    right: 125px; /* Adjust position for mobile */
+    width: 45px;
+    height: 45px;
+  }
+
+  .connection-light {
+    width: 10px;
+    height: 10px;
   }
 
   .modal-content {

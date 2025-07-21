@@ -18,7 +18,11 @@ async function bootstrap() {
       origin:
         process.env.NODE_ENV === "production"
           ? process.env.FRONTEND_URL || true // Allow configured frontend URL in production
-          : "http://localhost:5173", // Vite dev server for development
+          : [
+              "http://localhost:5173", // Default Vite dev server
+              "http://localhost:5174", // Alternative Vite dev server port
+              /^http:\/\/localhost:\d+$/, // Allow any localhost port in development
+            ],
       methods: ["GET", "POST"],
       credentials: true,
     });
