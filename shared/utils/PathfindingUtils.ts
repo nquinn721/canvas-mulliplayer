@@ -36,7 +36,8 @@ export class PathfindingUtils {
     start: Point,
     end: Point,
     walls: Wall[],
-    entityRadius: number = 20
+    entityRadius: number = 20,
+    bufferDistance: number = 20
   ): boolean {
     const dx = Math.abs(end.x - start.x);
     const dy = Math.abs(end.y - start.y);
@@ -53,7 +54,7 @@ export class PathfindingUtils {
       const checkX = start.x + stepX * i;
       const checkY = start.y + stepY * i;
 
-      if (this.isPositionBlocked(checkX, checkY, walls, entityRadius)) {
+      if (this.isPositionBlocked(checkX, checkY, walls, entityRadius, bufferDistance)) {
         return false;
       }
     }
@@ -68,14 +69,16 @@ export class PathfindingUtils {
     x: number,
     y: number,
     walls: Wall[],
-    entityRadius: number = 20
+    entityRadius: number = 20,
+    bufferDistance: number = 20
   ): boolean {
+    const totalRadius = entityRadius + bufferDistance;
     return walls.some((wall) => {
       return (
-        x - entityRadius < wall.x + wall.width &&
-        x + entityRadius > wall.x &&
-        y - entityRadius < wall.y + wall.height &&
-        y + entityRadius > wall.y
+        x - totalRadius < wall.x + wall.width &&
+        x + totalRadius > wall.x &&
+        y - totalRadius < wall.y + wall.height &&
+        y + totalRadius > wall.y
       );
     });
   }
@@ -90,10 +93,11 @@ export class PathfindingUtils {
     walls: Wall[],
     worldWidth: number,
     worldHeight: number,
-    entityRadius: number = 20
+    entityRadius: number = 20,
+    bufferDistance: number = 20
   ): Point[] {
     // If there's direct line of sight, return direct path
-    if (this.hasLineOfSight(start, goal, walls, entityRadius)) {
+    if (this.hasLineOfSight(start, goal, walls, entityRadius, bufferDistance)) {
       return [start, goal];
     }
 
@@ -138,7 +142,7 @@ export class PathfindingUtils {
 
         // Skip if position is blocked
         if (
-          this.isPositionBlocked(neighbor.x, neighbor.y, walls, entityRadius)
+          this.isPositionBlocked(neighbor.x, neighbor.y, walls, entityRadius, bufferDistance)
         ) {
           continue;
         }
@@ -253,7 +257,8 @@ export class PathfindingUtils {
   static simplifyPath(
     path: Point[],
     walls: Wall[],
-    entityRadius: number = 20
+    entityRadius: number = 20,
+    bufferDistance: number = 20
   ): Point[] {
     if (path.length <= 2) return path;
 
@@ -266,7 +271,7 @@ export class PathfindingUtils {
       // Find the furthest point we can see from current position
       for (let i = currentIndex + 2; i < path.length; i++) {
         if (
-          this.hasLineOfSight(path[currentIndex], path[i], walls, entityRadius)
+          this.hasLineOfSight(path[currentIndex], path[i], walls, entityRadius, bufferDistance)
         ) {
           nextIndex = i;
         } else {
@@ -292,11 +297,12 @@ export class PathfindingUtils {
     worldWidth: number,
     worldHeight: number,
     entityRadius: number = 20,
-    avoidanceDistance: number = 100
+    avoidanceDistance: number = 100,
+    bufferDistance: number = 20
   ): Point {
     // If current position is not blocked, try to find a path
     if (
-      !this.isPositionBlocked(currentPos.x, currentPos.y, walls, entityRadius)
+      !this.isPositionBlocked(currentPos.x, currentPos.y, walls, entityRadius, bufferDistance)
     ) {
       const path = this.findPath(
         currentPos,
@@ -304,7 +310,8 @@ export class PathfindingUtils {
         walls,
         worldWidth,
         worldHeight,
-        entityRadius
+        entityRadius,
+        bufferDistance
       );
       if (path.length > 1) {
         return path[1]; // Return next waypoint

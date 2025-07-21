@@ -171,14 +171,16 @@ class NavigateToTargetAction extends EnhancedBehaviorNode {
         context.walls,
         context.worldWidth,
         context.worldHeight,
-        ai.radius
+        ai.radius,
+        20 // Buffer distance to keep bots 20px away from walls
       );
 
       // Simplify the path to reduce waypoints
       context.currentPath = PathfindingUtils.simplifyPath(
         newPath,
         context.walls,
-        ai.radius
+        ai.radius,
+        20 // Buffer distance to keep bots 20px away from walls
       );
       context.pathfindingTarget = targetPos;
 
@@ -290,7 +292,8 @@ class AvoidObstaclesAction extends EnhancedBehaviorNode {
       context.worldWidth,
       context.worldHeight,
       ai.radius,
-      settings.avoidanceDistance
+      settings.avoidanceDistance,
+      20 // Buffer distance to keep bots 20px away from walls
     );
 
     // Move towards safe position
@@ -366,7 +369,8 @@ class EnhancedPatrolAction extends EnhancedBehaviorNode {
           currentPos,
           targetPos,
           context.walls,
-          ai.radius
+          ai.radius,
+          20 // Buffer distance to keep bots 20px away from walls
         )
       ) {
         // Find path to patrol target
@@ -376,7 +380,8 @@ class EnhancedPatrolAction extends EnhancedBehaviorNode {
           context.walls,
           context.worldWidth,
           context.worldHeight,
-          ai.radius
+          ai.radius,
+          20 // Buffer distance to keep bots 20px away from walls
         );
 
         if (path.length > 1) {
@@ -526,7 +531,8 @@ export class EnhancedAIEnemy extends Player {
           { x: this.x, y: this.y },
           { x: closestPlayer.x, y: closestPlayer.y },
           walls,
-          this.radius
+          this.radius,
+          20 // Buffer distance to keep bots 20px away from walls
         )
       : false;
 
@@ -574,7 +580,8 @@ export class EnhancedAIEnemy extends Player {
       { x: this.x, y: this.y },
       { x: closestPlayer.x, y: closestPlayer.y },
       walls,
-      this.radius
+      this.radius,
+      20 // Buffer distance to keep bots 20px away from walls
     );
 
     // Only shoot if we have line of sight, player is in range, and we're off cooldown

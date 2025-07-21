@@ -1,3 +1,4 @@
+import { OnModuleDestroy } from "@nestjs/common";
 import {
   ConnectedSocket,
   MessageBody,
@@ -39,7 +40,9 @@ interface KeyState {
     methods: ["GET", "POST"],
   },
 })
-export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class GameGateway
+  implements OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy
+{
   @WebSocketServer()
   server: Server;
 
@@ -67,12 +70,15 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly POWERUP_COUNT = 20;
   private readonly AI_ENEMY_COUNT = 5; // Number of AI enemies to spawn
   private preferredAIDifficulty: "EASY" | "MEDIUM" | "HARD" = "MEDIUM"; // Default difficulty
+  private gameLoopActive: boolean = false; // Track if game loop should be running
+  private memoryLogInterval: NodeJS.Timeout; // Memory monitoring interval
 
   constructor() {
     this.generateWalls();
     this.spawnPowerUps();
     this.spawnAIEnemies();
-    this.startGameLoop();
+    this.startMemoryMonitoring();
+    // Don't start game loop until players join
   }
 
   handleConnection(client: Socket) {
@@ -101,6 +107,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log(
       `${playerName} joined the game at (${spawnPosition.x}, ${spawnPosition.y})`
     );
+
+    // Check if we should start the game loop when first player joins
+    this.checkGameLoopState();
+
     this.broadcastGameState();
   }
 
@@ -109,7 +119,100 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const playerName = player ? player.name : client.id;
     console.log(`${playerName} disconnected`);
     this.players.delete(client.id);
+
+    // Check if we should pause the game loop when no real players are connected
+    this.checkGameLoopState();
+
     this.broadcastGameState();
+  }
+
+  // Cleanup method called when the module is destroyed
+  onModuleDestroy() {
+    console.log("GameGateway: Cleaning up resources...");
+
+    if (this.gameLoopInterval) {
+      clearInterval(this.gameLoopInterval);
+      this.gameLoopInterval = null;
+    }
+
+    if (this.memoryLogInterval) {
+      clearInterval(this.memoryLogInterval);
+      this.memoryLogInterval = null;
+    }
+
+    // Clear all maps to prevent memory leaks
+    this.players.clear();
+    this.aiEnemies.clear();
+    this.projectiles.clear();
+    this.meteors.clear();
+    this.stars.clear();
+    this.powerUps.clear();
+    this.walls = [];
+
+    this.gameLoopActive = false;
+    console.log("GameGateway: Cleanup completed");
+  }
+
+  // Start memory monitoring to track potential leaks
+  private startMemoryMonitoring() {
+    this.memoryLogInterval = setInterval(() => {
+      const memUsage = process.memoryUsage();
+      const playerCount = this.players.size;
+      const projectileCount = this.projectiles.size;
+      const meteorCount = this.meteors.size;
+      const starCount = this.stars.size;
+      const powerUpCount = this.powerUps.size;
+
+      console.log(
+        `[MEMORY] Players: ${playerCount}, Projectiles: ${projectileCount}, Meteors: ${meteorCount}, Stars: ${starCount}, PowerUps: ${powerUpCount}`
+      );
+      console.log(
+        `[MEMORY] Heap Used: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB, RSS: ${Math.round(memUsage.rss / 1024 / 1024)}MB`
+      );
+
+      // Warn if memory usage is getting high
+      if (memUsage.heapUsed > 500 * 1024 * 1024) {
+        // 500MB
+        console.warn(
+          `[MEMORY WARNING] High heap usage: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`
+        );
+      }
+
+      // Warn if entity counts are getting high
+      if (projectileCount > 1000) {
+        console.warn(
+          `[MEMORY WARNING] High projectile count: ${projectileCount}`
+        );
+      }
+      if (meteorCount > 100) {
+        console.warn(`[MEMORY WARNING] High meteor count: ${meteorCount}`);
+      }
+      if (starCount > 100) {
+        console.warn(`[MEMORY WARNING] High star count: ${starCount}`);
+      }
+    }, 30000); // Log every 30 seconds
+  }
+
+  // Check if game loop should be running based on player count
+  private checkGameLoopState() {
+    const hasRealPlayers = this.players.size > 0;
+
+    if (hasRealPlayers && !this.gameLoopActive) {
+      console.log("Starting game loop - real players connected");
+      this.startGameLoop();
+    } else if (!hasRealPlayers && this.gameLoopActive) {
+      console.log("Pausing game loop - no real players connected");
+      this.pauseGameLoop();
+    }
+  }
+
+  // Pause the game loop to save resources
+  private pauseGameLoop() {
+    if (this.gameLoopInterval) {
+      clearInterval(this.gameLoopInterval);
+      this.gameLoopInterval = null;
+    }
+    this.gameLoopActive = false;
   }
 
   @SubscribeMessage("input")
@@ -571,22 +674,34 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private startGameLoop() {
+    // Don't start if already active
+    if (this.gameLoopActive) {
+      return;
+    }
+
     this.gameLoopInterval = setInterval(() => {
       this.updateGame();
       this.broadcastGameState();
     }, 16); // ~60 FPS
+
+    this.gameLoopActive = true;
   }
 
   private updateGame() {
     const deltaTime = 16;
+
+    // Skip expensive operations if no real players are connected
+    const hasRealPlayers = this.players.size > 0;
 
     // Update player shields
     this.players.forEach((player) => {
       player.updateShield();
     });
 
-    // Update AI enemies
-    this.updateAIEnemies(deltaTime);
+    // Update AI enemies (only if we have real players to interact with)
+    if (hasRealPlayers) {
+      this.updateAIEnemies(deltaTime);
+    }
 
     // Update projectiles
     const projectilesToRemove: string[] = [];
@@ -696,11 +811,11 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.projectiles.delete(id);
     });
 
-    // Update meteors
-    this.updateMeteors(deltaTime);
+    // Update meteors (only spawn new ones if we have real players)
+    this.updateMeteors(deltaTime, hasRealPlayers);
 
-    // Update stars
-    this.updateStars(deltaTime);
+    // Update stars (only spawn new ones if we have real players)
+    this.updateStars(deltaTime, hasRealPlayers);
 
     // Update power-ups and check for collection
     this.updatePowerUps(deltaTime);
@@ -1209,11 +1324,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
-  private updateMeteors(deltaTime: number) {
+  private updateMeteors(deltaTime: number, hasRealPlayers: boolean = true) {
     const currentTime = Date.now();
 
-    // Spawn new meteor if enough time has passed
-    if (currentTime - this.lastMeteorSpawn > this.meteorSpawnInterval) {
+    // Only spawn new meteors if there are real players to interact with them
+    if (
+      hasRealPlayers &&
+      currentTime - this.lastMeteorSpawn > this.meteorSpawnInterval
+    ) {
       this.spawnMeteor();
     }
 
@@ -1294,11 +1412,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
-  private updateStars(deltaTime: number) {
+  private updateStars(deltaTime: number, hasRealPlayers: boolean = true) {
     const currentTime = Date.now();
 
-    // Spawn new star if enough time has passed
-    if (currentTime - this.lastStarSpawn > this.starSpawnInterval) {
+    // Only spawn new stars if there are real players to interact with them
+    if (
+      hasRealPlayers &&
+      currentTime - this.lastStarSpawn > this.starSpawnInterval
+    ) {
       this.spawnStar();
     }
 

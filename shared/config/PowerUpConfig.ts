@@ -86,7 +86,7 @@ export const POWER_UP_CONFIG = {
   laserUpgrade: {
     baseSpeed: 800,
     baseDamage: 25,
-    baseDistance: 1000,
+    baseDistance: 800,
     baseFireRate: 120, // milliseconds between shots
     speedMultiplierPerLevel: 0.1, // 10% increase per level
     damageMultiplierPerLevel: 0.15, // 15% increase per level
@@ -97,9 +97,9 @@ export const POWER_UP_CONFIG = {
   } as LaserUpgradeConfig,
 
   missileUpgrade: {
-    baseSpeed: 400,
-    baseDamage: 50, // Reduced from 75
-    baseDistance: 1200,
+    baseSpeed: 300,
+    baseDamage: 20, // Reduced from 75
+    baseDistance: 600,
     baseTrackingRange: 300,
     baseTurnRate: 3,
     speedMultiplierPerLevel: 0.1, // 10% increase per level
