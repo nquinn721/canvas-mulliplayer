@@ -76,6 +76,9 @@ export class GameGateway
   private readonly POWERUP_COUNT = 20;
   private readonly AI_ENEMY_COUNT = 5; // Number of AI enemies to spawn
   private preferredAIDifficulty: "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE" = "MEDIUM"; // Default difficulty
+  private lastDifficultyChangeBy: string | null = null; // Track who last changed difficulty
+  private difficultyChangeTimestamp: number = 0; // When was it last changed
+  private readonly DIFFICULTY_CHANGE_COOLDOWN = 10000; // 10 seconds cooldown between changes
   private gameLoopActive: boolean = false; // Track if game loop should be running
   private memoryLogInterval: NodeJS.Timeout; // Memory monitoring interval
 
@@ -122,6 +125,15 @@ export class GameGateway
 
       // Check if we should start the game loop when first player joins
       this.checkGameLoopState();
+
+      // Send current AI difficulty status to the new player
+      client.emit("aiDifficultyStatus", {
+        currentDifficulty: this.preferredAIDifficulty,
+        lastChangedBy: this.lastDifficultyChangeBy,
+        changeTimestamp: this.difficultyChangeTimestamp,
+        aiEnemyCount: this.aiEnemies.size,
+        availableDifficulties: ["EASY", "MEDIUM", "HARD", "EXPERT", "NIGHTMARE"]
+      });
 
       this.broadcastGameState();
     } catch (error) {
@@ -581,9 +593,28 @@ export class GameGateway
     @MessageBody() data: { difficulty: "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE" },
     @ConnectedSocket() client: Socket
   ) {
+    const currentTime = Date.now();
+    const player = this.players.get(client.id);
+    const playerName = player?.name || `Player ${client.id.substring(0, 6)}`;
+
     console.log(
-      `Player ${client.id} requested AI difficulty change to ${data.difficulty}`
+      `${playerName} requested AI difficulty change to ${data.difficulty}`
     );
+
+    // Check cooldown to prevent spam
+    if (this.lastDifficultyChangeBy && 
+        currentTime - this.difficultyChangeTimestamp < this.DIFFICULTY_CHANGE_COOLDOWN) {
+      const remainingCooldown = Math.ceil((this.DIFFICULTY_CHANGE_COOLDOWN - (currentTime - this.difficultyChangeTimestamp)) / 1000);
+      
+      client.emit("aiDifficultyChangeRejected", {
+        reason: "cooldown",
+        message: `AI difficulty was recently changed by another player. Please wait ${remainingCooldown} seconds.`,
+        remainingCooldown: remainingCooldown,
+        currentDifficulty: this.preferredAIDifficulty,
+        lastChangedBy: this.lastDifficultyChangeBy
+      });
+      return;
+    }
 
     // Update existing AI enemies with new difficulty
     let changedCount = 0;
@@ -593,16 +624,40 @@ export class GameGateway
     });
 
     // Store the preferred difficulty for new AI spawns
+    const previousDifficulty = this.preferredAIDifficulty;
     this.preferredAIDifficulty = data.difficulty;
+    this.lastDifficultyChangeBy = playerName;
+    this.difficultyChangeTimestamp = currentTime;
 
     console.log(
-      `Changed difficulty for ${changedCount} AI enemies to ${data.difficulty}`
+      `${playerName} changed difficulty for ${changedCount} AI enemies from ${previousDifficulty} to ${data.difficulty}`
     );
 
-    // Send confirmation back to client
-    client.emit("aiDifficultyChanged", {
+    // Broadcast the change to ALL players (not just the requester)
+    this.server.emit("aiDifficultyChanged", {
       difficulty: data.difficulty,
+      previousDifficulty: previousDifficulty,
+      changedBy: playerName,
       affectedEnemies: changedCount,
+      timestamp: currentTime
+    });
+
+    // Send special confirmation to the player who made the change
+    client.emit("aiDifficultyChangeConfirmed", {
+      difficulty: data.difficulty,
+      previousDifficulty: previousDifficulty,
+      affectedEnemies: changedCount
+    });
+  }
+
+  @SubscribeMessage("getAIDifficultyStatus")
+  handleGetAIDifficultyStatus(@ConnectedSocket() client: Socket) {
+    client.emit("aiDifficultyStatus", {
+      currentDifficulty: this.preferredAIDifficulty,
+      lastChangedBy: this.lastDifficultyChangeBy,
+      changeTimestamp: this.difficultyChangeTimestamp,
+      aiEnemyCount: this.aiEnemies.size,
+      availableDifficulties: ["EASY", "MEDIUM", "HARD", "EXPERT", "NIGHTMARE"]
     });
   }
 
