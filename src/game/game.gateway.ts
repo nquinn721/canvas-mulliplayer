@@ -23,6 +23,7 @@ import {
 import { EnhancedAIEnemy } from "@shared/classes/EnhancedAIEnemy";
 import { PowerUpType } from "@shared/classes/PowerUp";
 import { Server, Socket } from "socket.io";
+import { ErrorLoggerService } from "../services/error-logger.service";
 
 interface KeyState {
   w?: boolean;
@@ -74,7 +75,7 @@ export class GameGateway
   private gameLoopActive: boolean = false; // Track if game loop should be running
   private memoryLogInterval: NodeJS.Timeout; // Memory monitoring interval
 
-  constructor() {
+  constructor(private readonly errorLogger: ErrorLoggerService) {
     this.generateWalls();
     this.spawnPowerUps();
     this.spawnAIEnemies();
@@ -83,10 +84,14 @@ export class GameGateway
   }
 
   handleConnection(client: Socket) {
-    console.log(`Client connected: ${client.id}`);
+    try {
+      console.log(`Client connected: ${client.id}`);
 
-    // Don't create player immediately - wait for player name
-    client.emit("playerId", client.id);
+      // Don't create player immediately - wait for player name
+      client.emit("playerId", client.id);
+    } catch (error) {
+      this.errorLogger.logWebSocketError(error, client.id, "connection");
+    }
   }
 
   @SubscribeMessage("joinGame")
@@ -94,37 +99,51 @@ export class GameGateway
     @MessageBody() data: { playerName: string },
     @ConnectedSocket() client: Socket
   ) {
-    const playerName = data.playerName || `Player ${this.playerNameCounter++}`;
-    const spawnPosition = this.getRandomSpawnPosition();
+    try {
+      const playerName =
+        data.playerName || `Player ${this.playerNameCounter++}`;
+      const spawnPosition = this.getRandomSpawnPosition();
 
-    const player = new Player(
-      client.id,
-      playerName,
-      spawnPosition.x,
-      spawnPosition.y
-    );
+      const player = new Player(
+        client.id,
+        playerName,
+        spawnPosition.x,
+        spawnPosition.y
+      );
 
-    this.players.set(client.id, player);
-    console.log(
-      `${playerName} joined the game at (${spawnPosition.x}, ${spawnPosition.y})`
-    );
+      this.players.set(client.id, player);
+      console.log(
+        `${playerName} joined the game at (${spawnPosition.x}, ${spawnPosition.y})`
+      );
 
-    // Check if we should start the game loop when first player joins
-    this.checkGameLoopState();
+      // Check if we should start the game loop when first player joins
+      this.checkGameLoopState();
 
-    this.broadcastGameState();
+      this.broadcastGameState();
+    } catch (error) {
+      this.errorLogger.logGameLogicError(error, {
+        playerId: client.id,
+        playerName: data?.playerName,
+        context: "joinGame",
+        playerCount: this.players.size,
+      });
+    }
   }
 
   handleDisconnect(client: Socket) {
-    const player = this.players.get(client.id);
-    const playerName = player ? player.name : client.id;
-    console.log(`${playerName} disconnected`);
-    this.players.delete(client.id);
+    try {
+      const player = this.players.get(client.id);
+      const playerName = player ? player.name : client.id;
+      console.log(`${playerName} disconnected`);
+      this.players.delete(client.id);
 
-    // Check if we should pause the game loop when no real players are connected
-    this.checkGameLoopState();
+      // Check if we should pause the game loop when no real players are connected
+      this.checkGameLoopState();
 
-    this.broadcastGameState();
+      this.broadcastGameState();
+    } catch (error) {
+      this.errorLogger.logWebSocketError(error, client.id, "disconnect");
+    }
   }
 
   // Cleanup method called when the module is destroyed
@@ -675,17 +694,33 @@ export class GameGateway
   }
 
   private startGameLoop() {
-    // Don't start if already active
-    if (this.gameLoopActive) {
-      return;
+    try {
+      // Don't start if already active
+      if (this.gameLoopActive) {
+        return;
+      }
+
+      this.gameLoopInterval = setInterval(() => {
+        try {
+          this.updateGame();
+          this.broadcastGameState();
+        } catch (error) {
+          this.errorLogger.logGameLogicError(error, {
+            context: "gameLoop",
+            playerCount: this.players.size,
+            aiEnemyCount: this.aiEnemies.size,
+            projectileCount: this.projectiles.size,
+          });
+        }
+      }, 16); // ~60 FPS
+
+      this.gameLoopActive = true;
+    } catch (error) {
+      this.errorLogger.logGameLogicError(error, {
+        context: "startGameLoop",
+        playerCount: this.players.size,
+      });
     }
-
-    this.gameLoopInterval = setInterval(() => {
-      this.updateGame();
-      this.broadcastGameState();
-    }, 16); // ~60 FPS
-
-    this.gameLoopActive = true;
   }
 
   private updateGame() {

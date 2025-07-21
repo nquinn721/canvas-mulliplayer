@@ -1,5 +1,6 @@
 import {
   faBolt,
+  faBug,
   faCog,
   faGamepad,
   faGun,
@@ -13,6 +14,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useEffect, useState } from "react";
 import { soundService } from "../services/SoundService";
 import BackgroundCanvas from "./BackgroundCanvas";
+import { ErrorLogs } from "./ErrorLogs";
 import "./HomeMenu.css";
 
 interface HomeMenuProps {
@@ -358,6 +360,22 @@ const HomeMenu: React.FC<HomeMenuProps> = ({ onStartGame }) => {
                     ))}
                   </div>
                 </div>
+              </div>
+
+              <div className="settings-section">
+                <h3>
+                  <FontAwesomeIcon icon={faBug} /> Server Error Logs
+                </h3>
+                <p
+                  style={{
+                    color: "rgba(255, 255, 255, 0.7)",
+                    marginBottom: "15px",
+                  }}
+                >
+                  Monitor server health and view recent error logs for debugging
+                  purposes.
+                </p>
+                <ErrorLogs />
               </div>
             </div>
           </div>

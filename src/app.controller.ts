@@ -1,5 +1,5 @@
-import { Controller, Get, Req, Res } from "@nestjs/common";
-import { Request, Response } from "express";
+import { Controller, Get, Next, Req, Res } from "@nestjs/common";
+import { NextFunction, Request, Response } from "express";
 import { join } from "path";
 
 @Controller()
@@ -15,16 +15,21 @@ export class AppController {
 
   // Catch-all route for client-side routing
   @Get("*")
-  serveClient(@Req() req: Request, @Res() res: Response) {
+  serveClient(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Next() next: NextFunction
+  ) {
     console.log(`Request path: ${req.path}, NODE_ENV: ${process.env.NODE_ENV}`);
 
-    // Skip API routes and socket.io
+    // Skip API routes and socket.io - let NestJS handle them
     if (
       req.path.startsWith("/socket.io") ||
       req.path.startsWith("/health") ||
       req.path.startsWith("/api")
     ) {
-      return res.status(404).json({ error: "Not found" });
+      // Don't handle these routes - let NestJS continue processing
+      return next();
     }
 
     // In production, serve the client app
