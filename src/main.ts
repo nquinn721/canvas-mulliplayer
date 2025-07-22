@@ -3,11 +3,11 @@ import * as express from "express";
 import { join } from "path";
 // Ensure crypto is available for TypeORM
 import { webcrypto } from "crypto";
+import { AppModule } from "./app.module";
+import { ErrorLoggerService } from "./services/error-logger.service";
 if (!globalThis.crypto) {
   globalThis.crypto = webcrypto as any;
 }
-import { AppModule } from "./app.module";
-import { ErrorLoggerService } from "./services/error-logger.service";
 
 // Check if port is available
 async function isPortAvailable(port: number): Promise<boolean> {

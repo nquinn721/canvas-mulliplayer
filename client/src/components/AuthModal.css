@@ -237,19 +237,6 @@
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
-.social-login-button.facebook {
-  background: #1877f2;
-  color: #ffffff;
-  border-color: #1877f2;
-}
-
-.social-login-button.facebook:hover:not(:disabled) {
-  background: #166fe5;
-  border-color: #166fe5;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(24, 119, 242, 0.3);
-}
-
 .auth-switch {
   text-align: center;
 }

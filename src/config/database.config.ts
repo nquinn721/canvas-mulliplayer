@@ -11,8 +11,8 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
     process.env.NODE_ENV === "production"
       ? undefined
       : parseInt(process.env.DB_PORT) || 3306,
-  username: process.env.DB_USERNAME || "root",
-  password: process.env.DB_PASSWORD || "",
+  username: process.env.DB_USERNAME || "admin",
+  password: process.env.DB_PASSWORD || "password",
   database: process.env.DB_DATABASE || "space_fighters",
   entities: [User],
   synchronize: process.env.NODE_ENV !== "production", // Only in development

@@ -14,7 +14,6 @@ import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { RolesGuard } from "./guards/roles.guard";
 import { AuthService } from "./services/auth.service";
 import { ErrorLoggerService } from "./services/error-logger.service";
-import { FacebookStrategy } from "./strategies/facebook.strategy";
 import { GoogleStrategy } from "./strategies/google.strategy";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 import { LocalStrategy } from "./strategies/local.strategy";
@@ -87,7 +86,6 @@ import { LocalStrategy } from "./strategies/local.strategy";
     JwtStrategy,
     LocalStrategy,
     GoogleStrategy,
-    FacebookStrategy,
     JwtAuthGuard,
     RolesGuard,
     {

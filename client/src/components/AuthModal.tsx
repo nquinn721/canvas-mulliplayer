@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "./AuthContext";
 import "./AuthModal.css";
-import { FacebookIcon, GoogleIcon } from "./SocialIcons";
+import { GoogleIcon } from "./SocialIcons";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -24,21 +24,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const { login, register, loginWithGoogle, loginWithFacebook } = useAuth();
+  const { login, register, loginWithGoogle } = useAuth();
 
   if (!isOpen) return null;
 
-  const handleSocialLogin = async (provider: "google" | "facebook") => {
+  const handleSocialLogin = async (provider: "google") => {
     setError("");
     setIsLoading(true);
 
     try {
-      let result;
-      if (provider === "google") {
-        result = await loginWithGoogle();
-      } else {
-        result = await loginWithFacebook();
-      }
+      const result = await loginWithGoogle();
 
       if (result.success) {
         onClose();
@@ -186,15 +181,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             >
               <GoogleIcon size={20} />
               <span>Continue with Google</span>
-            </button>
-
-            <button
-              className="social-login-button facebook"
-              onClick={() => handleSocialLogin("facebook")}
-              disabled={isLoading}
-            >
-              <FacebookIcon size={20} />
-              <span>Continue with Facebook</span>
             </button>
           </div>
 

@@ -1,23 +1,23 @@
 import {
-  Body,
-  Controller,
-  Get,
-  HttpException,
-  HttpStatus,
-  Post,
-  Put,
-  Request,
-  Response,
-  UseGuards,
-  ValidationPipe,
+    Body,
+    Controller,
+    Get,
+    HttpException,
+    HttpStatus,
+    Post,
+    Put,
+    Request,
+    Response,
+    UseGuards,
+    ValidationPipe,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { Roles } from "../decorators/roles.decorator";
 import {
-  GuestLoginDto,
-  LoginDto,
-  RegisterDto,
-  UpdateUsernameDto,
+    GuestLoginDto,
+    LoginDto,
+    RegisterDto,
+    UpdateUsernameDto,
 } from "../dto/auth.dto";
 import { UserRole } from "../entities/user.entity";
 import { JwtAuthGuard } from "../guards/jwt-auth.guard";
@@ -117,37 +117,6 @@ export class AuthController {
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
       res.redirect(
         `${frontendUrl}?error=${encodeURIComponent(error.message || "Google authentication failed")}`
-      );
-    }
-  }
-
-  @Get("facebook")
-  @UseGuards(AuthGuard("facebook"))
-  async facebookAuth(@Request() req) {
-    // This initiates Facebook OAuth flow
-  }
-
-  @Get("facebook/callback")
-  @UseGuards(AuthGuard("facebook"))
-  async facebookCallback(@Request() req, @Response() res) {
-    try {
-      const result = req.user; // User data from strategy
-
-      if (result && result.token) {
-        // Redirect to frontend with token
-        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-        res.redirect(`${frontendUrl}?token=${result.token}`);
-      } else {
-        // Redirect to frontend with error
-        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-        res.redirect(
-          `${frontendUrl}?error=${encodeURIComponent("Facebook authentication failed")}`
-        );
-      }
-    } catch (error) {
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-      res.redirect(
-        `${frontendUrl}?error=${encodeURIComponent(error.message || "Facebook authentication failed")}`
       );
     }
   }
@@ -286,40 +255,21 @@ export class AuthController {
 
   @Get("oauth-status")
   async getOAuthStatus() {
-    const googleConfigured =
-      process.env.GOOGLE_CLIENT_ID &&
-      process.env.GOOGLE_CLIENT_ID !== "your-google-client-id" &&
-      process.env.GOOGLE_CLIENT_SECRET &&
-      process.env.GOOGLE_CLIENT_SECRET !== "your-google-client-secret";
-
-    const facebookConfigured =
-      process.env.FACEBOOK_APP_ID &&
-      process.env.FACEBOOK_APP_ID !== "your-facebook-app-id" &&
-      process.env.FACEBOOK_APP_SECRET &&
-      process.env.FACEBOOK_APP_SECRET !== "your-facebook-app-secret";
+    const googleConfigured = 
+      process.env.GOOGLE_CLIENT_ID && 
+      process.env.GOOGLE_CLIENT_ID !== 'your-google-client-id' &&
+      process.env.GOOGLE_CLIENT_SECRET && 
+      process.env.GOOGLE_CLIENT_SECRET !== 'your-google-client-secret';
 
     return {
       success: true,
       data: {
         google: {
           configured: googleConfigured,
-          clientId: googleConfigured
-            ? process.env.GOOGLE_CLIENT_ID
-            : "Not configured",
-          status: googleConfigured
-            ? "Ready"
-            : "Needs real credentials from Google Cloud Console",
-        },
-        facebook: {
-          configured: facebookConfigured,
-          appId: facebookConfigured
-            ? process.env.FACEBOOK_APP_ID
-            : "Not configured",
-          status: facebookConfigured
-            ? "Ready"
-            : "Needs real credentials from Facebook Developers",
-        },
-      },
+          clientId: googleConfigured ? process.env.GOOGLE_CLIENT_ID : 'Not configured',
+          status: googleConfigured ? 'Ready' : 'Needs real credentials from Google Cloud Console'
+        }
+      }
     };
   }
 }

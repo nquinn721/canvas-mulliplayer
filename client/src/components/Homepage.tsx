@@ -54,8 +54,6 @@ export const Homepage: React.FC<HomepageProps> = ({
     switch (provider) {
       case "google":
         return "🌐";
-      case "facebook":
-        return "📘";
       case "email":
         return "📧";
       default:
@@ -68,8 +66,6 @@ export const Homepage: React.FC<HomepageProps> = ({
     switch (provider) {
       case "google":
         return "Google Account";
-      case "facebook":
-        return "Facebook Account";
       case "email":
         return "Email Account";
       default:

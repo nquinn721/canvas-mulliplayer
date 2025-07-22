@@ -183,29 +183,6 @@ class AuthService {
     }
   }
 
-  async initiateFacebookAuth(): Promise<{
-    success: boolean;
-    authUrl?: string;
-    message: string;
-  }> {
-    try {
-      // Redirect directly to backend OAuth route
-      const authUrl = `${this.baseUrl}/auth/facebook`;
-      window.location.href = authUrl;
-
-      return {
-        success: true,
-        authUrl,
-        message: "Redirecting to Facebook...",
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: "Network error occurred",
-      };
-    }
-  }
-
   // Handle OAuth callback (called when user returns from OAuth provider)
   async handleOAuthCallback(): Promise<AuthResponse> {
     try {

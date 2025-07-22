@@ -28,7 +28,6 @@ interface AuthContextType {
     newUsername: string
   ) => Promise<{ success: boolean; message: string }>;
   loginWithGoogle: () => Promise<{ success: boolean; message: string }>;
-  loginWithFacebook: () => Promise<{ success: boolean; message: string }>;
   logout: () => void;
 }
 
@@ -158,16 +157,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const loginWithFacebook = async () => {
-    setIsLoading(true);
-    try {
-      const response = await authService.initiateFacebookAuth();
-      return { success: response.success, message: response.message };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const logout = () => {
     authService.logout();
     setUser(null);
@@ -183,7 +172,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loginAsGuest,
     updateUsername,
     loginWithGoogle,
-    loginWithFacebook,
     logout,
   };
 
