@@ -75,12 +75,13 @@ export class World {
 
   // Check if position collides with any wall
   checkWallCollision(x: number, y: number, radius: number): boolean {
+    const wallBuffer = 10; // Add buffer around walls for smoother collision
     return this.walls.some((wall) => {
       return (
-        x - radius < wall.x + wall.width &&
-        x + radius > wall.x &&
-        y - radius < wall.y + wall.height &&
-        y + radius > wall.y
+        x - radius < wall.x + wall.width + wallBuffer &&
+        x + radius > wall.x - wallBuffer &&
+        y - radius < wall.y + wall.height + wallBuffer &&
+        y + radius > wall.y - wallBuffer
       );
     });
   }

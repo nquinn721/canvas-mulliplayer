@@ -148,70 +148,89 @@ class NavigateToTargetAction extends EnhancedBehaviorNode {
         nextWaypoint.x - ai.x
       );
 
-      // Calculate movement based on optimal distance
+      // Calculate movement based on optimal distance with smooth transitions
       const distance = context.distanceToPlayer;
-      let speedMultiplier = 1.0;
+      let targetSpeedMultiplier = 1.0;
+      let targetDirection = directionToWaypoint;
 
       if (distance < settings.minRange) {
-        // Too close - move away
-        speedMultiplier = 1.5;
-        // Move in opposite direction
-        const awayDirection = directionToWaypoint + Math.PI;
-        const speed =
-          settings.speed * speedMultiplier * (context.deltaTime / 1000);
-        const deltaX = Math.cos(awayDirection) * speed;
-        const deltaY = Math.sin(awayDirection) * speed;
-
-        ai.updatePosition(
-          deltaX,
-          deltaY,
-          context.worldWidth,
-          context.worldHeight,
-          context.checkWallCollision
-        );
+        // Too close - move away with urgency
+        targetSpeedMultiplier = 1.5 + Math.random() * 0.3; // Add some variation
+        targetDirection =
+          directionToWaypoint + Math.PI + (Math.random() - 0.5) * 0.3; // Add noise
       } else if (distance > settings.optimalRange) {
-        // Too far - move closer
-        speedMultiplier = distance > settings.detectionRange * 0.8 ? 1.2 : 0.8;
-        const speed =
-          settings.speed * speedMultiplier * (context.deltaTime / 1000);
-        const deltaX = Math.cos(directionToWaypoint) * speed;
-        const deltaY = Math.sin(directionToWaypoint) * speed;
-
-        ai.updatePosition(
-          deltaX,
-          deltaY,
-          context.worldWidth,
-          context.worldHeight,
-          context.checkWallCollision
-        );
+        // Too far - move closer with varying speeds
+        targetSpeedMultiplier =
+          distance > settings.detectionRange * 0.8
+            ? 1.2 + Math.random() * 0.2
+            : 0.8 + Math.random() * 0.2;
+        targetDirection = directionToWaypoint + (Math.random() - 0.5) * 0.2; // Slight direction noise
       } else {
-        // In optimal range - strafe while maintaining distance
-        const strafeAngle =
-          directionToWaypoint + Math.PI / 2 + (Math.random() - 0.5) * 0.8;
-        speedMultiplier = 0.6;
-        const speed =
-          settings.speed * speedMultiplier * (context.deltaTime / 1000);
-        const deltaX = Math.cos(strafeAngle) * speed;
-        const deltaY = Math.sin(strafeAngle) * speed;
-
-        ai.updatePosition(
-          deltaX,
-          deltaY,
-          context.worldWidth,
-          context.worldHeight,
-          context.checkWallCollision
-        );
+        // In optimal range - strafe and circle with more natural movement
+        const strafeIntensity = 0.8 + Math.random() * 0.4;
+        targetDirection =
+          directionToWaypoint +
+          (Math.PI / 2) * strafeIntensity +
+          (Math.random() - 0.5) * 0.6;
+        targetSpeedMultiplier = 0.6 + Math.random() * 0.3;
       }
 
-      // Face the target for shooting
+      // Apply momentum and smooth acceleration
+      const maxAcceleration = settings.speed * 2.0 * (context.deltaTime / 1000);
+      const targetVelX =
+        Math.cos(targetDirection) *
+        settings.speed *
+        targetSpeedMultiplier *
+        (context.deltaTime / 1000);
+      const targetVelY =
+        Math.sin(targetDirection) *
+        settings.speed *
+        targetSpeedMultiplier *
+        (context.deltaTime / 1000);
+
+      // Smooth velocity transitions using momentum
+      const smoothingFactor = Math.min(1.0, context.deltaTime / 200); // Smooth over 200ms
+      ai.setVelocityX(
+        ai.getVelocityX() + (targetVelX - ai.getVelocityX()) * smoothingFactor
+      );
+      ai.setVelocityY(
+        ai.getVelocityY() + (targetVelY - ai.getVelocityY()) * smoothingFactor
+      );
+
+      // Apply movement with smoothed velocity
+      ai.updatePosition(
+        ai.getVelocityX(),
+        ai.getVelocityY(),
+        context.worldWidth,
+        context.worldHeight,
+        context.checkWallCollision
+      );
+
+      // Smooth angle transitions for facing target
       const directionToTarget = Math.atan2(
         context.closestPlayer.y - ai.y,
         context.closestPlayer.x - ai.x
       );
-      ai.updateAngle(directionToTarget);
+
+      // Add slight aiming variation based on accuracy
+      const aimVariation =
+        (1.0 - settings.accuracy) * (Math.random() - 0.5) * 0.3;
+      ai.setTargetAngle(directionToTarget + aimVariation);
+
+      // Smooth angle interpolation
+      const angleDiff = ai.getTargetAngle() - ai.getCurrentAngle();
+      const normalizedAngleDiff = Math.atan2(
+        Math.sin(angleDiff),
+        Math.cos(angleDiff)
+      );
+      const angleSmoothing = Math.min(1.0, context.deltaTime / 150); // Smooth over 150ms
+      ai.setCurrentAngle(
+        ai.getCurrentAngle() + normalizedAngleDiff * angleSmoothing
+      );
+      ai.updateAngle(ai.getCurrentAngle());
 
       // Check if we reached the current waypoint
-      if (PathfindingUtils.distance({ x: ai.x, y: ai.y }, nextWaypoint) < 30) {
+      if (PathfindingUtils.distance({ x: ai.x, y: ai.y }, nextWaypoint) < 35) {
         context.currentPath.shift();
       }
     }
@@ -300,7 +319,7 @@ class EnhancedPatrolAction extends EnhancedBehaviorNode {
     ai.updatePatrolAngle();
 
     // Calculate patrol target
-    const patrolRadius = 200;
+    const patrolRadius = settings.patrolRadius; // Use dynamic patrol radius from settings
     const targetX =
       patrolCenter.x + Math.cos(ai.getPatrolAngle()) * patrolRadius;
     const targetY =
@@ -355,20 +374,48 @@ class EnhancedPatrolAction extends EnhancedBehaviorNode {
       }
     }
 
-    // Simple patrol movement
+    // Simple patrol movement with smoothing
     const dirToTarget = Math.atan2(targetY - ai.y, targetX - ai.x);
-    const speed = settings.speed * 0.5 * (context.deltaTime / 1000);
-    const deltaX = Math.cos(dirToTarget) * speed;
-    const deltaY = Math.sin(dirToTarget) * speed;
+
+    // Add some wandering behavior to make patrol more natural
+    const wanderStrength = 0.3;
+    const wanderAngle = dirToTarget + (Math.random() - 0.5) * wanderStrength;
+
+    const baseSpeed = settings.speed * 0.5 * (context.deltaTime / 1000);
+    const speedVariation = 0.8 + Math.random() * 0.4; // 80% to 120% speed variation
+
+    const targetVelX = Math.cos(wanderAngle) * baseSpeed * speedVariation;
+    const targetVelY = Math.sin(wanderAngle) * baseSpeed * speedVariation;
+
+    // Apply momentum to patrol movement too
+    const patrolSmoothing = Math.min(1.0, context.deltaTime / 300); // Slower smoothing for patrol
+    ai.setVelocityX(
+      ai.getVelocityX() + (targetVelX - ai.getVelocityX()) * patrolSmoothing
+    );
+    ai.setVelocityY(
+      ai.getVelocityY() + (targetVelY - ai.getVelocityY()) * patrolSmoothing
+    );
 
     ai.updatePosition(
-      deltaX,
-      deltaY,
+      ai.getVelocityX(),
+      ai.getVelocityY(),
       context.worldWidth,
       context.worldHeight,
       context.checkWallCollision
     );
-    ai.updateAngle(dirToTarget);
+
+    // Smooth angle transition for patrol too
+    ai.setTargetAngle(dirToTarget);
+    const angleDiff = ai.getTargetAngle() - ai.getCurrentAngle();
+    const normalizedAngleDiff = Math.atan2(
+      Math.sin(angleDiff),
+      Math.cos(angleDiff)
+    );
+    const patrolAngleSmoothing = Math.min(1.0, context.deltaTime / 400); // Even slower for patrol
+    ai.setCurrentAngle(
+      ai.getCurrentAngle() + normalizedAngleDiff * patrolAngleSmoothing
+    );
+    ai.updateAngle(ai.getCurrentAngle());
 
     return NodeStatus.SUCCESS;
   }
@@ -388,6 +435,15 @@ export class EnhancedAIEnemy extends Player {
   private currentPath: Point[] = [];
   private pathfindingTarget: Point | null = null;
   private lastPathfindingUpdate: number = 0;
+
+  // Movement smoothing properties
+  private velocityX: number = 0;
+  private velocityY: number = 0;
+  private targetAngle: number = 0;
+  private currentAngle: number = 0;
+  private lastMovementTime: number = 0;
+  private movementNoise: number = 0;
+  private lastNoiseUpdate: number = 0;
 
   // Static method to get difficulty indicator for bot names
   static getDifficultyIndicator(difficulty: string): string {
@@ -441,6 +497,15 @@ export class EnhancedAIEnemy extends Player {
     this.buildBehaviorTree();
     this.lastShootTime = Date.now() - this.settings.shootCooldown;
     this.lastLaserTime = Date.now() - 500; // Initialize laser cooldown
+
+    // Initialize movement smoothing properties
+    this.velocityX = 0;
+    this.velocityY = 0;
+    this.targetAngle = this.angle;
+    this.currentAngle = this.angle;
+    this.lastMovementTime = Date.now();
+    this.movementNoise = 0;
+    this.lastNoiseUpdate = Date.now();
   }
 
   private buildBehaviorTree(): void {
@@ -617,7 +682,46 @@ export class EnhancedAIEnemy extends Player {
   }
 
   updatePatrolAngle(): void {
-    this.patrolAngle += (Math.random() - 0.5) * 0.1;
+    // Larger angle changes for more dynamic patrol movement
+    // Use difficulty-based angle change rates
+    const baseAngleChange = 0.02; // Base 0.02 radians per update
+    const difficultyMultiplier = this.settings.aggressiveness * 2; // 0.6 to 2.0x
+    const maxAngleChange = baseAngleChange * (1 + difficultyMultiplier);
+
+    this.patrolAngle += (Math.random() - 0.5) * maxAngleChange;
+  }
+
+  // Movement smoothing getters and setters
+  getVelocityX(): number {
+    return this.velocityX;
+  }
+
+  setVelocityX(velocity: number): void {
+    this.velocityX = velocity;
+  }
+
+  getVelocityY(): number {
+    return this.velocityY;
+  }
+
+  setVelocityY(velocity: number): void {
+    this.velocityY = velocity;
+  }
+
+  getTargetAngle(): number {
+    return this.targetAngle;
+  }
+
+  setTargetAngle(angle: number): void {
+    this.targetAngle = angle;
+  }
+
+  getCurrentAngle(): number {
+    return this.currentAngle;
+  }
+
+  setCurrentAngle(angle: number): void {
+    this.currentAngle = angle;
   }
 
   private findClosestPlayer(players: Map<string, Player>): Player | null {
@@ -648,13 +752,17 @@ export class EnhancedAIEnemy extends Player {
       this.difficulty = difficulty;
       this.settings = aiConfig;
       this.speed = aiConfig.speed;
-      
+
       // Handle health properly when changing difficulty
       // Calculate health percentage to maintain relative health
-      const healthPercent = this.maxHealth > 0 ? this.health / this.maxHealth : 1;
+      const healthPercent =
+        this.maxHealth > 0 ? this.health / this.maxHealth : 1;
       this.maxHealth = aiConfig.maxHealth;
-      this.health = Math.min(aiConfig.maxHealth, Math.round(healthPercent * aiConfig.maxHealth));
-      
+      this.health = Math.min(
+        aiConfig.maxHealth,
+        Math.round(healthPercent * aiConfig.maxHealth)
+      );
+
       this.radius = aiConfig.radius;
 
       // Update bot name with new difficulty indicator

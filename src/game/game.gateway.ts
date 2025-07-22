@@ -695,6 +695,34 @@ export class GameGateway
     });
   }
 
+  @SubscribeMessage("clientDebugLogs")
+  handleClientDebugLogs(
+    @MessageBody() data: { logs: any[]; clientInfo: any },
+    @ConnectedSocket() client: Socket
+  ) {
+    try {
+      // Process each debug log from the client
+      for (const logEntry of data.logs) {
+        this.errorLogger.logError({
+          type: "GAME_LOGIC",
+          severity: logEntry.severity || "MEDIUM",
+          message: `CLIENT DEBUG: ${logEntry.message}`,
+          metadata: {
+            clientId: client.id,
+            logType: logEntry.type,
+            originalMetadata: logEntry.metadata,
+            clientInfo: data.clientInfo,
+            timestamp: logEntry.timestamp
+          }
+        });
+      }
+      
+      console.log(`Received ${data.logs.length} debug logs from client ${client.id}`);
+    } catch (error) {
+      console.error("Failed to process client debug logs:", error);
+    }
+  }
+
   private findSafeSpawnLocation(): { x: number; y: number } {
     const WORLD_WIDTH = 5000;
     const WORLD_HEIGHT = 5000;
@@ -1160,23 +1188,25 @@ export class GameGateway
   }
 
   private checkWallCollision(x: number, y: number, radius: number): boolean {
+    const wallBuffer = 10; // Add 10px buffer around all walls for smoother collision
     return this.walls.some((wall) => {
       return (
-        x - radius < wall.x + wall.width &&
-        x + radius > wall.x &&
-        y - radius < wall.y + wall.height &&
-        y + radius > wall.y
+        x - radius < wall.x + wall.width + wallBuffer &&
+        x + radius > wall.x - wallBuffer &&
+        y - radius < wall.y + wall.height + wallBuffer &&
+        y + radius > wall.y - wallBuffer
       );
     });
   }
 
   private checkProjectileWallCollision(projectile: Projectile): boolean {
+    const wallBuffer = 5; // Smaller buffer for projectiles since they're smaller
     return this.walls.some((wall) => {
       return (
-        projectile.x >= wall.x &&
-        projectile.x <= wall.x + wall.width &&
-        projectile.y >= wall.y &&
-        projectile.y <= wall.y + wall.height
+        projectile.x >= wall.x - wallBuffer &&
+        projectile.x <= wall.x + wall.width + wallBuffer &&
+        projectile.y >= wall.y - wallBuffer &&
+        projectile.y <= wall.y + wall.height + wallBuffer
       );
     });
   }
@@ -1240,9 +1270,9 @@ export class GameGateway
           };
         }
 
-        // Check if this wall overlaps with existing walls (with some spacing)
+        // Check if this wall overlaps with existing walls (with larger spacing to prevent narrow gaps)
         validPosition = !this.walls.some((existingWall) => {
-          const spacing = 50; // Minimum spacing between walls
+          const spacing = 120; // Increased spacing to prevent players getting stuck in narrow gaps
           return !(
             wall.x + wall.width + spacing < existingWall.x ||
             wall.x > existingWall.x + existingWall.width + spacing ||

@@ -223,9 +223,9 @@ export class SocketService {
     // AI difficulty change rejection
     this.socket.on(
       "aiDifficultyChangeRejected",
-      (data: { 
-        reason: string; 
-        message: string; 
+      (data: {
+        reason: string;
+        message: string;
         remainingCooldown?: number;
         currentDifficulty: string;
         lastChangedBy: string;

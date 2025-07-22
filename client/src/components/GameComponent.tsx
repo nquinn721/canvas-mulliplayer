@@ -6,6 +6,7 @@ import "../App.css";
 import { Game } from "../game/Game";
 import { soundService } from "../services/SoundService";
 import { gameStore, socketService } from "../stores";
+import { debugLogger } from "../services/DebugLogger";
 import DeathMenu from "./DeathMenu";
 import EscapeMenu from "./EscapeMenu";
 
@@ -99,6 +100,14 @@ const GameComponent = observer(
       // Set AI difficulty and join with player name when game starts
       setTimeout(() => {
         if (gameStore?.socket) {
+          // Initialize debug logger with socket connection
+          debugLogger.setSocket(gameStore.socket);
+          debugLogger.log('CONNECTION', 'LOW', 'Debug logger initialized with socket connection', {
+            playerId: gameStore.playerId,
+            playerName: playerName,
+            socketId: gameStore.socket.id
+          });
+
           gameStore.socket.emit("changeAIDifficulty", {
             difficulty: aiDifficulty,
           });
@@ -161,7 +170,9 @@ const GameComponent = observer(
       soundService.setMusicTrack(trackNumber);
     };
 
-    const changeAIDifficulty = (difficulty: "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE") => {
+    const changeAIDifficulty = (
+      difficulty: "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE"
+    ) => {
       if (gameStore?.socket) {
         gameStore.socket.emit("changeAIDifficulty", { difficulty });
         // Don't update local state immediately - wait for server confirmation
@@ -172,35 +183,53 @@ const GameComponent = observer(
     useEffect(() => {
       if (!gameStore?.socket) return;
 
-      const handleAIDifficultyChanged = (data: { difficulty: string; affectedEnemies: number }) => {
-        setCurrentAIDifficulty(data.difficulty as "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE");
+      const handleAIDifficultyChanged = (data: {
+        difficulty: string;
+        affectedEnemies: number;
+      }) => {
+        setCurrentAIDifficulty(
+          data.difficulty as "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE"
+        );
       };
 
-      const handleAIDifficultyRejected = (data: { 
-        reason: string; 
-        message: string; 
+      const handleAIDifficultyRejected = (data: {
+        reason: string;
+        message: string;
         currentDifficulty: string;
       }) => {
         // Keep the current difficulty highlighted (don't change the UI state)
         console.warn("AI difficulty change rejected:", data.message);
       };
 
-      const handleAIDifficultyStatus = (data: { 
+      const handleAIDifficultyStatus = (data: {
         currentDifficulty: string;
         lastChangedBy: string | null;
         changeTimestamp: number;
         aiEnemyCount: number;
       }) => {
-        setCurrentAIDifficulty(data.currentDifficulty as "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE");
+        setCurrentAIDifficulty(
+          data.currentDifficulty as
+            | "EASY"
+            | "MEDIUM"
+            | "HARD"
+            | "EXPERT"
+            | "NIGHTMARE"
+        );
       };
 
       gameStore.socket.on("aiDifficultyChanged", handleAIDifficultyChanged);
-      gameStore.socket.on("aiDifficultyChangeRejected", handleAIDifficultyRejected);
+      gameStore.socket.on(
+        "aiDifficultyChangeRejected",
+        handleAIDifficultyRejected
+      );
       gameStore.socket.on("aiDifficultyStatus", handleAIDifficultyStatus);
 
       return () => {
         gameStore.socket?.off("aiDifficultyChanged", handleAIDifficultyChanged);
-        gameStore.socket?.off("aiDifficultyChangeRejected", handleAIDifficultyRejected);
+        gameStore.socket?.off(
+          "aiDifficultyChangeRejected",
+          handleAIDifficultyRejected
+        );
         gameStore.socket?.off("aiDifficultyStatus", handleAIDifficultyStatus);
       };
     }, [gameStore?.socket]);

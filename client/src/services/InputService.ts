@@ -1,6 +1,7 @@
 import { KeyState } from "@shared";
 import { GameStore } from "../stores/GameStore";
 import { soundService } from "./SoundService";
+import { debugLogger } from "./DebugLogger";
 
 export class InputService {
   private gameStore: GameStore;

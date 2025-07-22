@@ -44,15 +44,15 @@ export const AI_DIFFICULTY_PRESETS: Record<string, AIDifficultyConfig> = {
     // Basic Stats
     health: 80,
     maxHealth: 80,
-    speed: 180,
+    speed: 160, // Slightly slower
     radius: 18,
 
     // Combat Settings
     detectionRange: 300,
     optimalRange: 200,
     minRange: 100,
-    accuracy: 0.6,
-    reactionTime: 800,
+    accuracy: 0.65, // Slightly more accurate for smoother aim
+    reactionTime: 900, // Slightly slower reaction
 
     // Ability Levels
     laserUpgradeLevel: 1,
@@ -66,28 +66,28 @@ export const AI_DIFFICULTY_PRESETS: Record<string, AIDifficultyConfig> = {
     avoidanceDistance: 50,
 
     // Combat Frequency
-    shootCooldown: 2500,
+    shootCooldown: 2800, // Slightly longer cooldown
     missilePreference: 0.15, // 15% chance for missiles
 
     // Movement Patterns
-    patrolRadius: 100,
-    combatMovementSpeed: 0.8,
-    retreatThreshold: 0.3, // Retreat at 30% health
+    patrolRadius: 400, // Much larger patrol area to prevent getting stuck
+    combatMovementSpeed: 0.7, // Slower combat movement
+    retreatThreshold: 0.35, // Retreat earlier
   },
 
   MEDIUM: {
     // Basic Stats
     health: 120,
     maxHealth: 120,
-    speed: 200,
+    speed: 190, // Slightly slower for smoother movement
     radius: 18,
 
     // Combat Settings
     detectionRange: 400,
     optimalRange: 250,
     minRange: 80,
-    accuracy: 0.75,
-    reactionTime: 500,
+    accuracy: 0.78, // Slightly more accurate
+    reactionTime: 450, // Slightly faster reaction
 
     // Ability Levels
     laserUpgradeLevel: 2,
@@ -101,28 +101,28 @@ export const AI_DIFFICULTY_PRESETS: Record<string, AIDifficultyConfig> = {
     avoidanceDistance: 40,
 
     // Combat Frequency
-    shootCooldown: 2000,
+    shootCooldown: 1900, // Slightly faster shooting
     missilePreference: 0.35, // 35% chance for missiles
 
     // Movement Patterns
-    patrolRadius: 120,
-    combatMovementSpeed: 1.0,
-    retreatThreshold: 0.25, // Retreat at 25% health
+    patrolRadius: 500, // Larger patrol area for more movement
+    combatMovementSpeed: 0.9, // Smoother combat movement
+    retreatThreshold: 0.28, // Retreat at 28% health
   },
 
   HARD: {
     // Basic Stats
     health: 180,
     maxHealth: 180,
-    speed: 220,
+    speed: 210, // Slightly slower for better control
     radius: 18,
 
     // Combat Settings
     detectionRange: 500,
     optimalRange: 300,
     minRange: 60,
-    accuracy: 0.85,
-    reactionTime: 300,
+    accuracy: 0.87, // Slightly more accurate
+    reactionTime: 250, // Faster reaction
 
     // Ability Levels
     laserUpgradeLevel: 3,
@@ -136,13 +136,13 @@ export const AI_DIFFICULTY_PRESETS: Record<string, AIDifficultyConfig> = {
     avoidanceDistance: 30,
 
     // Combat Frequency
-    shootCooldown: 1500,
+    shootCooldown: 1400, // Faster shooting
     missilePreference: 0.5, // 50% chance for missiles
 
     // Movement Patterns
-    patrolRadius: 150,
-    combatMovementSpeed: 1.2,
-    retreatThreshold: 0.2, // Retreat at 20% health
+    patrolRadius: 600, // Even larger patrol area for dynamic movement
+    combatMovementSpeed: 1.1, // More dynamic movement
+    retreatThreshold: 0.22, // Retreat at 22% health
   },
 
   EXPERT: {
@@ -175,7 +175,7 @@ export const AI_DIFFICULTY_PRESETS: Record<string, AIDifficultyConfig> = {
     missilePreference: 0.6, // 60% chance for missiles
 
     // Movement Patterns
-    patrolRadius: 180,
+    patrolRadius: 700, // Large patrol radius for expert bots
     combatMovementSpeed: 1.3,
     retreatThreshold: 0.15, // Retreat at 15% health
   },
@@ -210,7 +210,7 @@ export const AI_DIFFICULTY_PRESETS: Record<string, AIDifficultyConfig> = {
     missilePreference: 0.7, // 70% chance for missiles
 
     // Movement Patterns
-    patrolRadius: 200,
+    patrolRadius: 800, // Maximum patrol radius for nightmare difficulty
     combatMovementSpeed: 1.5,
     retreatThreshold: 0.1, // Retreat at 10% health
   },

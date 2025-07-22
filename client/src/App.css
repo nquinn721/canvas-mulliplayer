@@ -135,7 +135,10 @@
   height: 100%;
   cursor: crosshair;
   cursor: -webkit-crosshair; /* Safari fallback */
-  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><path d="M10 2v6m0 4v6M2 10h6m4 0h6" stroke="white" stroke-width="1" fill="none"/></svg>') 10 10, crosshair; /* Custom crosshair for better Safari support */
+  cursor:
+    url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><defs><filter id="glow"><feGaussianBlur stdDeviation="2" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(%23glow)"><path d="M12 3v7m0 4v7M3 12h7m4 0h7" stroke="black" stroke-width="3" fill="none" opacity="0.8"/><path d="M12 3v7m0 4v7M3 12h7m4 0h7" stroke="cyan" stroke-width="1.5" fill="none"/></g></svg>')
+      12 12,
+    crosshair; /* Enhanced crosshair with glow and outline */
   background-color: #000;
   display: block;
   border: none;
