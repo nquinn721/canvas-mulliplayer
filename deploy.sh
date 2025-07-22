@@ -67,18 +67,47 @@ docker push "$TAG"
 docker push "$IMAGE_NAME:latest"
 
 print_status "Deploying to Cloud Run..."
-gcloud run deploy canvas-multiplayer \
-    --image="$TAG" \
-    --region=us-central1 \
-    --platform=managed \
-    --allow-unauthenticated \
-    --memory=1Gi \
-    --cpu=1 \
-    --max-instances=10 \
-    --min-instances=0 \
-    --concurrency=80 \
-    --timeout=3600 \
-    --set-env-vars=NODE_ENV=production
+#!/bin/bash
+
+# Production deployment script for Google Cloud Run
+set -e
+
+PROJECT_ID="heroic-footing-460117-k8"
+SERVICE_NAME="space-fighters-game"
+REGION="us-central1"
+IMAGE_NAME="gcr.io/$PROJECT_ID/$SERVICE_NAME"
+
+echo "🚀 Starting production deployment..."
+
+# Set the project
+gcloud config set project $PROJECT_ID
+
+# Build and submit to Cloud Build
+echo "📦 Building container image..."
+gcloud builds submit --tag $IMAGE_NAME
+
+# Deploy to Cloud Run
+echo "🌐 Deploying to Cloud Run..."
+gcloud run deploy $SERVICE_NAME 
+  --image $IMAGE_NAME 
+  --platform managed 
+  --region $REGION 
+  --allow-unauthenticated 
+  --port 3001 
+  --memory 1Gi 
+  --cpu 1 
+  --max-instances 10 
+  --min-instances 0 
+  --concurrency 80 
+  --timeout 3600 
+  --add-cloudsql-instances $PROJECT_ID:$REGION:stocktrader 
+  --set-env-vars NODE_ENV=production 
+  --set-env-vars DB_HOST=/cloudsql/$PROJECT_ID:$REGION:stocktrader 
+  --set-env-vars DB_NAME=space_fighters 
+  --set-env-vars DB_USERNAME=RStockTrader
+
+echo "✅ Deployment complete!"
+echo "🌍 Service URL: $(gcloud run services describe $SERVICE_NAME --platform managed --region $REGION --format 'value(status.url)')"
 
 # Get the service URL
 SERVICE_URL=$(gcloud run services describe canvas-multiplayer --region=us-central1 --format="value(status.url)")

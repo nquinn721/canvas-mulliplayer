@@ -6,7 +6,9 @@ import {
   faGun,
   faRobot,
   faRocket,
+  faSignOutAlt,
   faTimes,
+  faUser,
   faVolumeMute,
   faVolumeUp,
 } from "@fortawesome/free-solid-svg-icons";
@@ -15,6 +17,8 @@ import { observer } from "mobx-react-lite";
 import React, { useEffect, useState } from "react";
 import { soundService } from "../services/SoundService";
 import { gameStore, socketService } from "../stores";
+import { useAuth } from "./AuthContext";
+import { AuthModal } from "./AuthModal";
 import BackgroundCanvas from "./BackgroundCanvas";
 import { ErrorLogs } from "./ErrorLogs";
 import "./HomeMenu.css";
@@ -27,18 +31,28 @@ interface HomeMenuProps {
 }
 
 const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
+  const { user, isAuthenticated, isGuest, loginAsGuest, logout } = useAuth();
+
   const [selectedDifficulty, setSelectedDifficulty] = useState<
     "EASY" | "MEDIUM" | "HARD"
   >("MEDIUM");
   const [playerName, setPlayerName] = useState(() => {
-    // Initialize from localStorage or empty string
+    // Initialize from localStorage or authenticated username
     return localStorage.getItem("canvas-multiplayer-player-name") || "";
   });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [isMuted, setIsMuted] = useState(() => soundService.isSoundMuted());
   const [selectedMusicTrack, setSelectedMusicTrack] = useState(() =>
     soundService.getMusicTrack()
   );
+
+  // Update player name when user authentication changes
+  useEffect(() => {
+    if (user?.username) {
+      setPlayerName(user.username);
+    }
+  }, [user]);
 
   // Volume toggle handler
   const handleVolumeToggle = () => {
@@ -52,6 +66,24 @@ const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
     soundService.setMusicTrack(trackNumber);
   };
 
+  // Authentication handlers
+  const handleAuthModalClose = () => {
+    setShowAuthModal(false);
+  };
+
+  const handleGuestLogin = async () => {
+    const guestName = playerName.trim() || undefined;
+    const result = await loginAsGuest(guestName);
+    if (result.success) {
+      setShowAuthModal(false);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    setPlayerName("");
+  };
+
   // Save player name to localStorage whenever it changes
   useEffect(() => {
     if (playerName.trim()) {
@@ -61,13 +93,13 @@ const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
 
   // Establish socket connection when component mounts
   useEffect(() => {
-    console.log('HomeMenu: Checking connection status...');
-    console.log('gameStore.isConnected:', gameStore.isConnected);
-    console.log('socketService.isConnected:', socketService.isConnected);
-    
+    console.log("HomeMenu: Checking connection status...");
+    console.log("gameStore.isConnected:", gameStore.isConnected);
+    console.log("socketService.isConnected:", socketService.isConnected);
+
     // Connect to the server if not already connected
     if (!socketService.isConnected) {
-      console.log('HomeMenu: Attempting to connect...');
+      console.log("HomeMenu: Attempting to connect...");
       socketService.connect();
     }
   }, []);
@@ -151,9 +183,51 @@ const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
         </header>
 
         <div className="game-setup">
+          {/* Authentication Section */}
+          <div className="auth-section">
+            {isAuthenticated ? (
+              <div className="user-info">
+                <div className="user-welcome">
+                  <FontAwesomeIcon icon={faUser} className="user-icon" />
+                  <span className="welcome-text">
+                    Welcome, <strong>{user?.username}</strong>
+                    {isGuest && <span className="guest-badge">(Guest)</span>}
+                  </span>
+                </div>
+                <button
+                  className="logout-button"
+                  onClick={handleLogout}
+                  title="Sign Out"
+                >
+                  <FontAwesomeIcon icon={faSignOutAlt} />
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <div className="auth-prompt">
+                <p className="auth-message">
+                  Sign in to save your progress and use your username as your
+                  ship name!
+                </p>
+                <button
+                  className="sign-in-button"
+                  onClick={() => setShowAuthModal(true)}
+                >
+                  <FontAwesomeIcon icon={faUser} />
+                  Sign In / Create Account
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="setup-section">
             <label htmlFor="player-name" className="setup-label">
-              Player Name
+              {isAuthenticated ? "Ship Name" : "Player Name"}
+              {isAuthenticated && !isGuest && (
+                <span className="ship-name-note">
+                  (Your username will be used as ship name)
+                </span>
+              )}
             </label>
             <input
               id="player-name"
@@ -161,12 +235,25 @@ const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
               className="player-name-input"
-              placeholder="Enter your name..."
+              placeholder={
+                isAuthenticated && !isGuest
+                  ? "Logged in as " + user?.username
+                  : "Enter your name..."
+              }
               maxLength={20}
+              disabled={isAuthenticated && !isGuest}
             />
-            {playerName.trim().length > 0 && playerName.trim().length < 3 && (
-              <span className="validation-text">
-                Name must be at least 3 characters
+            {!isAuthenticated &&
+              playerName.trim().length > 0 &&
+              playerName.trim().length < 3 && (
+                <span className="validation-text">
+                  Name must be at least 3 characters
+                </span>
+              )}
+            {isAuthenticated && !isGuest && (
+              <span className="info-text">
+                Want to change your ship name? Update your username in settings
+                after joining the game!
               </span>
             )}
           </div>
@@ -408,6 +495,13 @@ const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
           </div>
         </div>
       )}
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={handleAuthModalClose}
+        onLoginAsGuest={handleGuestLogin}
+      />
     </div>
   );
 });

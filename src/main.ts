@@ -91,9 +91,14 @@ async function bootstrap() {
 
     // Use PORT environment variable for Cloud Run or default to 3001
     const preferredPort = process.env.PORT ? parseInt(process.env.PORT) : 3001;
-    const port = await findAvailablePort(preferredPort);
 
-    if (port !== preferredPort) {
+    // In production (Cloud Run), don't try to find alternative ports
+    const port =
+      process.env.NODE_ENV === "production"
+        ? preferredPort
+        : await findAvailablePort(preferredPort);
+
+    if (port !== preferredPort && process.env.NODE_ENV !== "production") {
       console.log(
         `Warning: Preferred port ${preferredPort} was unavailable, using port ${port}`
       );

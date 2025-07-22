@@ -26,7 +26,8 @@ export class AppController {
     if (
       req.path.startsWith("/socket.io") ||
       req.path.startsWith("/health") ||
-      req.path.startsWith("/api")
+      req.path.startsWith("/api") ||
+      req.path.startsWith("/auth")
     ) {
       // Don't handle these routes - let NestJS continue processing
       return next();

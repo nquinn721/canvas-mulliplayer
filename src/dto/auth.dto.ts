@@ -1,0 +1,134 @@
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+  MinLength,
+} from "class-validator";
+
+export class RegisterDto {
+  @IsString()
+  @MinLength(3, { message: "Username must be at least 3 characters long" })
+  @Matches(/^[a-zA-Z0-9_-]+$/, {
+    message:
+      "Username can only contain letters, numbers, underscores, and hyphens",
+  })
+  username: string;
+
+  @IsEmail({}, { message: "Please provide a valid email address" })
+  email: string;
+
+  @IsString()
+  @MinLength(6, { message: "Password must be at least 6 characters long" })
+  password: string;
+
+  @IsOptional()
+  @IsString()
+  displayName?: string;
+}
+
+export class LoginDto {
+  @IsString()
+  usernameOrEmail: string;
+
+  @IsString()
+  password: string;
+}
+
+export class GuestLoginDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(3, { message: "Username must be at least 3 characters long" })
+  @Matches(/^[a-zA-Z0-9_-]+$/, {
+    message:
+      "Username can only contain letters, numbers, underscores, and hyphens",
+  })
+  username?: string; // Optional for guests, will generate if not provided
+}
+
+export class ForgotPasswordDto {
+  @IsEmail({}, { message: "Please provide a valid email address" })
+  email: string;
+}
+
+export class ResetPasswordDto {
+  @IsString()
+  token: string;
+
+  @IsString()
+  @MinLength(6, { message: "Password must be at least 6 characters long" })
+  newPassword: string;
+}
+
+export class UpdateProfileDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(3, { message: "Username must be at least 3 characters long" })
+  @Matches(/^[a-zA-Z0-9_-]+$/, {
+    message:
+      "Username can only contain letters, numbers, underscores, and hyphens",
+  })
+  username?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(3, { message: "Display name must be at least 3 characters long" })
+  displayName?: string;
+
+  @IsOptional()
+  @IsEmail({}, { message: "Please provide a valid email address" })
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  avatar?: string;
+
+  @IsOptional()
+  preferences?: any;
+}
+
+export class ChangePasswordDto {
+  @IsString()
+  currentPassword: string;
+
+  @IsString()
+  @MinLength(6, { message: "New password must be at least 6 characters long" })
+  newPassword: string;
+}
+
+export class SocialAuthDto {
+  @IsString()
+  @IsNotEmpty()
+  provider: string;
+
+  @IsString()
+  @IsNotEmpty()
+  providerId: string;
+
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @IsOptional()
+  displayName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @Matches(/^[a-zA-Z0-9_-]+$/, {
+    message:
+      "Username can only contain letters, numbers, underscores, and hyphens",
+  })
+  username?: string; // Optional preferred username
+}
+
+export class UpdateUsernameDto {
+  @IsString()
+  @MinLength(3, { message: "Username must be at least 3 characters long" })
+  @Matches(/^[a-zA-Z0-9_-]+$/, {
+    message:
+      "Username can only contain letters, numbers, underscores, and hyphens",
+  })
+  username: string;
+}

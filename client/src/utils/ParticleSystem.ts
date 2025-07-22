@@ -346,7 +346,13 @@ export class ParticleSystem {
     });
 
     // Add some sparkle particles around the spawn point using menu colors
-    const sparkleColors = ["#00d4ff", "#0099cc", "#ffffff", "#00ff99", "#0066aa"];
+    const sparkleColors = [
+      "#00d4ff",
+      "#0099cc",
+      "#ffffff",
+      "#00ff99",
+      "#0066aa",
+    ];
     for (let i = 0; i < 15; i++) {
       const angle = (Math.PI * 2 * i) / 15;
       const distance = 20 + Math.random() * 30;

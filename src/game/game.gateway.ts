@@ -1,4 +1,5 @@
 import { OnModuleDestroy } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
 import {
   ConnectedSocket,
   MessageBody,
@@ -22,6 +23,7 @@ import {
 import { EnhancedAIEnemy } from "@shared/classes/EnhancedAIEnemy";
 import { PowerUpType } from "@shared/classes/PowerUp";
 import { Server, Socket } from "socket.io";
+import { AuthService } from "../services/auth.service";
 import { ErrorLoggerService } from "../services/error-logger.service";
 
 interface KeyState {
@@ -30,6 +32,14 @@ interface KeyState {
   s?: boolean;
   d?: boolean;
   [key: string]: boolean | undefined;
+}
+
+interface ClientData {
+  lastHeartbeat: number;
+  playerName?: string;
+  userId?: string;
+  isAuthenticated?: boolean;
+  isGuest?: boolean;
 }
 
 @WebSocketGateway({
@@ -82,15 +92,16 @@ export class GameGateway
   private readonly DIFFICULTY_CHANGE_COOLDOWN = 500; // 0.5 seconds cooldown between changes (reduced for faster testing)
   private gameLoopActive: boolean = false; // Track if game loop should be running
 
-  private readonly connectedClients = new Map<
-    string,
-    { lastHeartbeat: number; playerName?: string }
-  >();
+  private readonly connectedClients = new Map<string, ClientData>();
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private readonly HEARTBEAT_TIMEOUT = 30000; // 30 seconds
   private readonly HEARTBEAT_INTERVAL = 5000; // 5 seconds
 
-  constructor(private readonly errorLogger: ErrorLoggerService) {
+  constructor(
+    private readonly errorLogger: ErrorLoggerService,
+    private readonly authService: AuthService,
+    private readonly jwtService: JwtService
+  ) {
     this.generateWalls();
     this.spawnPowerUps();
     this.spawnAIEnemies();
@@ -121,15 +132,58 @@ export class GameGateway
     }, this.HEARTBEAT_INTERVAL);
   }
 
-  handleConnection(client: Socket) {
+  async handleConnection(client: Socket) {
     try {
       console.log(`Client connected: ${client.id}`);
 
-      // Track connection with heartbeat
-      this.connectedClients.set(client.id, { lastHeartbeat: Date.now() });
+      // Try to authenticate the user if token is provided
+      const token =
+        client.handshake.auth?.token ||
+        client.handshake.headers?.authorization?.replace("Bearer ", "");
+      let authenticatedUser = null;
+      let isGuest = true;
+
+      if (token) {
+        try {
+          const payload = this.jwtService.verify(token);
+          if (payload.sub.startsWith("guest_")) {
+            // Guest user with token
+            authenticatedUser = {
+              id: payload.sub,
+              username: payload.username,
+              isGuest: true,
+            };
+            isGuest = true;
+          } else {
+            // Regular authenticated user
+            authenticatedUser = await this.authService.getUserById(payload.sub);
+            isGuest = false;
+          }
+        } catch (error) {
+          console.log(`Invalid token for client ${client.id}:`, error.message);
+          // Continue as anonymous user
+        }
+      }
+
+      // Track connection with authentication data
+      this.connectedClients.set(client.id, {
+        lastHeartbeat: Date.now(),
+        userId: authenticatedUser?.id,
+        playerName: authenticatedUser?.username,
+        isAuthenticated: !!authenticatedUser,
+        isGuest: isGuest,
+      });
 
       // Only emit player ID once per connection
       client.emit("playerId", client.id);
+
+      // Emit authentication status
+      client.emit("authStatus", {
+        isAuthenticated: !!authenticatedUser,
+        isGuest: isGuest,
+        username: authenticatedUser?.username,
+        userId: authenticatedUser?.id,
+      });
 
       // Set up heartbeat for this client
       client.on("heartbeat", () => {
@@ -145,15 +199,27 @@ export class GameGateway
 
   @SubscribeMessage("joinGame")
   handleJoinGame(
-    @MessageBody() data: { playerName: string },
+    @MessageBody() data: { playerName?: string },
     @ConnectedSocket() client: Socket
   ) {
     try {
-      const playerName =
-        data.playerName || `Player ${this.playerNameCounter++}`;
-
-      // Update client tracking with player name
       const clientData = this.connectedClients.get(client.id);
+
+      // Determine player name priority: authenticated username > provided name > default
+      let playerName: string;
+
+      if (clientData?.isAuthenticated && clientData.playerName) {
+        // Use authenticated username as ship name
+        playerName = clientData.playerName;
+      } else if (data.playerName) {
+        // Use provided player name (for guests or override)
+        playerName = data.playerName;
+      } else {
+        // Generate default name
+        playerName = `Player ${this.playerNameCounter++}`;
+      }
+
+      // Update client tracking with final player name
       if (clientData) {
         clientData.playerName = playerName;
       }
@@ -205,6 +271,54 @@ export class GameGateway
         context: "joinGame",
         playerCount: this.players.size,
       });
+    }
+  }
+
+  @SubscribeMessage("updateUsername")
+  async handleUpdateUsername(
+    @MessageBody() data: { newUsername: string },
+    @ConnectedSocket() client: Socket
+  ) {
+    try {
+      const clientData = this.connectedClients.get(client.id);
+
+      if (!clientData?.isAuthenticated || clientData.isGuest) {
+        client.emit("error", {
+          message: "Only authenticated users can change usernames",
+        });
+        return;
+      }
+
+      // Update username in database
+      try {
+        await this.authService.updateUsername(clientData.userId!, {
+          username: data.newUsername,
+        });
+
+        // Update local client data
+        clientData.playerName = data.newUsername;
+
+        // Update player name in game
+        const player = this.players.get(client.id);
+        if (player) {
+          player.name = data.newUsername;
+        }
+
+        // Notify client of successful update
+        client.emit("usernameUpdated", {
+          newUsername: data.newUsername,
+          message: "Username updated successfully",
+        });
+
+        // Broadcast updated game state so other players see the new name
+        this.broadcastGameState();
+      } catch (error) {
+        client.emit("error", {
+          message: error.message || "Failed to update username",
+        });
+      }
+    } catch (error) {
+      this.errorLogger.logWebSocketError(error, client.id, "updateUsername");
     }
   }
 

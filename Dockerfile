@@ -70,9 +70,10 @@ USER nestjs
 
 # Set default environment to production (can be overridden by Cloud Run)
 ENV NODE_ENV=production
+ENV PORT=8080
 
 # Expose the port that the app runs on
-EXPOSE $PORT
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
