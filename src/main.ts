@@ -1,13 +1,25 @@
+// Ensure crypto is available for TypeORM - MUST BE FIRST
+const crypto = require('crypto');
+
+// Polyfill crypto for the container environment
+if (!globalThis.crypto) {
+  globalThis.crypto = crypto.webcrypto || {
+    randomUUID: () => crypto.randomUUID(),
+    getRandomValues: (arr) => crypto.getRandomValues(arr),
+    ...crypto
+  };
+}
+
+// Also ensure crypto.randomUUID is available at global level
+if (!global.crypto) {
+  global.crypto = globalThis.crypto;
+}
+
 import { NestFactory } from "@nestjs/core";
 import * as express from "express";
 import { join } from "path";
-// Ensure crypto is available for TypeORM
-import { webcrypto } from "crypto";
 import { AppModule } from "./app.module";
 import { ErrorLoggerService } from "./services/error-logger.service";
-if (!globalThis.crypto) {
-  globalThis.crypto = webcrypto as any;
-}
 
 // Check if port is available
 async function isPortAvailable(port: number): Promise<boolean> {
