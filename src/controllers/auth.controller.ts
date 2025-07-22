@@ -1,23 +1,23 @@
 import {
-    Body,
-    Controller,
-    Get,
-    HttpException,
-    HttpStatus,
-    Post,
-    Put,
-    Request,
-    Response,
-    UseGuards,
-    ValidationPipe,
+  Body,
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  Post,
+  Put,
+  Request,
+  Response,
+  UseGuards,
+  ValidationPipe,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { Roles } from "../decorators/roles.decorator";
 import {
-    GuestLoginDto,
-    LoginDto,
-    RegisterDto,
-    UpdateUsernameDto,
+  GuestLoginDto,
+  LoginDto,
+  RegisterDto,
+  UpdateUsernameDto,
 } from "../dto/auth.dto";
 import { UserRole } from "../entities/user.entity";
 import { JwtAuthGuard } from "../guards/jwt-auth.guard";
@@ -255,21 +255,25 @@ export class AuthController {
 
   @Get("oauth-status")
   async getOAuthStatus() {
-    const googleConfigured = 
-      process.env.GOOGLE_CLIENT_ID && 
-      process.env.GOOGLE_CLIENT_ID !== 'your-google-client-id' &&
-      process.env.GOOGLE_CLIENT_SECRET && 
-      process.env.GOOGLE_CLIENT_SECRET !== 'your-google-client-secret';
+    const googleConfigured =
+      process.env.GOOGLE_CLIENT_ID &&
+      process.env.GOOGLE_CLIENT_ID !== "your-google-client-id" &&
+      process.env.GOOGLE_CLIENT_SECRET &&
+      process.env.GOOGLE_CLIENT_SECRET !== "your-google-client-secret";
 
     return {
       success: true,
       data: {
         google: {
           configured: googleConfigured,
-          clientId: googleConfigured ? process.env.GOOGLE_CLIENT_ID : 'Not configured',
-          status: googleConfigured ? 'Ready' : 'Needs real credentials from Google Cloud Console'
-        }
-      }
+          clientId: googleConfigured
+            ? process.env.GOOGLE_CLIENT_ID
+            : "Not configured",
+          status: googleConfigured
+            ? "Ready"
+            : "Needs real credentials from Google Cloud Console",
+        },
+      },
     };
   }
 }

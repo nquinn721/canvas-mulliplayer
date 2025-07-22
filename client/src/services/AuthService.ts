@@ -35,7 +35,7 @@ export interface AuthStatus {
 class AuthService {
   private token: string | null = null;
   private user: AuthUser | null = null;
-  private baseUrl = "http://localhost:3001";
+  private baseUrl = "http://localhost:3001/api";
 
   constructor() {
     // Load token from localStorage on initialization

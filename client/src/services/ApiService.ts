@@ -2,9 +2,9 @@ class ApiService {
   private baseUrl: string;
 
   constructor() {
-    // Use environment variable or fallback to localhost:3001
+    // Use environment variable or fallback to localhost:3001/api
     this.baseUrl =
-      (import.meta as any).env?.VITE_API_URL || "http://localhost:3001";
+      (import.meta as any).env?.VITE_API_URL || "http://localhost:3001/api";
   }
 
   async get<T>(
