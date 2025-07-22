@@ -75,7 +75,12 @@ export class GameGateway
   private readonly WALL_COUNT = 60;
   private readonly POWERUP_COUNT = 20;
   private readonly AI_ENEMY_COUNT = 5; // Number of AI enemies to spawn
-  private preferredAIDifficulty: "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE" = "MEDIUM"; // Default difficulty
+  private preferredAIDifficulty:
+    | "EASY"
+    | "MEDIUM"
+    | "HARD"
+    | "EXPERT"
+    | "NIGHTMARE" = "MEDIUM"; // Default difficulty
   private lastDifficultyChangeBy: string | null = null; // Track who last changed difficulty
   private difficultyChangeTimestamp: number = 0; // When was it last changed
   private readonly DIFFICULTY_CHANGE_COOLDOWN = 10000; // 10 seconds cooldown between changes
@@ -132,7 +137,13 @@ export class GameGateway
         lastChangedBy: this.lastDifficultyChangeBy,
         changeTimestamp: this.difficultyChangeTimestamp,
         aiEnemyCount: this.aiEnemies.size,
-        availableDifficulties: ["EASY", "MEDIUM", "HARD", "EXPERT", "NIGHTMARE"]
+        availableDifficulties: [
+          "EASY",
+          "MEDIUM",
+          "HARD",
+          "EXPERT",
+          "NIGHTMARE",
+        ],
       });
 
       this.broadcastGameState();
@@ -590,7 +601,8 @@ export class GameGateway
 
   @SubscribeMessage("changeAIDifficulty")
   handleChangeAIDifficulty(
-    @MessageBody() data: { difficulty: "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE" },
+    @MessageBody()
+    data: { difficulty: "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE" },
     @ConnectedSocket() client: Socket
   ) {
     const currentTime = Date.now();
@@ -602,16 +614,23 @@ export class GameGateway
     );
 
     // Check cooldown to prevent spam
-    if (this.lastDifficultyChangeBy && 
-        currentTime - this.difficultyChangeTimestamp < this.DIFFICULTY_CHANGE_COOLDOWN) {
-      const remainingCooldown = Math.ceil((this.DIFFICULTY_CHANGE_COOLDOWN - (currentTime - this.difficultyChangeTimestamp)) / 1000);
-      
+    if (
+      this.lastDifficultyChangeBy &&
+      currentTime - this.difficultyChangeTimestamp <
+        this.DIFFICULTY_CHANGE_COOLDOWN
+    ) {
+      const remainingCooldown = Math.ceil(
+        (this.DIFFICULTY_CHANGE_COOLDOWN -
+          (currentTime - this.difficultyChangeTimestamp)) /
+          1000
+      );
+
       client.emit("aiDifficultyChangeRejected", {
         reason: "cooldown",
         message: `AI difficulty was recently changed by another player. Please wait ${remainingCooldown} seconds.`,
         remainingCooldown: remainingCooldown,
         currentDifficulty: this.preferredAIDifficulty,
-        lastChangedBy: this.lastDifficultyChangeBy
+        lastChangedBy: this.lastDifficultyChangeBy,
       });
       return;
     }
@@ -639,14 +658,14 @@ export class GameGateway
       previousDifficulty: previousDifficulty,
       changedBy: playerName,
       affectedEnemies: changedCount,
-      timestamp: currentTime
+      timestamp: currentTime,
     });
 
     // Send special confirmation to the player who made the change
     client.emit("aiDifficultyChangeConfirmed", {
       difficulty: data.difficulty,
       previousDifficulty: previousDifficulty,
-      affectedEnemies: changedCount
+      affectedEnemies: changedCount,
     });
   }
 
@@ -657,7 +676,7 @@ export class GameGateway
       lastChangedBy: this.lastDifficultyChangeBy,
       changeTimestamp: this.difficultyChangeTimestamp,
       aiEnemyCount: this.aiEnemies.size,
-      availableDifficulties: ["EASY", "MEDIUM", "HARD", "EXPERT", "NIGHTMARE"]
+      availableDifficulties: ["EASY", "MEDIUM", "HARD", "EXPERT", "NIGHTMARE"],
     });
   }
 

@@ -1,2 +1,2 @@
-export * from "./PowerUpConfig";
 export * from "./AIConfig";
+export * from "./PowerUpConfig";

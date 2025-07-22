@@ -32,7 +32,7 @@ interface EscapeMenuProps {
 
   // AI difficulty controls
   currentAIDifficulty: string;
-  onAIDifficultyChange: (difficulty: "EASY" | "MEDIUM" | "HARD") => void;
+  onAIDifficultyChange: (difficulty: "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE") => void;
 
   // Navigation
   onReturnToHome?: () => void;
@@ -219,7 +219,7 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
                 </span>
               </div>
               <div className="difficulty-buttons">
-                {(["EASY", "MEDIUM", "HARD"] as const).map((difficulty) => (
+                {(["EASY", "MEDIUM", "HARD", "EXPERT", "NIGHTMARE"] as const).map((difficulty) => (
                   <button
                     key={difficulty}
                     className={`difficulty-button ${

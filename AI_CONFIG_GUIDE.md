@@ -7,7 +7,7 @@ This document describes the new AI difficulty configuration system that allows f
 The AI configuration system provides 5 difficulty levels with comprehensive settings for each level:
 
 - **EASY** - Beginner-friendly bots with lower health and slower reactions
-- **MEDIUM** - Balanced bots for average players  
+- **MEDIUM** - Balanced bots for average players
 - **HARD** - Challenging bots with better abilities and tactics
 - **EXPERT** - Very difficult bots with high-level abilities
 - **NIGHTMARE** - Extremely challenging bots for expert players
@@ -15,11 +15,13 @@ The AI configuration system provides 5 difficulty levels with comprehensive sett
 ## Configuration Categories
 
 ### Basic Stats
+
 - `health` / `maxHealth` - Bot health points (scales with difficulty)
 - `speed` - Movement speed
 - `radius` - Collision radius
 
-### Combat Settings  
+### Combat Settings
+
 - `detectionRange` - How far bots can detect players
 - `optimalRange` - Preferred combat distance
 - `minRange` - Minimum engagement distance
@@ -27,12 +29,14 @@ The AI configuration system provides 5 difficulty levels with comprehensive sett
 - `reactionTime` - Delay before reacting to players
 
 ### Ability Levels
+
 - `laserUpgradeLevel` - Laser weapon upgrade level (1-5)
-- `missileUpgradeLevel` - Missile weapon upgrade level (1-5) 
+- `missileUpgradeLevel` - Missile weapon upgrade level (1-5)
 - `flashUpgradeLevel` - Flash ability upgrade level (1-5)
 - `boostUpgradeLevel` - Boost ability upgrade level (1-4)
 
 ### Behavior Settings
+
 - `aggressiveness` - How aggressive the bot is (0-1)
 - `pathfindingEnabled` - Whether bot uses smart pathfinding
 - `avoidanceDistance` - Distance to maintain from obstacles
@@ -40,19 +44,20 @@ The AI configuration system provides 5 difficulty levels with comprehensive sett
 - `missilePreference` - Probability of choosing missiles over lasers
 
 ### Movement Patterns
+
 - `patrolRadius` - Area size for patrolling
 - `combatMovementSpeed` - Movement speed multiplier in combat
 - `retreatThreshold` - Health percentage to start retreating
 
 ## Difficulty Progression
 
-| Difficulty | Health | Speed | Accuracy | Abilities | Description |
-|-----------|--------|-------|----------|-----------|-------------|
-| EASY | 80 | 180 | 60% | Level 1 | Slow, inaccurate, low health |
-| MEDIUM | 120 | 200 | 75% | Level 2 | Balanced stats |
-| HARD | 180 | 220 | 85% | Level 3 | Fast, accurate, high health |
-| EXPERT | 250 | 240 | 90% | Level 4 | Very challenging |
-| NIGHTMARE | 350 | 260 | 95% | Level 5 | Extremely difficult |
+| Difficulty | Health | Speed | Accuracy | Abilities | Description                  |
+| ---------- | ------ | ----- | -------- | --------- | ---------------------------- |
+| EASY       | 80     | 180   | 60%      | Level 1   | Slow, inaccurate, low health |
+| MEDIUM     | 120    | 200   | 75%      | Level 2   | Balanced stats               |
+| HARD       | 180    | 220   | 85%      | Level 3   | Fast, accurate, high health  |
+| EXPERT     | 250    | 240   | 90%      | Level 4   | Very challenging             |
+| NIGHTMARE  | 350    | 260   | 95%      | Level 5   | Extremely difficult          |
 
 ## Usage
 
@@ -80,6 +85,7 @@ const levels = getAvailableDifficulties(); // ["EASY", "MEDIUM", "HARD", "EXPERT
 ## Cooldown System Integration
 
 The AI now properly respects ability cooldowns:
+
 - **Missile Cooldown** - Based on upgrade level (3000ms base, reduced 10% per level)
 - **Laser Cooldown** - Fixed 500ms cooldown
 - **Smart Weapon Selection** - Falls back to available weapons when preferred weapon is on cooldown

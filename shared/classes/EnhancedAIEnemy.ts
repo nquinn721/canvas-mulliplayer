@@ -1,6 +1,6 @@
 import { Player } from "../classes/Player";
-import { PathfindingUtils } from "../utils/PathfindingUtils";
 import { getAIConfig, type AIDifficultyConfig } from "../config/AIConfig";
+import { PathfindingUtils } from "../utils/PathfindingUtils";
 
 // Enhanced behavior tree node types with pathfinding support
 enum NodeStatus {
@@ -389,6 +389,24 @@ export class EnhancedAIEnemy extends Player {
   private pathfindingTarget: Point | null = null;
   private lastPathfindingUpdate: number = 0;
 
+  // Static method to get difficulty indicator for bot names
+  static getDifficultyIndicator(difficulty: string): string {
+    switch (difficulty.toUpperCase()) {
+      case "EASY":
+        return "-E";
+      case "MEDIUM":
+        return "-M";
+      case "HARD":
+        return "-H";
+      case "EXPERT":
+        return "-X";
+      case "NIGHTMARE":
+        return "-N";
+      default:
+        return "-M"; // Default to medium
+    }
+  }
+
   constructor(
     id: string,
     x: number,
@@ -397,16 +415,13 @@ export class EnhancedAIEnemy extends Player {
     color: string = "#ff4444"
   ) {
     const aiConfig = getAIConfig(difficulty);
-    
-    super(
-      id,
-      "Smart_AI_Bot",
-      x,
-      y,
-      color,
-      aiConfig.health,
-      aiConfig.speed
-    );
+
+    // Create bot name with difficulty indicator
+    const difficultyIndicator =
+      EnhancedAIEnemy.getDifficultyIndicator(difficulty);
+    const botName = `Smart_AI_Bot${difficultyIndicator}`;
+
+    super(id, botName, x, y, color, aiConfig.health, aiConfig.speed);
 
     this.difficulty = difficulty;
     this.settings = aiConfig;
@@ -552,18 +567,7 @@ export class EnhancedAIEnemy extends Player {
     const angle = baseAngle + accuracyOffset;
 
     // Choose weapon based on distance, difficulty-based missile preference, and cooldowns
-    let missileChance = 0;
-    switch (this.difficulty) {
-      case "EASY":
-        missileChance = 0.1; // 10% chance for missiles
-        break;
-      case "MEDIUM":
-        missileChance = 0.3; // 30% chance for missiles
-        break;
-      case "HARD":
-        missileChance = 0.6; // 60% chance for missiles
-        break;
-    }
+    let missileChance = this.settings.missilePreference;
 
     // Increase missile chance if target is far away
     if (distance > this.settings.optimalRange) {
@@ -647,13 +651,18 @@ export class EnhancedAIEnemy extends Player {
       this.health = aiConfig.health;
       this.maxHealth = aiConfig.maxHealth;
       this.radius = aiConfig.radius;
-      
+
+      // Update bot name with new difficulty indicator
+      const difficultyIndicator =
+        EnhancedAIEnemy.getDifficultyIndicator(difficulty);
+      this.name = `Smart_AI_Bot${difficultyIndicator}`;
+
       // Update ability levels
       this.laserUpgradeLevel = aiConfig.laserUpgradeLevel;
       this.missileUpgradeLevel = aiConfig.missileUpgradeLevel;
       this.flashUpgradeLevel = aiConfig.flashUpgradeLevel;
       this.boostUpgradeLevel = aiConfig.boostUpgradeLevel;
-      
+
       // Rebuild behavior tree with new settings
       this.buildBehaviorTree();
     }

@@ -6,7 +6,7 @@ import HomeMenu from "./components/HomeMenu";
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<"home" | "game">("home");
   const [playerName, setPlayerName] = useState("Player");
-  const [aiDifficulty, setAIDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">(
+  const [aiDifficulty, setAIDifficulty] = useState<"EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE">(
     "MEDIUM"
   );
 

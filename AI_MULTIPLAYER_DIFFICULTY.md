@@ -7,16 +7,19 @@ The system now includes comprehensive conflict resolution to handle multiple pla
 ## **Conflict Resolution Rules**
 
 ### 1. **Cooldown System** (10 seconds)
+
 - After any player changes difficulty, there's a 10-second cooldown
 - Other players cannot change difficulty during this cooldown
 - Prevents rapid back-and-forth changes and spam
 
-### 2. **Last Change Wins** 
+### 2. **Last Change Wins**
+
 - The most recent valid change takes effect for everyone
 - All AI bots immediately update to the new difficulty
 - New AI spawns use the current difficulty setting
 
 ### 3. **Global Broadcast**
+
 - ALL players are notified when someone changes difficulty
 - Message includes who made the change and what it changed from/to
 - No secret difficulty changes
@@ -24,6 +27,7 @@ The system now includes comprehensive conflict resolution to handle multiple pla
 ## **Player Experience**
 
 ### **Successful Change:**
+
 ```
 Player "John" changes difficulty from MEDIUM to HARD
 → All players see: "John changed AI difficulty to HARD (affects 5 bots)"
@@ -31,6 +35,7 @@ Player "John" changes difficulty from MEDIUM to HARD
 ```
 
 ### **Rejected Change (Cooldown):**
+
 ```
 Player "Sarah" tries to change difficulty 3 seconds later
 → Sarah sees: "AI difficulty was recently changed by John. Please wait 7 seconds."
@@ -38,6 +43,7 @@ Player "Sarah" tries to change difficulty 3 seconds later
 ```
 
 ### **New Player Joining:**
+
 ```
 Player "Mike" joins the game
 → Mike immediately receives: "Current AI difficulty: HARD (set by John)"
@@ -47,6 +53,7 @@ Player "Mike" joins the game
 ## **Technical Implementation**
 
 ### **Server State Tracking:**
+
 - `preferredAIDifficulty` - Current difficulty level
 - `lastDifficultyChangeBy` - Player name who last changed it
 - `difficultyChangeTimestamp` - When it was changed
@@ -55,10 +62,12 @@ Player "Mike" joins the game
 ### **WebSocket Events:**
 
 #### **Client → Server:**
+
 - `changeAIDifficulty` - Request to change difficulty
 - `getAIDifficultyStatus` - Get current difficulty info
 
 #### **Server → Client:**
+
 - `aiDifficultyChanged` - Broadcast successful change to ALL players
 - `aiDifficultyChangeRejected` - Inform requester their change was denied
 - `aiDifficultyChangeConfirmed` - Confirm successful change to requester
@@ -67,10 +76,11 @@ Player "Mike" joins the game
 ## **Event Data Structures**
 
 ### **Successful Change (Broadcast to All):**
+
 ```typescript
 {
   difficulty: "HARD",
-  previousDifficulty: "MEDIUM", 
+  previousDifficulty: "MEDIUM",
   changedBy: "John",
   affectedEnemies: 5,
   timestamp: 1642781234567
@@ -78,6 +88,7 @@ Player "Mike" joins the game
 ```
 
 ### **Rejected Change:**
+
 ```typescript
 {
   reason: "cooldown",
@@ -89,10 +100,11 @@ Player "Mike" joins the game
 ```
 
 ### **Status Info:**
+
 ```typescript
 {
   currentDifficulty: "HARD",
-  lastChangedBy: "John", 
+  lastChangedBy: "John",
   changeTimestamp: 1642781234567,
   aiEnemyCount: 5,
   availableDifficulties: ["EASY", "MEDIUM", "HARD", "EXPERT", "NIGHTMARE"]
@@ -111,6 +123,7 @@ Player "Mike" joins the game
 ## **Future Enhancement Options**
 
 If you want more restrictive control, you could add:
+
 - **Host-only changes** - Only room creator can change difficulty
 - **Voting system** - Require majority vote for changes
 - **Per-player difficulty** - Each player faces their chosen difficulty

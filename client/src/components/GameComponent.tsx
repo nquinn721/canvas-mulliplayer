@@ -11,7 +11,7 @@ import EscapeMenu from "./EscapeMenu";
 
 interface GameComponentProps {
   playerName: string;
-  aiDifficulty: "EASY" | "MEDIUM" | "HARD";
+  aiDifficulty: "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE";
   onReturnToHome: () => void;
 }
 
@@ -33,7 +33,7 @@ const GameComponent = observer(
       soundService.getMusicTrack()
     );
     const [currentAIDifficulty, setCurrentAIDifficulty] = useState<
-      "EASY" | "MEDIUM" | "HARD"
+      "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE"
     >(aiDifficulty);
     const [isEscapeMenuOpen, setIsEscapeMenuOpen] = useState(false);
     const [isPlayerDead, setIsPlayerDead] = useState(false);
@@ -161,7 +161,7 @@ const GameComponent = observer(
       soundService.setMusicTrack(trackNumber);
     };
 
-    const changeAIDifficulty = (difficulty: "EASY" | "MEDIUM" | "HARD") => {
+    const changeAIDifficulty = (difficulty: "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE") => {
       if (gameStore?.socket) {
         gameStore.socket.emit("changeAIDifficulty", { difficulty });
         setCurrentAIDifficulty(difficulty);
