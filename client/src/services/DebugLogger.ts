@@ -5,8 +5,8 @@
 
 export interface DebugLogEntry {
   timestamp: string;
-  type: 'RENDERING' | 'CONTROL' | 'STATE' | 'CONNECTION' | 'GENERAL';
-  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  type: "RENDERING" | "CONTROL" | "STATE" | "CONNECTION" | "GENERAL";
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   message: string;
   metadata?: Record<string, any>;
   stackTrace?: string;
@@ -34,22 +34,31 @@ export class DebugLogger {
     this.socket = socket;
   }
 
-  public log(type: DebugLogEntry['type'], severity: DebugLogEntry['severity'], message: string, metadata?: Record<string, any>): void {
+  public log(
+    type: DebugLogEntry["type"],
+    severity: DebugLogEntry["severity"],
+    message: string,
+    metadata?: Record<string, any>
+  ): void {
     const entry: DebugLogEntry = {
       timestamp: new Date().toISOString(),
       type,
       severity,
       message,
       metadata,
-      stackTrace: new Error().stack
+      stackTrace: new Error().stack,
     };
 
     this.logQueue.push(entry);
 
     // Also log to console for immediate debugging
-    const logMethod = severity === 'CRITICAL' || severity === 'HIGH' ? 'error' : 
-                     severity === 'MEDIUM' ? 'warn' : 'log';
-    console[logMethod](`[${type}] ${message}`, metadata || '');
+    const logMethod =
+      severity === "CRITICAL" || severity === "HIGH"
+        ? "error"
+        : severity === "MEDIUM"
+          ? "warn"
+          : "log";
+    console[logMethod](`[${type}] ${message}`, metadata || "");
 
     // Prevent queue from growing too large
     if (this.logQueue.length > this.maxQueueSize) {
@@ -57,26 +66,42 @@ export class DebugLogger {
     }
 
     // Send immediately for critical issues
-    if (severity === 'CRITICAL') {
+    if (severity === "CRITICAL") {
       this.sendLogs();
     }
   }
 
   // Convenience methods for specific types
-  public logRenderingIssue(message: string, metadata?: Record<string, any>, severity: DebugLogEntry['severity'] = 'MEDIUM'): void {
-    this.log('RENDERING', severity, message, metadata);
+  public logRenderingIssue(
+    message: string,
+    metadata?: Record<string, any>,
+    severity: DebugLogEntry["severity"] = "MEDIUM"
+  ): void {
+    this.log("RENDERING", severity, message, metadata);
   }
 
-  public logControlIssue(message: string, metadata?: Record<string, any>, severity: DebugLogEntry['severity'] = 'HIGH'): void {
-    this.log('CONTROL', severity, message, metadata);
+  public logControlIssue(
+    message: string,
+    metadata?: Record<string, any>,
+    severity: DebugLogEntry["severity"] = "HIGH"
+  ): void {
+    this.log("CONTROL", severity, message, metadata);
   }
 
-  public logStateIssue(message: string, metadata?: Record<string, any>, severity: DebugLogEntry['severity'] = 'MEDIUM'): void {
-    this.log('STATE', severity, message, metadata);
+  public logStateIssue(
+    message: string,
+    metadata?: Record<string, any>,
+    severity: DebugLogEntry["severity"] = "MEDIUM"
+  ): void {
+    this.log("STATE", severity, message, metadata);
   }
 
-  public logConnectionIssue(message: string, metadata?: Record<string, any>, severity: DebugLogEntry['severity'] = 'HIGH'): void {
-    this.log('CONNECTION', severity, message, metadata);
+  public logConnectionIssue(
+    message: string,
+    metadata?: Record<string, any>,
+    severity: DebugLogEntry["severity"] = "HIGH"
+  ): void {
+    this.log("CONNECTION", severity, message, metadata);
   }
 
   private startLogSender(): void {
@@ -92,19 +117,19 @@ export class DebugLogger {
 
     try {
       // Send logs to server
-      this.socket.emit('clientDebugLogs', {
+      this.socket.emit("clientDebugLogs", {
         logs: [...this.logQueue],
         clientInfo: {
           userAgent: navigator.userAgent,
           timestamp: new Date().toISOString(),
-          url: window.location.href
-        }
+          url: window.location.href,
+        },
       });
 
       // Clear the queue after sending
       this.logQueue = [];
     } catch (error) {
-      console.error('Failed to send debug logs to server:', error);
+      console.error("Failed to send debug logs to server:", error);
     }
   }
 

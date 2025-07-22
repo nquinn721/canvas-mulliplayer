@@ -4,9 +4,9 @@ import { observer } from "mobx-react-lite";
 import { useEffect, useRef, useState } from "react";
 import "../App.css";
 import { Game } from "../game/Game";
+import { debugLogger } from "../services/DebugLogger";
 import { soundService } from "../services/SoundService";
 import { gameStore, socketService } from "../stores";
-import { debugLogger } from "../services/DebugLogger";
 import DeathMenu from "./DeathMenu";
 import EscapeMenu from "./EscapeMenu";
 
@@ -102,11 +102,16 @@ const GameComponent = observer(
         if (gameStore?.socket) {
           // Initialize debug logger with socket connection
           debugLogger.setSocket(gameStore.socket);
-          debugLogger.log('CONNECTION', 'LOW', 'Debug logger initialized with socket connection', {
-            playerId: gameStore.playerId,
-            playerName: playerName,
-            socketId: gameStore.socket.id
-          });
+          debugLogger.log(
+            "CONNECTION",
+            "LOW",
+            "Debug logger initialized with socket connection",
+            {
+              playerId: gameStore.playerId,
+              playerName: playerName,
+              socketId: gameStore.socket.id,
+            }
+          );
 
           gameStore.socket.emit("changeAIDifficulty", {
             difficulty: aiDifficulty,

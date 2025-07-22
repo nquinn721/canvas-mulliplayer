@@ -623,23 +623,25 @@ export class RendererService {
     if (this.gameStore.playerId && player.id) {
       // Primary check: direct ID comparison
       isCurrentPlayer = player.id === this.gameStore.playerId;
-      
+
       // Fallback check: if we have a current player object, compare with that
       if (!isCurrentPlayer && this.gameStore.currentPlayer) {
         isCurrentPlayer = player.id === this.gameStore.currentPlayer.id;
       }
-      
+
       // Additional safety check: if this player object is literally the currentPlayer
       if (!isCurrentPlayer && this.gameStore.currentPlayer) {
         isCurrentPlayer = player === this.gameStore.currentPlayer;
       }
     }
-    
+
     // Enhanced debug logging for the red ship bug using our debug system
-    if (!isCurrentPlayer && this.gameStore.playerId && 
-        this.gameStore.gameState.players[this.gameStore.playerId] &&
-        this.gameStore.gameState.players[this.gameStore.playerId].id === player.id) {
-      
+    if (
+      !isCurrentPlayer &&
+      this.gameStore.playerId &&
+      this.gameStore.gameState.players[this.gameStore.playerId] &&
+      this.gameStore.gameState.players[this.gameStore.playerId].id === player.id
+    ) {
       const debugInfo = {
         playerId: player.id,
         storePlayerId: this.gameStore.playerId,
@@ -650,31 +652,43 @@ export class RendererService {
         playerHealth: player.health,
         playerPosition: { x: player.x, y: player.y },
         gameStatePlayerIds: Object.keys(this.gameStore.gameState.players),
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
-      
-      debugLogger.logRenderingIssue("Red ship bug detected - Player ID mismatch in renderer", debugInfo, 'HIGH');
-      
+
+      debugLogger.logRenderingIssue(
+        "Red ship bug detected - Player ID mismatch in renderer",
+        debugInfo,
+        "HIGH"
+      );
+
       console.warn("Player ID mismatch detected:", debugInfo);
       // Force it to be current player if we detect the mismatch
       isCurrentPlayer = true;
-      
-      debugLogger.logRenderingIssue("Red ship bug - Applied fix by forcing isCurrentPlayer = true", { 
-        playerId: player.id, 
-        fixed: true 
-      }, 'MEDIUM');
+
+      debugLogger.logRenderingIssue(
+        "Red ship bug - Applied fix by forcing isCurrentPlayer = true",
+        {
+          playerId: player.id,
+          fixed: true,
+        },
+        "MEDIUM"
+      );
     }
-    
+
     // Additional logging for any color rendering anomalies
     if (this.gameStore.playerId === player.id && !isCurrentPlayer) {
-      debugLogger.logRenderingIssue("Critical: Current player being rendered as other player", {
-        playerId: player.id,
-        storePlayerId: this.gameStore.playerId,
-        shouldBeCurrentPlayer: true,
-        actuallyDetectedAs: isCurrentPlayer
-      }, 'CRITICAL');
+      debugLogger.logRenderingIssue(
+        "Critical: Current player being rendered as other player",
+        {
+          playerId: player.id,
+          storePlayerId: this.gameStore.playerId,
+          shouldBeCurrentPlayer: true,
+          actuallyDetectedAs: isCurrentPlayer,
+        },
+        "CRITICAL"
+      );
     }
-    
+
     const shipColor = isCurrentPlayer ? "#4ade80" : "#f87171";
     const accentColor = isCurrentPlayer ? "#22c55e" : "#ef4444";
 

@@ -48,8 +48,8 @@ export const AI_DIFFICULTY_PRESETS: Record<string, AIDifficultyConfig> = {
     radius: 18,
 
     // Combat Settings
-    detectionRange: 300,
-    optimalRange: 200,
+    detectionRange: 400, // Increased from 300 for better player reaction time
+    optimalRange: 250, // Increased from 200 to match detection range increase
     minRange: 100,
     accuracy: 0.65, // Slightly more accurate for smoother aim
     reactionTime: 900, // Slightly slower reaction
@@ -66,7 +66,7 @@ export const AI_DIFFICULTY_PRESETS: Record<string, AIDifficultyConfig> = {
     avoidanceDistance: 50,
 
     // Combat Frequency
-    shootCooldown: 2800, // Slightly longer cooldown
+    shootCooldown: 3500, // Much longer cooldown for easier gameplay
     missilePreference: 0.15, // 15% chance for missiles
 
     // Movement Patterns
@@ -83,8 +83,8 @@ export const AI_DIFFICULTY_PRESETS: Record<string, AIDifficultyConfig> = {
     radius: 18,
 
     // Combat Settings
-    detectionRange: 400,
-    optimalRange: 250,
+    detectionRange: 500, // Increased from 400 for more warning time
+    optimalRange: 300, // Increased from 250 to match detection range increase
     minRange: 80,
     accuracy: 0.78, // Slightly more accurate
     reactionTime: 450, // Slightly faster reaction
@@ -101,7 +101,7 @@ export const AI_DIFFICULTY_PRESETS: Record<string, AIDifficultyConfig> = {
     avoidanceDistance: 40,
 
     // Combat Frequency
-    shootCooldown: 1900, // Slightly faster shooting
+    shootCooldown: 2500, // Increased cooldown for more manageable gameplay
     missilePreference: 0.35, // 35% chance for missiles
 
     // Movement Patterns

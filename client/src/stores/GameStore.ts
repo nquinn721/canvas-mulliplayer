@@ -1,9 +1,9 @@
 import { Camera, GameState, KeyState, Projectile } from "@shared";
 import { makeAutoObservable } from "mobx";
 import { Socket } from "socket.io-client";
+import { debugLogger } from "../services/DebugLogger";
 import { soundService } from "../services/SoundService";
 import { ParticleSystem } from "../utils/ParticleSystem";
-import { debugLogger } from "../services/DebugLogger";
 
 export class GameStore {
   // Game state
@@ -93,16 +93,20 @@ export class GameStore {
   setPlayerId(id: string) {
     const previousId = this.playerId;
     this.playerId = id;
-    
+
     // Debug logging for player ID changes
-    debugLogger.logStateIssue("Player ID changed", {
-      previousId,
-      newId: id,
-      timestamp: Date.now(),
-      hasPlayers: Object.keys(this.gameState.players).length > 0,
-      playerExists: !!this.gameState.players[id]
-    }, previousId && previousId !== id ? 'HIGH' : 'LOW');
-    
+    debugLogger.logStateIssue(
+      "Player ID changed",
+      {
+        previousId,
+        newId: id,
+        timestamp: Date.now(),
+        hasPlayers: Object.keys(this.gameState.players).length > 0,
+        playerExists: !!this.gameState.players[id],
+      },
+      previousId && previousId !== id ? "HIGH" : "LOW"
+    );
+
     this.updateCameraPosition();
   }
 
@@ -133,30 +137,52 @@ export class GameStore {
   setKeyState(key: keyof KeyState, pressed: boolean) {
     const currentPlayer = this.currentPlayer;
     const wasPressed = this.keys[key];
-    
+
     this.keys[key] = pressed;
-    
+
     // Debug logging for control issues
     if (pressed && !wasPressed && currentPlayer && currentPlayer.health <= 0) {
-      debugLogger.logControlIssue("Input received for dead player", {
-        key: String(key),
-        playerId: this.playerId,
-        playerHealth: currentPlayer.health,
-        playerName: currentPlayer.name,
-        timestamp: Date.now()
-      }, 'HIGH');
+      debugLogger.logControlIssue(
+        "Input received for dead player",
+        {
+          key: String(key),
+          playerId: this.playerId,
+          playerHealth: currentPlayer.health,
+          playerName: currentPlayer.name,
+          timestamp: Date.now(),
+        },
+        "HIGH"
+      );
     }
-    
+
     // Log if we're trying to move but have no current player
-    const movementKeys = ['w', 'a', 's', 'd', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'];
-    if (pressed && !wasPressed && movementKeys.includes(String(key)) && !currentPlayer) {
-      debugLogger.logControlIssue("Movement input without current player", {
-        key: String(key),
-        playerId: this.playerId,
-        hasPlayerId: !!this.playerId,
-        playersCount: Object.keys(this.gameState.players).length,
-        timestamp: Date.now()
-      }, 'HIGH');
+    const movementKeys = [
+      "w",
+      "a",
+      "s",
+      "d",
+      "ArrowUp",
+      "ArrowLeft",
+      "ArrowDown",
+      "ArrowRight",
+    ];
+    if (
+      pressed &&
+      !wasPressed &&
+      movementKeys.includes(String(key)) &&
+      !currentPlayer
+    ) {
+      debugLogger.logControlIssue(
+        "Movement input without current player",
+        {
+          key: String(key),
+          playerId: this.playerId,
+          hasPlayerId: !!this.playerId,
+          playersCount: Object.keys(this.gameState.players).length,
+          timestamp: Date.now(),
+        },
+        "HIGH"
+      );
     }
   }
 

@@ -712,12 +712,14 @@ export class GameGateway
             logType: logEntry.type,
             originalMetadata: logEntry.metadata,
             clientInfo: data.clientInfo,
-            timestamp: logEntry.timestamp
-          }
+            timestamp: logEntry.timestamp,
+          },
         });
       }
-      
-      console.log(`Received ${data.logs.length} debug logs from client ${client.id}`);
+
+      console.log(
+        `Received ${data.logs.length} debug logs from client ${client.id}`
+      );
     } catch (error) {
       console.error("Failed to process client debug logs:", error);
     }

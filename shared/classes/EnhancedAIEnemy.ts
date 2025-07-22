@@ -496,7 +496,11 @@ export class EnhancedAIEnemy extends Player {
 
     this.buildBehaviorTree();
     this.lastShootTime = Date.now() - this.settings.shootCooldown;
-    this.lastLaserTime = Date.now() - 500; // Initialize laser cooldown
+    this.lastLaserTime = Date.now() - this.settings.shootCooldown; // Use AI config cooldown instead of hardcoded 500ms
+
+    // Initialize missile cooldown to prevent immediate missile firing
+    const missileStats = this.getMissileStats();
+    this.lastMissileTime = Date.now() - missileStats.cooldown; // Prevent immediate missile firing
 
     // Initialize movement smoothing properties
     this.velocityX = 0;
@@ -647,7 +651,8 @@ export class EnhancedAIEnemy extends Player {
       currentTime,
       missileStats.cooldown
     );
-    const canUseLaser = currentTime - this.lastLaserTime >= 500; // Laser has 500ms cooldown
+    const canUseLaser =
+      currentTime - this.lastLaserTime >= this.settings.shootCooldown; // Use AI config cooldown
 
     // If we want to use missile but it's on cooldown, use laser if available
     const preferMissile = Math.random() < missileChance;
