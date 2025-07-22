@@ -5,7 +5,7 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   type: "mysql",
   host:
     process.env.NODE_ENV === "production"
-      ? process.env.DB_SOCKET_PATH || process.env.DB_HOST
+      ? undefined // Don't set host when using socket path
       : process.env.DB_HOST || "localhost",
   port:
     process.env.NODE_ENV === "production"
