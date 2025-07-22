@@ -4,8 +4,44 @@ import { join } from "path";
 import { AppModule } from "./app.module";
 import { ErrorLoggerService } from "./services/error-logger.service";
 
+// Check if port is available
+async function isPortAvailable(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = require("net").createServer();
+    server.listen(port, () => {
+      server.once("close", () => resolve(true));
+      server.close();
+    });
+    server.on("error", () => resolve(false));
+  });
+}
+
+// Find next available port
+async function findAvailablePort(startPort: number): Promise<number> {
+  let port = startPort;
+  while (!(await isPortAvailable(port))) {
+    console.log(`Port ${port} is busy, trying ${port + 1}...`);
+    port++;
+    if (port > startPort + 10) {
+      throw new Error(`No available ports found after ${startPort}`);
+    }
+  }
+  return port;
+}
+
 async function bootstrap() {
   let errorLogger: ErrorLoggerService;
+
+  // Handle graceful shutdown
+  process.on("SIGINT", () => {
+    console.log("\nReceived SIGINT, shutting down gracefully...");
+    process.exit(0);
+  });
+
+  process.on("SIGTERM", () => {
+    console.log("\nReceived SIGTERM, shutting down gracefully...");
+    process.exit(0);
+  });
 
   try {
     const app = await NestFactory.create(AppModule);
@@ -54,7 +90,21 @@ async function bootstrap() {
     }
 
     // Use PORT environment variable for Cloud Run or default to 3001
-    const port = process.env.PORT || 3001;
+    const preferredPort = process.env.PORT ? parseInt(process.env.PORT) : 3001;
+    const port = await findAvailablePort(preferredPort);
+
+    if (port !== preferredPort) {
+      console.log(
+        `Warning: Preferred port ${preferredPort} was unavailable, using port ${port}`
+      );
+      await errorLogger.logError({
+        type: "SYSTEM",
+        severity: "MEDIUM",
+        message: `Port conflict: using ${port} instead of ${preferredPort}`,
+        metadata: { preferredPort, actualPort: port },
+      });
+    }
+
     await app.listen(port, "0.0.0.0"); // Bind to all interfaces for Cloud Run
     console.log(`Game server running on http://0.0.0.0:${port}`);
     console.log(`Environment: ${process.env.NODE_ENV || "development"}`);

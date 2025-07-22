@@ -1,0 +1,103 @@
+.latency-stats {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 12px;
+  border-radius: 8px;
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+  min-width: 200px;
+  z-index: 1000;
+  border: 1px solid #333;
+}
+
+.latency-stats h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #4caf50;
+  text-align: center;
+}
+
+.latency-stats .stat-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 3px 0;
+  padding: 2px 0;
+}
+
+.latency-stats .stat-label {
+  color: #bbb;
+}
+
+.latency-stats .stat-value {
+  color: #fff;
+  font-weight: bold;
+}
+
+.latency-stats .ping-good {
+  color: #4caf50;
+}
+
+.latency-stats .ping-medium {
+  color: #ff9800;
+}
+
+.latency-stats .ping-bad {
+  color: #f44336;
+}
+
+.latency-stats .controls {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #444;
+}
+
+.latency-stats .control-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 4px 0;
+}
+
+.latency-stats .control-label {
+  color: #bbb;
+  font-size: 11px;
+}
+
+.latency-stats button {
+  background: #333;
+  color: white;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.latency-stats button:hover {
+  background: #444;
+}
+
+.latency-stats button.active {
+  background: #4caf50;
+  border-color: #4caf50;
+}
+
+.latency-stats .separator {
+  height: 1px;
+  background: #444;
+  margin: 8px 0;
+}
+
+.latency-stats .prediction-error {
+  color: #f44336;
+}
+
+.latency-stats .ping-history {
+  font-size: 10px;
+  color: #888;
+  margin-top: 4px;
+}

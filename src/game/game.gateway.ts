@@ -79,22 +79,65 @@ export class GameGateway
     | "NIGHTMARE" = "MEDIUM"; // Default difficulty
   private lastDifficultyChangeBy: string | null = null; // Track who last changed difficulty
   private difficultyChangeTimestamp: number = 0; // When was it last changed
-  private readonly DIFFICULTY_CHANGE_COOLDOWN = 2000; // 2 seconds cooldown between changes (temporarily reduced for testing)
+  private readonly DIFFICULTY_CHANGE_COOLDOWN = 500; // 0.5 seconds cooldown between changes (reduced for faster testing)
   private gameLoopActive: boolean = false; // Track if game loop should be running
+
+  private readonly connectedClients = new Map<
+    string,
+    { lastHeartbeat: number; playerName?: string }
+  >();
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private readonly HEARTBEAT_TIMEOUT = 30000; // 30 seconds
+  private readonly HEARTBEAT_INTERVAL = 5000; // 5 seconds
 
   constructor(private readonly errorLogger: ErrorLoggerService) {
     this.generateWalls();
     this.spawnPowerUps();
     this.spawnAIEnemies();
+    // Start heartbeat monitoring
+    this.startHeartbeatMonitoring();
     // Don't start game loop until players join
+  }
+
+  private startHeartbeatMonitoring() {
+    this.heartbeatInterval = setInterval(() => {
+      const now = Date.now();
+      const clientsToRemove: string[] = [];
+
+      this.connectedClients.forEach((client, clientId) => {
+        if (now - client.lastHeartbeat > this.HEARTBEAT_TIMEOUT) {
+          console.log(`Client ${clientId} timed out - removing`);
+          clientsToRemove.push(clientId);
+        }
+      });
+
+      clientsToRemove.forEach((clientId) => {
+        this.connectedClients.delete(clientId);
+        if (this.players.has(clientId)) {
+          this.players.delete(clientId);
+          this.broadcastGameState();
+        }
+      });
+    }, this.HEARTBEAT_INTERVAL);
   }
 
   handleConnection(client: Socket) {
     try {
       console.log(`Client connected: ${client.id}`);
 
-      // Don't create player immediately - wait for player name
+      // Track connection with heartbeat
+      this.connectedClients.set(client.id, { lastHeartbeat: Date.now() });
+
+      // Only emit player ID once per connection
       client.emit("playerId", client.id);
+
+      // Set up heartbeat for this client
+      client.on("heartbeat", () => {
+        const clientData = this.connectedClients.get(client.id);
+        if (clientData) {
+          clientData.lastHeartbeat = Date.now();
+        }
+      });
     } catch (error) {
       this.errorLogger.logWebSocketError(error, client.id, "connection");
     }
@@ -108,19 +151,33 @@ export class GameGateway
     try {
       const playerName =
         data.playerName || `Player ${this.playerNameCounter++}`;
-      const spawnPosition = this.getRandomSpawnPosition();
 
-      const player = new Player(
-        client.id,
-        playerName,
-        spawnPosition.x,
-        spawnPosition.y
-      );
+      // Update client tracking with player name
+      const clientData = this.connectedClients.get(client.id);
+      if (clientData) {
+        clientData.playerName = playerName;
+      }
 
-      this.players.set(client.id, player);
-      console.log(
-        `${playerName} joined the game at (${spawnPosition.x}, ${spawnPosition.y})`
-      );
+      // Check if player already exists (reconnection case)
+      let player = this.players.get(client.id);
+      if (player) {
+        // Player reconnecting, just update the name if needed
+        player.name = playerName;
+        console.log(`${playerName} reconnected`);
+      } else {
+        // New player joining
+        const spawnPosition = this.getRandomSpawnPosition();
+        player = new Player(
+          client.id,
+          playerName,
+          spawnPosition.x,
+          spawnPosition.y
+        );
+        this.players.set(client.id, player);
+        console.log(
+          `${playerName} joined the game at (${spawnPosition.x}, ${spawnPosition.y})`
+        );
+      }
 
       // Check if we should start the game loop when first player joins
       this.checkGameLoopState();
@@ -156,6 +213,9 @@ export class GameGateway
       const player = this.players.get(client.id);
       const playerName = player ? player.name : client.id;
       console.log(`${playerName} disconnected`);
+
+      // Remove from tracking
+      this.connectedClients.delete(client.id);
       this.players.delete(client.id);
 
       // Check if we should pause the game loop when no real players are connected
@@ -176,8 +236,14 @@ export class GameGateway
       this.gameLoopInterval = null;
     }
 
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+
     // Clear all maps to prevent memory leaks
     this.players.clear();
+    this.connectedClients.clear();
     this.aiEnemies.clear();
     this.projectiles.clear();
     this.meteors.clear();
@@ -212,13 +278,19 @@ export class GameGateway
 
   @SubscribeMessage("input")
   handleInput(
-    @MessageBody() keys: KeyState,
+    @MessageBody() data: KeyState & { inputId?: number; angle?: number },
     @ConnectedSocket() client: Socket
   ) {
     const player = this.players.get(client.id);
     if (!player) return;
 
     const deltaTime = 16; // Approximate 60 FPS
+    const keys = data;
+
+    // Update player angle if provided
+    if (data.angle !== undefined) {
+      player.updateAngle(data.angle);
+    }
 
     // Handle boost mechanics
     if (keys.shift && player.canUseBoost()) {
@@ -296,6 +368,23 @@ export class GameGateway
     );
 
     this.players.set(client.id, player);
+
+    // Send input acknowledgment for reconciliation
+    if (data.inputId !== undefined) {
+      client.emit("inputAck", {
+        inputId: data.inputId,
+        serverPosition: { x: player.x, y: player.y, angle: player.angle },
+      });
+    }
+  }
+
+  @SubscribeMessage("ping")
+  handlePing(
+    @MessageBody() timestamp: number,
+    @ConnectedSocket() client: Socket
+  ) {
+    // Simple ping/pong for latency measurement
+    client.emit("pong", timestamp);
   }
 
   @SubscribeMessage("shoot")
@@ -584,9 +673,10 @@ export class GameGateway
       `${playerName} requested AI difficulty change to ${data.difficulty}`
     );
 
-    // Check cooldown to prevent spam
+    // Check cooldown to prevent spam, but allow same player to change immediately
     if (
       this.lastDifficultyChangeBy &&
+      this.lastDifficultyChangeBy !== playerName && // Allow same player to change immediately
       currentTime - this.difficultyChangeTimestamp <
         this.DIFFICULTY_CHANGE_COOLDOWN
     ) {

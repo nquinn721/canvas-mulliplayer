@@ -8,7 +8,8 @@ export interface Particle {
   size: number;
   color: string;
   alpha: number;
-  type?: "explosion" | "wind" | "flash"; // Add particle type
+  type?: "explosion" | "wind" | "flash" | "spawn"; // Add spawn type
+  radius?: number; // For expanding circles
 }
 
 export class ParticleSystem {
@@ -29,6 +30,11 @@ export class ParticleSystem {
         // Wind particles: no gravity, gradual deceleration
         particle.velocityX *= 0.95;
         particle.velocityY *= 0.95;
+      } else if (particle.type === "spawn") {
+        // Spawn indicators: expanding circles, no physics
+        if (particle.radius !== undefined) {
+          particle.radius += 120 * (deltaTime / 1000); // Expand at 120 pixels per second
+        }
       } else {
         // Explosion particles: apply gravity and air resistance
         particle.velocityY += 150 * (deltaTime / 1000); // gravity
@@ -44,10 +50,37 @@ export class ParticleSystem {
     this.particles.forEach((particle) => {
       ctx.save();
       ctx.globalAlpha = particle.alpha;
-      ctx.fillStyle = particle.color;
-      ctx.beginPath();
-      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-      ctx.fill();
+
+      if (particle.type === "spawn") {
+        // Render expanding circles for spawn indicators
+        if (particle.radius !== undefined) {
+          ctx.strokeStyle = particle.color;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Add inner circle with glow
+          ctx.shadowColor = particle.color;
+          ctx.shadowBlur = 10;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(
+            particle.x,
+            particle.y,
+            particle.radius * 0.7,
+            0,
+            Math.PI * 2
+          );
+          ctx.stroke();
+        }
+      } else {
+        // Render normal particles
+        ctx.fillStyle = particle.color;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     });
   }
@@ -283,6 +316,56 @@ export class ParticleSystem {
         color: flashColors[Math.floor(Math.random() * flashColors.length)],
         alpha: 0.7,
         type: "flash",
+      });
+    }
+  }
+
+  createSpawnIndicator(x: number, y: number) {
+    // Create multiple expanding circles with menu-coordinated colors
+    const colors = ["#00d4ff", "#0099cc", "#ffffff", "#00ff99"]; // Match menu cyan/blue theme
+    const delays = [0, 200, 400, 600]; // Stagger the circles
+
+    colors.forEach((color, index) => {
+      setTimeout(() => {
+        const life = 1500; // 1.5 seconds for each circle
+
+        this.particles.push({
+          x,
+          y,
+          velocityX: 0,
+          velocityY: 0,
+          life,
+          maxLife: life,
+          size: 0, // Not used for spawn indicators
+          color,
+          alpha: 0.8,
+          type: "spawn",
+          radius: 10, // Starting radius
+        });
+      }, delays[index]);
+    });
+
+    // Add some sparkle particles around the spawn point using menu colors
+    const sparkleColors = ["#00d4ff", "#0099cc", "#ffffff", "#00ff99", "#0066aa"];
+    for (let i = 0; i < 15; i++) {
+      const angle = (Math.PI * 2 * i) / 15;
+      const distance = 20 + Math.random() * 30;
+      const sparkleX = x + Math.cos(angle) * distance;
+      const sparkleY = y + Math.sin(angle) * distance;
+
+      const life = 800 + Math.random() * 400;
+
+      this.particles.push({
+        x: sparkleX,
+        y: sparkleY,
+        velocityX: Math.cos(angle) * (50 + Math.random() * 30),
+        velocityY: Math.sin(angle) * (50 + Math.random() * 30),
+        life,
+        maxLife: life,
+        size: 2 + Math.random() * 3,
+        color: sparkleColors[Math.floor(Math.random() * sparkleColors.length)],
+        alpha: 0.9,
+        type: "explosion", // Use explosion physics for sparkles
       });
     }
   }

@@ -113,17 +113,31 @@ const GameComponent = observer(
             }
           );
 
-          gameStore.socket.emit("changeAIDifficulty", {
-            difficulty: aiDifficulty,
-          });
           // Join the game with the player's chosen name
           if (socketService.isConnected) {
             socketService.joinGame(playerName);
+            // After joining, try to set the AI difficulty from home menu selection
+            // This will only succeed if the player has permission to change it
+            setTimeout(() => {
+              if (gameStore?.socket) {
+                gameStore.socket.emit("changeAIDifficulty", {
+                  difficulty: aiDifficulty,
+                });
+              }
+            }, 500); // Reduced delay to match server cooldown
           } else {
             // Wait for connection and then join
             const checkConnection = setInterval(() => {
               if (socketService.isConnected) {
                 socketService.joinGame(playerName);
+                // After joining, try to set the AI difficulty from home menu selection
+                setTimeout(() => {
+                  if (gameStore?.socket) {
+                    gameStore.socket.emit("changeAIDifficulty", {
+                      difficulty: aiDifficulty,
+                    });
+                  }
+                }, 500); // Reduced delay to match server cooldown
                 clearInterval(checkConnection);
               }
             }, 100);

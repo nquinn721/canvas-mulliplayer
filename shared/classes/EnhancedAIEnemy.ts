@@ -175,8 +175,7 @@ class NavigateToTargetAction extends EnhancedBehaviorNode {
         targetSpeedMultiplier = 0.6 + Math.random() * 0.3;
       }
 
-      // Apply momentum and smooth acceleration
-      const maxAcceleration = settings.speed * 2.0 * (context.deltaTime / 1000);
+      // Apply movement with adaptive smoothing based on speed
       const targetVelX =
         Math.cos(targetDirection) *
         settings.speed *
@@ -188,8 +187,21 @@ class NavigateToTargetAction extends EnhancedBehaviorNode {
         targetSpeedMultiplier *
         (context.deltaTime / 1000);
 
-      // Smooth velocity transitions using momentum
-      const smoothingFactor = Math.min(1.0, context.deltaTime / 200); // Smooth over 200ms
+      // Adaptive smoothing - less smoothing at higher speeds to reduce jitter
+      const velocityMagnitude = Math.sqrt(
+        targetVelX * targetVelX + targetVelY * targetVelY
+      );
+      const speedFactor = Math.min(
+        1.0,
+        velocityMagnitude / (settings.speed * (context.deltaTime / 1000))
+      );
+      const baseSmoothingTime = 200; // Base smoothing time in ms
+      const adaptiveSmoothingTime = baseSmoothingTime * (1 - speedFactor * 0.7); // Reduce smoothing by up to 70% at high speeds
+      const smoothingFactor = Math.min(
+        1.0,
+        context.deltaTime / Math.max(50, adaptiveSmoothingTime)
+      ); // Minimum 50ms smoothing
+
       ai.setVelocityX(
         ai.getVelocityX() + (targetVelX - ai.getVelocityX()) * smoothingFactor
       );
@@ -217,13 +229,28 @@ class NavigateToTargetAction extends EnhancedBehaviorNode {
         (1.0 - settings.accuracy) * (Math.random() - 0.5) * 0.3;
       ai.setTargetAngle(directionToTarget + aimVariation);
 
-      // Smooth angle interpolation
+      // Adaptive angle smoothing - faster rotation at higher speeds
       const angleDiff = ai.getTargetAngle() - ai.getCurrentAngle();
       const normalizedAngleDiff = Math.atan2(
         Math.sin(angleDiff),
         Math.cos(angleDiff)
       );
-      const angleSmoothing = Math.min(1.0, context.deltaTime / 150); // Smooth over 150ms
+
+      // Calculate speed factor for angle smoothing
+      const currentVelMagnitude = Math.sqrt(
+        ai.getVelocityX() * ai.getVelocityX() +
+          ai.getVelocityY() * ai.getVelocityY()
+      );
+      const maxVelocity = settings.speed * (context.deltaTime / 1000);
+      const angleSpeedFactor = Math.min(1.0, currentVelMagnitude / maxVelocity);
+      const baseAngleSmoothingTime = 150; // Base angle smoothing time in ms
+      const adaptiveAngleSmoothingTime =
+        baseAngleSmoothingTime * (1 - angleSpeedFactor * 0.6); // Reduce by up to 60%
+      const angleSmoothing = Math.min(
+        1.0,
+        context.deltaTime / Math.max(50, adaptiveAngleSmoothingTime)
+      ); // Minimum 50ms
+
       ai.setCurrentAngle(
         ai.getCurrentAngle() + normalizedAngleDiff * angleSmoothing
       );
@@ -387,8 +414,22 @@ class EnhancedPatrolAction extends EnhancedBehaviorNode {
     const targetVelX = Math.cos(wanderAngle) * baseSpeed * speedVariation;
     const targetVelY = Math.sin(wanderAngle) * baseSpeed * speedVariation;
 
-    // Apply momentum to patrol movement too
-    const patrolSmoothing = Math.min(1.0, context.deltaTime / 300); // Slower smoothing for patrol
+    // Apply adaptive momentum to patrol movement
+    const patrolVelocityMagnitude = Math.sqrt(
+      targetVelX * targetVelX + targetVelY * targetVelY
+    );
+    const patrolSpeedFactor = Math.min(
+      1.0,
+      patrolVelocityMagnitude / baseSpeed
+    );
+    const basePatrolSmoothingTime = 300; // Base patrol smoothing time in ms
+    const adaptivePatrolSmoothingTime =
+      basePatrolSmoothingTime * (1 - patrolSpeedFactor * 0.5); // Reduce by up to 50%
+    const patrolSmoothing = Math.min(
+      1.0,
+      context.deltaTime / Math.max(100, adaptivePatrolSmoothingTime)
+    ); // Minimum 100ms for patrol
+
     ai.setVelocityX(
       ai.getVelocityX() + (targetVelX - ai.getVelocityX()) * patrolSmoothing
     );
@@ -404,14 +445,31 @@ class EnhancedPatrolAction extends EnhancedBehaviorNode {
       context.checkWallCollision
     );
 
-    // Smooth angle transition for patrol too
+    // Smooth angle transition for patrol with adaptive smoothing
     ai.setTargetAngle(dirToTarget);
     const angleDiff = ai.getTargetAngle() - ai.getCurrentAngle();
     const normalizedAngleDiff = Math.atan2(
       Math.sin(angleDiff),
       Math.cos(angleDiff)
     );
-    const patrolAngleSmoothing = Math.min(1.0, context.deltaTime / 400); // Even slower for patrol
+
+    // Calculate current patrol velocity for adaptive angle smoothing
+    const currentPatrolVelMagnitude = Math.sqrt(
+      ai.getVelocityX() * ai.getVelocityX() +
+        ai.getVelocityY() * ai.getVelocityY()
+    );
+    const patrolAngleSpeedFactor = Math.min(
+      1.0,
+      currentPatrolVelMagnitude / baseSpeed
+    );
+    const basePatrolAngleSmoothingTime = 400; // Base patrol angle smoothing time in ms
+    const adaptivePatrolAngleSmoothingTime =
+      basePatrolAngleSmoothingTime * (1 - patrolAngleSpeedFactor * 0.4); // Reduce by up to 40%
+    const patrolAngleSmoothing = Math.min(
+      1.0,
+      context.deltaTime / Math.max(150, adaptivePatrolAngleSmoothingTime)
+    ); // Minimum 150ms for patrol angles
+
     ai.setCurrentAngle(
       ai.getCurrentAngle() + normalizedAngleDiff * patrolAngleSmoothing
     );

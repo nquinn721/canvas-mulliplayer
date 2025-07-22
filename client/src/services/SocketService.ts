@@ -6,6 +6,8 @@ import { soundService } from "./SoundService";
 export class SocketService {
   private socket: Socket | null = null;
   private gameStore: GameStore;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private readonly HEARTBEAT_INTERVAL = 5000; // 5 seconds
 
   constructor(gameStore: GameStore) {
     this.gameStore = gameStore;
@@ -40,11 +42,34 @@ export class SocketService {
     // Connection events
     this.socket.on("connect", () => {
       this.gameStore.setConnected(true);
+      // Start ping measurement for latency compensation
+      this.startPingMeasurement();
+      // Start heartbeat to maintain connection
+      this.startHeartbeat();
     });
 
     this.socket.on("disconnect", () => {
       this.gameStore.setConnected(false);
+      // Stop heartbeat on disconnect
+      this.stopHeartbeat();
     });
+
+    // Latency compensation events
+    this.socket.on("pong", (timestamp: number) => {
+      // Handled in GameStore.measurePing()
+    });
+
+    this.socket.on(
+      "inputAck",
+      (data: { inputId: number; serverPosition: any }) => {
+        // Mark input as processed for reconciliation
+        if (this.gameStore.latencyCompensation) {
+          this.gameStore.latencyCompensation.markInputsAsProcessed(
+            data.inputId
+          );
+        }
+      }
+    );
 
     // Game events
     this.socket.on("playerId", (id: string) => {
@@ -63,10 +88,13 @@ export class SocketService {
         x: number;
         y: number;
       }) => {
-        // Player respawned notification - could add visual effects here
+        // Player respawned notification - add spawn indicator
         if (data.playerId === this.gameStore.playerId) {
           // Current player respawned successfully
           // The death menu will automatically hide when health > 0 due to the useEffect in GameComponent
+
+          // Create spawn indicator effect
+          this.gameStore.createSpawnIndicator(data.x, data.y);
         }
       }
     );
@@ -252,10 +280,37 @@ export class SocketService {
 
   disconnect() {
     if (this.socket) {
+      this.stopHeartbeat();
       this.socket.disconnect();
       this.socket = null;
       this.gameStore.setConnected(false);
     }
+  }
+
+  // Start heartbeat to maintain connection stability
+  private startHeartbeat() {
+    this.stopHeartbeat(); // Clear any existing heartbeat
+    this.heartbeatInterval = setInterval(() => {
+      if (this.socket?.connected) {
+        this.socket.emit("heartbeat");
+      }
+    }, this.HEARTBEAT_INTERVAL);
+  }
+
+  // Stop heartbeat
+  private stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+  }
+
+  // Start periodic ping measurement for latency compensation
+  private startPingMeasurement() {
+    // Measure ping every 2 seconds
+    setInterval(() => {
+      this.gameStore.measurePing();
+    }, 2000);
   }
 
   // Join the game with a specific player name

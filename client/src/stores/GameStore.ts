@@ -2,6 +2,7 @@ import { Camera, GameState, KeyState, Projectile } from "@shared";
 import { makeAutoObservable } from "mobx";
 import { Socket } from "socket.io-client";
 import { debugLogger } from "../services/DebugLogger";
+import { LatencyCompensationService } from "../services/LatencyCompensationService";
 import { soundService } from "../services/SoundService";
 import { ParticleSystem } from "../utils/ParticleSystem";
 
@@ -46,6 +47,9 @@ export class GameStore {
 
   // Particle system for effects
   particleSystem = new ParticleSystem();
+
+  // Latency compensation service
+  latencyCompensation: LatencyCompensationService | null = null;
 
   // Mouse state
   mousePosition = { x: 0, y: 0 };
@@ -94,6 +98,17 @@ export class GameStore {
     const previousId = this.playerId;
     this.playerId = id;
 
+    // Initialize latency compensation for this player
+    if (id && !this.latencyCompensation) {
+      this.latencyCompensation = new LatencyCompensationService(id);
+    } else if (
+      this.latencyCompensation &&
+      this.latencyCompensation["playerId"] !== id
+    ) {
+      // Player ID changed, create new service
+      this.latencyCompensation = new LatencyCompensationService(id);
+    }
+
     // Debug logging for player ID changes
     debugLogger.logStateIssue(
       "Player ID changed",
@@ -118,6 +133,28 @@ export class GameStore {
     if (currentPlayer && newPlayer && currentPlayer.level < newPlayer.level) {
       // Player leveled up! Play level-up sound
       soundService.playSound("levelup", 0.8);
+    }
+
+    // Check for player spawn/respawn (first appearance or coming back to life)
+    if (this.playerId && newPlayer) {
+      const wasAlive = currentPlayer && currentPlayer.health > 0;
+      const isNowAlive = newPlayer.health > 0;
+
+      // Player spawned for the first time or respawned after death
+      if (!wasAlive && isNowAlive) {
+        // Create spawn indicator effect
+        this.createSpawnIndicator(newPlayer.x, newPlayer.y);
+      }
+    }
+
+    // Store game state for latency compensation
+    if (this.latencyCompensation) {
+      this.latencyCompensation.recordGameState(gameState);
+
+      // Initialize predicted state if needed
+      if (newPlayer && !this.latencyCompensation.getPredictedPlayerState()) {
+        this.latencyCompensation.initializePredictedState(newPlayer);
+      }
     }
 
     this.gameState = gameState;
@@ -247,15 +284,55 @@ export class GameStore {
     );
     const angle = Math.atan2(worldMouse.y - player.y, worldMouse.x - player.x);
 
+    // Record angle for latency compensation
+    if (this.latencyCompensation) {
+      this.latencyCompensation.recordInput(this.keys, angle);
+    }
+
     this.socket.emit("updateAngle", { angle });
   }
 
-  // Input handling
+  // Input handling with latency compensation
   sendInput() {
-    if (!this.socket || !this.playerId) return;
+    // Enhanced validation to prevent "Movement input without current player" errors
+    if (!this.socket || !this.socket.connected || !this.playerId) {
+      return;
+    }
 
-    // Always send input state to ensure server has the latest state
-    this.socket.emit("input", this.keys);
+    // Get current player state for angle calculation
+    const player = this.gameState.players[this.playerId];
+    if (!player) {
+      // Player not yet established on server, skip input
+      return;
+    }
+
+    // Only send input if player is alive and has valid position
+    if (
+      player.health <= 0 ||
+      player.x === undefined ||
+      player.y === undefined
+    ) {
+      return;
+    }
+
+    const worldMouse = this.camera.screenToWorld(
+      this.mousePosition.x,
+      this.mousePosition.y
+    );
+    const angle = Math.atan2(worldMouse.y - player.y, worldMouse.x - player.x);
+
+    // Record input for client-side prediction
+    let inputId = 0;
+    if (this.latencyCompensation) {
+      inputId = this.latencyCompensation.recordInput(this.keys, angle);
+    }
+
+    // Send input with sequence ID for reconciliation
+    this.socket.emit("input", {
+      ...this.keys,
+      inputId,
+      angle,
+    });
   }
 
   // Shooting
@@ -492,6 +569,10 @@ export class GameStore {
     this.particleSystem.createWindEffect(x, y, velocityX, velocityY, angle);
   }
 
+  createSpawnIndicator(x: number, y: number) {
+    this.particleSystem.createSpawnIndicator(x, y);
+  }
+
   handleProjectileHit(data: {
     x: number;
     y: number;
@@ -540,6 +621,7 @@ export class GameStore {
     this.setConnected(false);
     this.projectileInstances.clear();
     this.particleSystem.clear();
+    this.latencyCompensation = null;
   }
 
   reset() {
@@ -552,9 +634,72 @@ export class GameStore {
       powerUps: {},
     };
     this.playerId = "";
-    this.projectileInstances.clear();
-    this.particleSystem.clear();
-    this.setConnected(false);
-    this.camera.setPosition(0, 0);
+    this.latencyCompensation = null;
+  }
+
+  // Get interpolated game state for smooth rendering
+  getInterpolatedGameState(): GameState {
+    if (!this.latencyCompensation) {
+      return this.gameState;
+    }
+
+    const interpolatedState = this.latencyCompensation.getInterpolatedGameState(
+      Date.now()
+    );
+    return interpolatedState || this.gameState;
+  }
+
+  // Get predicted player position for immediate feedback
+  getPredictedPlayerPosition() {
+    if (!this.latencyCompensation) {
+      return this.currentPlayer
+        ? { x: this.currentPlayer.x, y: this.currentPlayer.y }
+        : null;
+    }
+
+    const predicted = this.latencyCompensation.getPredictedPlayerState();
+    if (predicted) {
+      return { x: predicted.x, y: predicted.y };
+    }
+
+    return this.currentPlayer
+      ? { x: this.currentPlayer.x, y: this.currentPlayer.y }
+      : null;
+  }
+
+  // Ping measurement for latency estimation
+  measurePing() {
+    if (!this.socket) return;
+
+    const pingStart = Date.now();
+    this.socket.emit("ping", pingStart);
+
+    // Listen for pong response (you'll need to add this to SocketService)
+    this.socket.once("pong", (serverTime: number) => {
+      const pongReceived = Date.now();
+      if (this.latencyCompensation) {
+        this.latencyCompensation.updateLatencyEstimate(pingStart, pongReceived);
+      }
+      // Update stats display
+      this.stats.ping = Math.round((pongReceived - pingStart) / 2);
+    });
+  }
+
+  // Get latency compensation stats for debugging
+  getLatencyStats() {
+    return this.latencyCompensation?.getStats() || null;
+  }
+
+  // Toggle latency compensation features
+  togglePrediction(enabled: boolean) {
+    this.latencyCompensation?.enablePrediction(enabled);
+  }
+
+  toggleInterpolation(enabled: boolean) {
+    this.latencyCompensation?.enableInterpolation(enabled);
+  }
+
+  toggleReconciliation(enabled: boolean) {
+    this.latencyCompensation?.enableReconciliation(enabled);
   }
 }
