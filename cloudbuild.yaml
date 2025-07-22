@@ -5,18 +5,18 @@ steps:
       [
         "build",
         "-t",
-        "gcr.io/$PROJECT_ID/space-fighters-game:$COMMIT_SHA",
+        "gcr.io/$PROJECT_ID/canvas-game:$COMMIT_SHA",
         "-t",
-        "gcr.io/$PROJECT_ID/space-fighters-game:latest",
+        "gcr.io/$PROJECT_ID/canvas-game:latest",
         ".",
       ]
 
   # Push the image to Google Container Registry
   - name: "gcr.io/cloud-builders/docker"
-    args: ["push", "gcr.io/$PROJECT_ID/space-fighters-game:$COMMIT_SHA"]
+    args: ["push", "gcr.io/$PROJECT_ID/canvas-game:$COMMIT_SHA"]
 
   - name: "gcr.io/cloud-builders/docker"
-    args: ["push", "gcr.io/$PROJECT_ID/space-fighters-game:latest"]
+    args: ["push", "gcr.io/$PROJECT_ID/canvas-game:latest"]
 
   # Deploy to Cloud Run
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
@@ -25,9 +25,9 @@ steps:
       [
         "run",
         "deploy",
-        "space-fighters-game",
-        "--image=gcr.io/$PROJECT_ID/space-fighters-game:$COMMIT_SHA",
-        "--region=us-central1",
+        "canvas-game",
+        "--image=gcr.io/$PROJECT_ID/canvas-game:$COMMIT_SHA",
+        "--region=us-east1",
         "--platform=managed",
         "--allow-unauthenticated",
         "--memory=1Gi",
@@ -37,16 +37,16 @@ steps:
         "--concurrency=80",
         "--timeout=3600",
         "--port=3001",
-        "--set-env-vars=NODE_ENV=production,PORT=3001,DB_HOST=/cloudsql/heroic-footing-460117-k8:us-central1:stocktrader,DB_PORT=3306,DB_DATABASE=space_fighters,DB_USERNAME=RStockTrader,DB_SOCKET_PATH=/cloudsql/heroic-footing-460117-k8:us-central1:stocktrader",
-        "--set-secrets=DB_PASSWORD=DB_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest",
+        "--set-env-vars=NODE_ENV=production,DB_HOST=/cloudsql/heroic-footing-460117-k8:us-central1:stocktrader,DB_SOCKET_PATH=/cloudsql/heroic-footing-460117-k8:us-central1:stocktrader,DB_USERNAME=RStockTrader,DB_DATABASE=space_fighters",
+        "--set-secrets=DB_PASSWORD=database-password:latest,JWT_SECRET=JWT_SECRET:latest",
         "--add-cloudsql-instances=heroic-footing-460117-k8:us-central1:stocktrader",
         "--revision-suffix=$SHORT_SHA",
       ]
 
 # Store images in Google Container Registry
 images:
-  - "gcr.io/$PROJECT_ID/space-fighters-game:$COMMIT_SHA"
-  - "gcr.io/$PROJECT_ID/space-fighters-game:latest"
+  - "gcr.io/$PROJECT_ID/canvas-game:$COMMIT_SHA"
+  - "gcr.io/$PROJECT_ID/canvas-game:latest"
 
 # Build configuration
 options:

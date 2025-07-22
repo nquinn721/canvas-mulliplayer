@@ -1,6 +1,11 @@
 import { NestFactory } from "@nestjs/core";
 import * as express from "express";
 import { join } from "path";
+// Ensure crypto is available for TypeORM
+import { webcrypto } from "crypto";
+if (!globalThis.crypto) {
+  globalThis.crypto = webcrypto as any;
+}
 import { AppModule } from "./app.module";
 import { ErrorLoggerService } from "./services/error-logger.service";
 
