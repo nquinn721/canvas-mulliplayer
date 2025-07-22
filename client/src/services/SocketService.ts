@@ -220,48 +220,27 @@ export class SocketService {
       }
     );
 
-    // Star event listeners
+    // AI difficulty change rejection
     this.socket.on(
-      "starSpawned",
-      (data: { starId: string; x: number; y: number; lifespan: number }) => {
-        // Stars are handled through gameState updates, no need for special action
-      }
-    );
-
-    this.socket.on(
-      "starExplosion",
-      (data: {
-        starId: string;
-        x: number;
-        y: number;
-        radius: number;
-        damage: number;
+      "aiDifficultyChangeRejected",
+      (data: { 
+        reason: string; 
+        message: string; 
+        remainingCooldown?: number;
+        currentDifficulty: string;
+        lastChangedBy: string;
       }) => {
-        // Play explosion sound
-        soundService.playSound("explosion", 0.6);
-
-        // Add explosion particles if needed
-        // You could add visual effects here
+        console.warn("AI difficulty change rejected:", data.message);
+        // You could show a toast notification to the user here
+        alert(`Cannot change AI difficulty: ${data.message}`);
       }
     );
 
-    this.socket.on(
-      "starDamage",
-      (data: {
-        starId: string;
-        playerId: string;
-        damage: number;
-        x: number;
-        y: number;
-      }) => {
-        if (data.playerId === this.gameStore.playerId) {
-          // Could add screen shake or damage indicator
-        }
+    // Abilities reset confirmation
+    this.socket.on("abilitiesReset", (data: { playerId: string }) => {
+      if (data.playerId === this.gameStore.playerId) {
+        console.log("Abilities have been reset to starting levels");
       }
-    );
-
-    this.socket.on("starExpired", (starId: string) => {
-      // Stars are removed through gameState updates
     });
 
     // Error handling

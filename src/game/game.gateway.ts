@@ -16,7 +16,6 @@ import {
   Player,
   PowerUp,
   Projectile,
-  Star,
   Wall,
   XP_REWARDS,
 } from "@shared";
@@ -56,7 +55,6 @@ export class GameGateway
   private aiEnemies: Map<string, EnhancedAIEnemy> = new Map();
   private projectiles: Map<string, Projectile> = new Map();
   private meteors: Map<string, Meteor> = new Map();
-  private stars: Map<string, Star> = new Map();
   private powerUps: Map<string, PowerUp> = new Map();
   private walls: Wall[] = [];
   private gameLoopInterval: NodeJS.Timeout;
@@ -66,8 +64,6 @@ export class GameGateway
   private aiEnemyCounter = 1;
   private lastMeteorSpawn = Date.now();
   private meteorSpawnInterval = 8000; // 8 seconds
-  private lastStarSpawn = Date.now();
-  private starSpawnInterval = 20000; // 20 seconds (normal gameplay)
 
   // World bounds
   private readonly WORLD_WIDTH = 5000;
@@ -83,15 +79,13 @@ export class GameGateway
     | "NIGHTMARE" = "MEDIUM"; // Default difficulty
   private lastDifficultyChangeBy: string | null = null; // Track who last changed difficulty
   private difficultyChangeTimestamp: number = 0; // When was it last changed
-  private readonly DIFFICULTY_CHANGE_COOLDOWN = 10000; // 10 seconds cooldown between changes
+  private readonly DIFFICULTY_CHANGE_COOLDOWN = 2000; // 2 seconds cooldown between changes (temporarily reduced for testing)
   private gameLoopActive: boolean = false; // Track if game loop should be running
-  private memoryLogInterval: NodeJS.Timeout; // Memory monitoring interval
 
   constructor(private readonly errorLogger: ErrorLoggerService) {
     this.generateWalls();
     this.spawnPowerUps();
     this.spawnAIEnemies();
-    this.startMemoryMonitoring();
     // Don't start game loop until players join
   }
 
@@ -182,62 +176,16 @@ export class GameGateway
       this.gameLoopInterval = null;
     }
 
-    if (this.memoryLogInterval) {
-      clearInterval(this.memoryLogInterval);
-      this.memoryLogInterval = null;
-    }
-
     // Clear all maps to prevent memory leaks
     this.players.clear();
     this.aiEnemies.clear();
     this.projectiles.clear();
     this.meteors.clear();
-    this.stars.clear();
     this.powerUps.clear();
     this.walls = [];
 
     this.gameLoopActive = false;
     console.log("GameGateway: Cleanup completed");
-  }
-
-  // Start memory monitoring to track potential leaks
-  private startMemoryMonitoring() {
-    this.memoryLogInterval = setInterval(() => {
-      const memUsage = process.memoryUsage();
-      const playerCount = this.players.size;
-      const projectileCount = this.projectiles.size;
-      const meteorCount = this.meteors.size;
-      const starCount = this.stars.size;
-      const powerUpCount = this.powerUps.size;
-
-      console.log(
-        `[MEMORY] Players: ${playerCount}, Projectiles: ${projectileCount}, Meteors: ${meteorCount}, Stars: ${starCount}, PowerUps: ${powerUpCount}`
-      );
-      console.log(
-        `[MEMORY] Heap Used: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB, RSS: ${Math.round(memUsage.rss / 1024 / 1024)}MB`
-      );
-
-      // Warn if memory usage is getting high
-      if (memUsage.heapUsed > 500 * 1024 * 1024) {
-        // 500MB
-        console.warn(
-          `[MEMORY WARNING] High heap usage: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`
-        );
-      }
-
-      // Warn if entity counts are getting high
-      if (projectileCount > 1000) {
-        console.warn(
-          `[MEMORY WARNING] High projectile count: ${projectileCount}`
-        );
-      }
-      if (meteorCount > 100) {
-        console.warn(`[MEMORY WARNING] High meteor count: ${meteorCount}`);
-      }
-      if (starCount > 100) {
-        console.warn(`[MEMORY WARNING] High star count: ${starCount}`);
-      }
-    }, 30000); // Log every 30 seconds
   }
 
   // Check if game loop should be running based on player count
@@ -576,7 +524,7 @@ export class GameGateway
     const originalY = player.y;
 
     // Perform the flash teleportation
-    const flashSuccessful = player.flashTeleport(
+    const flashResult = player.flashTeleport(
       data.mouseX,
       data.mouseY,
       this.WORLD_WIDTH,
@@ -584,7 +532,7 @@ export class GameGateway
       (x, y, radius) => this.checkWallCollision(x, y, radius)
     );
 
-    if (flashSuccessful) {
+    if (flashResult.success) {
       // Update player in the map
       this.players.set(client.id, player);
 
@@ -597,6 +545,29 @@ export class GameGateway
         toY: player.y,
       });
     }
+  }
+
+  @SubscribeMessage("resetAbilities")
+  handleResetAbilities(@ConnectedSocket() client: Socket) {
+    const player = this.players.get(client.id);
+    if (!player) return;
+
+    // Reset all ability levels to their starting values
+    player.laserUpgradeLevel = 1;
+    player.missileUpgradeLevel = 1;
+    player.flashUpgradeLevel = 1;
+    player.boostUpgradeLevel = 0;
+
+    // Reset boost expiration
+    player.boostUpgradeExpiration = 0;
+
+    // Update player in the map
+    this.players.set(client.id, player);
+
+    // Emit abilities reset event
+    this.server.emit("abilitiesReset", {
+      playerId: client.id,
+    });
   }
 
   @SubscribeMessage("changeAIDifficulty")
@@ -939,9 +910,6 @@ export class GameGateway
 
     // Update meteors (only spawn new ones if we have real players)
     this.updateMeteors(deltaTime, hasRealPlayers);
-
-    // Update stars (only spawn new ones if we have real players)
-    this.updateStars(deltaTime, hasRealPlayers);
 
     // Update power-ups and check for collection
     this.updatePowerUps(deltaTime);
@@ -1427,29 +1395,6 @@ export class GameGateway
     });
   }
 
-  private spawnStar() {
-    const starId = `star_${Date.now()}_${Math.random()}`;
-
-    // Choose random location in the world (background stars)
-    const x = Math.random() * this.WORLD_WIDTH;
-    const y = Math.random() * this.WORLD_HEIGHT;
-
-    // Random lifespan between 15-25 seconds before explosion
-    const lifespan = 15000 + Math.random() * 10000;
-
-    const star = new Star(starId, x, y, lifespan);
-    this.stars.set(starId, star);
-    this.lastStarSpawn = Date.now();
-
-    // Emit star spawn event
-    this.server.emit("starSpawned", {
-      starId: starId,
-      x: x,
-      y: y,
-      lifespan: lifespan,
-    });
-  }
-
   private updateMeteors(deltaTime: number, hasRealPlayers: boolean = true) {
     const currentTime = Date.now();
 
@@ -1538,98 +1483,6 @@ export class GameGateway
     });
   }
 
-  private updateStars(deltaTime: number, hasRealPlayers: boolean = true) {
-    const currentTime = Date.now();
-
-    // Only spawn new stars if there are real players to interact with them
-    if (
-      hasRealPlayers &&
-      currentTime - this.lastStarSpawn > this.starSpawnInterval
-    ) {
-      this.spawnStar();
-    }
-
-    const starsToRemove: string[] = [];
-
-    this.stars.forEach((star, id) => {
-      // Update star state
-      const wasExploding = star.isExploding;
-      const isAlive = star.update(deltaTime / 1000);
-
-      // Check if star just started exploding
-      if (!wasExploding && star.isExploding) {
-        // Emit explosion event
-        this.server.emit("starExplosion", {
-          starId: id,
-          x: star.x,
-          y: star.y,
-          radius: star.explosionRadius,
-          damage: star.damage,
-        });
-
-        // Check all players in explosion radius
-        this.players.forEach((player, playerId) => {
-          if (star.isInExplosionRadius(player.x, player.y)) {
-            const isDead = player.takeDamage(star.damage);
-
-            // Emit damage event
-            this.server.emit("starDamage", {
-              starId: id,
-              playerId: playerId,
-              damage: star.damage,
-              x: star.x,
-              y: star.y,
-            });
-
-            if (isDead) {
-              // Player is dead - they will need to use death menu to respawn
-              // Don't auto-respawn here anymore
-            }
-          }
-        });
-
-        // Check AI enemies in explosion radius
-        this.aiEnemies.forEach((aiEnemy, aiId) => {
-          if (star.isInExplosionRadius(aiEnemy.x, aiEnemy.y)) {
-            const isDead = aiEnemy.takeDamage(star.damage);
-
-            if (isDead) {
-              // Respawn AI at a safe location
-              aiEnemy.heal(aiEnemy.maxHealth);
-              const spawnPos = this.getRandomSpawnPosition();
-              aiEnemy.x = spawnPos.x;
-              aiEnemy.y = spawnPos.y;
-            }
-          }
-        });
-
-        // Chain explosions - damage other stars in explosion radius
-        this.stars.forEach((otherStar, otherId) => {
-          if (
-            otherId !== id &&
-            star.isInExplosionRadius(otherStar.x, otherStar.y)
-          ) {
-            // Force other star to explode soon
-            if (!otherStar.isExploding) {
-              otherStar.lifespan = Math.min(otherStar.lifespan, 2000); // Force explosion in 2 seconds
-            }
-          }
-        });
-      }
-
-      // Remove stars that finished exploding
-      if (!isAlive) {
-        starsToRemove.push(id);
-        this.server.emit("starExpired", id);
-      }
-    });
-
-    // Remove expired stars
-    starsToRemove.forEach((id) => {
-      this.stars.delete(id);
-    });
-  }
-
   private broadcastGameState() {
     // Serialize players for network transmission
     const serializedPlayers: { [id: string]: any } = {};
@@ -1668,7 +1521,6 @@ export class GameGateway
       meteors: Array.from(this.meteors.values()).map((meteor) =>
         meteor.serialize()
       ),
-      stars: Array.from(this.stars.values()).map((star) => star.serialize()),
     };
 
     this.server.emit("gameState", gameState);

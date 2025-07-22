@@ -11,7 +11,6 @@ export class GameStore {
     aiEnemies: {},
     projectiles: [],
     meteors: [],
-    stars: [],
     walls: [],
     powerUps: {},
   };

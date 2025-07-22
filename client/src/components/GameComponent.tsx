@@ -164,9 +164,46 @@ const GameComponent = observer(
     const changeAIDifficulty = (difficulty: "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE") => {
       if (gameStore?.socket) {
         gameStore.socket.emit("changeAIDifficulty", { difficulty });
-        setCurrentAIDifficulty(difficulty);
+        // Don't update local state immediately - wait for server confirmation
       }
     };
+
+    // Handle AI difficulty change responses
+    useEffect(() => {
+      if (!gameStore?.socket) return;
+
+      const handleAIDifficultyChanged = (data: { difficulty: string; affectedEnemies: number }) => {
+        setCurrentAIDifficulty(data.difficulty as "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE");
+      };
+
+      const handleAIDifficultyRejected = (data: { 
+        reason: string; 
+        message: string; 
+        currentDifficulty: string;
+      }) => {
+        // Keep the current difficulty highlighted (don't change the UI state)
+        console.warn("AI difficulty change rejected:", data.message);
+      };
+
+      const handleAIDifficultyStatus = (data: { 
+        currentDifficulty: string;
+        lastChangedBy: string | null;
+        changeTimestamp: number;
+        aiEnemyCount: number;
+      }) => {
+        setCurrentAIDifficulty(data.currentDifficulty as "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE");
+      };
+
+      gameStore.socket.on("aiDifficultyChanged", handleAIDifficultyChanged);
+      gameStore.socket.on("aiDifficultyChangeRejected", handleAIDifficultyRejected);
+      gameStore.socket.on("aiDifficultyStatus", handleAIDifficultyStatus);
+
+      return () => {
+        gameStore.socket?.off("aiDifficultyChanged", handleAIDifficultyChanged);
+        gameStore.socket?.off("aiDifficultyChangeRejected", handleAIDifficultyRejected);
+        gameStore.socket?.off("aiDifficultyStatus", handleAIDifficultyStatus);
+      };
+    }, [gameStore?.socket]);
 
     // Death detection effect
     useEffect(() => {
@@ -201,12 +238,20 @@ const GameComponent = observer(
     };
 
     const handleReturnToHome = () => {
+      // Reset ability levels before leaving the game
+      if (gameStore.isConnected && gameStore.socket) {
+        gameStore.socket.emit("resetAbilities");
+      }
+
       // Clean up game before returning to home
       if (gameRef.current) {
         soundService.stopBackgroundMusic();
         gameRef.current.cleanup();
         gameRef.current = null;
       }
+
+      // Reset the game store
+      gameStore.reset();
 
       // Restart background music for home menu if not muted
       soundService.handleRevive();

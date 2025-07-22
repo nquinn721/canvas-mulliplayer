@@ -648,8 +648,13 @@ export class EnhancedAIEnemy extends Player {
       this.difficulty = difficulty;
       this.settings = aiConfig;
       this.speed = aiConfig.speed;
-      this.health = aiConfig.health;
+      
+      // Handle health properly when changing difficulty
+      // Calculate health percentage to maintain relative health
+      const healthPercent = this.maxHealth > 0 ? this.health / this.maxHealth : 1;
       this.maxHealth = aiConfig.maxHealth;
+      this.health = Math.min(aiConfig.maxHealth, Math.round(healthPercent * aiConfig.maxHealth));
+      
       this.radius = aiConfig.radius;
 
       // Update bot name with new difficulty indicator

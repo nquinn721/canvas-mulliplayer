@@ -39,7 +39,6 @@ export class RendererService {
     this.drawAIEnemies();
     this.drawProjectiles();
     this.drawMeteors();
-    this.drawStars();
     this.drawParticles();
     this.restoreCamera();
     this.drawUI();
