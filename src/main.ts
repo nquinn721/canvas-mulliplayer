@@ -66,6 +66,9 @@ async function bootstrap() {
     // Get error logger service from the application context
     errorLogger = app.get(ErrorLoggerService);
 
+    // Set global prefix for API routes to avoid conflicts with static files
+    app.setGlobalPrefix('api');
+
     // Enable CORS for development and production
     app.enableCors({
       origin:
