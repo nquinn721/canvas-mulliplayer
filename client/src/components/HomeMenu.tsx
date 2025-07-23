@@ -282,7 +282,7 @@ const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
             onClick={() => onStartGame(playerName.trim(), selectedDifficulty)}
             disabled={!playerName.trim() || playerName.trim().length < 3}
           >
-            Start Game
+            Play as Guest
           </button>
         </div>
       </div>
