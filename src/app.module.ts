@@ -47,7 +47,7 @@ import { LocalStrategy } from "./strategies/local.strategy";
             configService.get("DB_DATABASE") || 
             "space_fighters",
           entities: [User],
-          synchronize: !isProduction,
+          synchronize: true, // Always enable synchronization
           logging: !isProduction,
           migrations: ["dist/migrations/*.js"],
           migrationsTableName: "migrations",

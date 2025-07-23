@@ -23,9 +23,12 @@ export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
     done: VerifyCallback
   ): Promise<any> {
     try {
+      console.log('Google profile received:', JSON.stringify(profile, null, 2));
       const result = await this.authService.loginWithGoogle(profile);
+      console.log('Google auth result:', result);
       done(null, result); // This includes both user and token
     } catch (error) {
+      console.error('Google strategy error:', error);
       done(error, null);
     }
   }

@@ -160,15 +160,29 @@ export class AuthService {
         await this.userRepository.save(user);
       }
     } else {
+      // Generate a unique username from email or displayName
+      let baseUsername = email?.split('@')[0] || displayName?.replace(/\s+/g, '').toLowerCase() || 'user';
+      baseUsername = baseUsername.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      
+      // Ensure username is unique
+      let username = baseUsername;
+      let counter = 1;
+      while (await this.userRepository.findOne({ where: { username } })) {
+        username = `${baseUsername}${counter}`;
+        counter++;
+      }
+
       // Create new user
       user = this.userRepository.create({
         googleId: id,
+        username,
         email,
         displayName,
         avatar: photos[0]?.value,
         authProvider: AuthProvider.GOOGLE,
         emailVerified: true,
         isActive: true,
+        role: UserRole.USER,
       });
       await this.userRepository.save(user);
     }
