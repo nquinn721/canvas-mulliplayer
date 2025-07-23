@@ -17,6 +17,7 @@ if (!global.crypto) {
 
 import { NestFactory } from "@nestjs/core";
 import * as express from "express";
+import { Request, Response } from "express";
 import { join } from "path";
 import { AppModule } from "./app.module";
 import { ErrorLoggerService } from "./services/error-logger.service";
@@ -107,6 +108,14 @@ async function bootstrap() {
           },
         })
       );
+
+      // SPA fallback - serve index.html for all non-API routes
+      // This must come after static file serving to allow static assets to be served first
+      const expressApp = app.getHttpAdapter().getInstance();
+      expressApp.get(/^(?!\/api).*/, (req: Request, res: Response) => {
+        console.log(`SPA fallback serving index.html for route: ${req.path}`);
+        res.sendFile(join(clientPath, "index.html"));
+      });
     }
 
     // Use PORT environment variable for Cloud Run or default to 3001

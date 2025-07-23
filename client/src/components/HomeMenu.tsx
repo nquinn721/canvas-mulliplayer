@@ -1,22 +1,18 @@
 import {
-  faCog,
   faRocket,
   faSignOutAlt,
   faUser,
-  faVolumeMute,
-  faVolumeUp,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { observer } from "mobx-react-lite";
 import React, { useEffect, useState } from "react";
-import { soundService } from "../services/SoundService";
 import { gameStore, socketService } from "../stores";
 import { useAuth } from "./AuthContext";
 import { AuthModal } from "./AuthModal";
 import BackgroundCanvas from "./BackgroundCanvas";
 import { GameSettingsModal } from "./GameSettingsModal";
-import { TopControls } from "./TopControls";
 import "./HomeMenu.css";
+import { TopControls } from "./TopControls";
 
 interface HomeMenuProps {
   onStartGame: (
@@ -142,7 +138,7 @@ const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
       </div>
 
       {/* Top Controls (Settings, Connection, Volume) */}
-      <TopControls 
+      <TopControls
         showSettings={true}
         onShowSettings={() => setShowSettingsModal(true)}
       />
