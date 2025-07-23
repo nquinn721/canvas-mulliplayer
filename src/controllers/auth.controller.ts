@@ -100,11 +100,6 @@ export class AuthController {
   @UseGuards(AuthGuard("google"))
   async googleCallback(@Request() req, @Response() res) {
     try {
-      console.log("=== Google Callback Start ===");
-      console.log("Request user:", JSON.stringify(req.user, null, 2));
-      console.log("Request query:", JSON.stringify(req.query, null, 2));
-      console.log("Request headers:", JSON.stringify(req.headers, null, 2));
-
       const result = req.user; // User data from strategy
 
       if (result && result.token) {
@@ -130,12 +125,8 @@ export class AuthController {
           }
         }
 
-        console.log("Redirecting to frontend with token:", frontendUrl);
-        console.log("=== Google Callback Success ===");
         res.redirect(`${frontendUrl}?token=${result.token}`);
       } else {
-        console.error("=== Google Callback Error: No token ===");
-        console.error("Result:", JSON.stringify(result, null, 2));
         // Redirect to frontend with error
         let frontendUrl = process.env.FRONTEND_URL;
         if (!frontendUrl) {
@@ -148,7 +139,6 @@ export class AuthController {
         );
       }
     } catch (error) {
-      console.error("Google callback error:", error);
       let frontendUrl = process.env.FRONTEND_URL;
       if (!frontendUrl) {
         const protocol = req.headers["x-forwarded-proto"] || "https";

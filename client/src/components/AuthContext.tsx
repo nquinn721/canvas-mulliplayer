@@ -57,28 +57,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const token = urlParams.get("token");
       const error = urlParams.get("error");
 
+      console.log('URL params:', window.location.search);
+      console.log('Token from URL:', token);
+
       if (token) {
         // Handle OAuth callback with token
-        console.log('OAuth callback detected, token:', token);
         try {
           // Validate the token and get user data
           const userData = await authService.validateTokenAndSetAuth(token);
-          console.log('OAuth user data:', userData);
+          console.log('OAuth validation result:', userData);
           if (userData) {
             setUser(userData);
             // Clear URL parameters and redirect to lobby
             window.history.replaceState({}, document.title, '/lobby');
           } else {
-            console.error("OAuth token validation failed");
+            console.error('OAuth validation failed');
             window.history.replaceState({}, document.title, '/login');
           }
         } catch (error) {
-          console.error("OAuth callback failed:", error);
+          console.error('OAuth error:', error);
           window.history.replaceState({}, document.title, '/login');
         }
       } else if (error) {
         // Handle OAuth error
-        console.error("OAuth error:", decodeURIComponent(error));
         window.history.replaceState({}, document.title, '/login');
       } else {
         // Normal authentication check

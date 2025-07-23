@@ -18,7 +18,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
           callbackURL = `${serviceUrl}/api/auth/google/callback`;
         } else {
           // Use the known Cloud Run service URL
-          callbackURL = "https://canvas-game-203453576607.us-east1.run.app/api/auth/google/callback";
+          callbackURL =
+            "https://canvas-game-203453576607.us-east1.run.app/api/auth/google/callback";
         }
       } else {
         // Development callback

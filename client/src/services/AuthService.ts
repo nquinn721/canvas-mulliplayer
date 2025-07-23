@@ -243,12 +243,10 @@ class AuthService {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Token validation response:', data);
         return data.data || null;
       }
       return null;
     } catch (error) {
-      console.error('Token validation error:', error);
       return null;
     }
   }
@@ -301,7 +299,6 @@ class AuthService {
       }
 
       const data: AuthResponse = await response.json();
-      console.log('Profile response:', data);
 
       if (data.success && data.data) {
         // Backend returns user data directly in data.data, not data.data.user
