@@ -6,7 +6,8 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { observer } from "mobx-react-lite";
 import React, { useEffect, useState } from "react";
-import { gameStore, socketService } from "../stores";
+import { useSocketStatus } from "../hooks/useSocket";
+import { gamePreferencesStore } from "../stores";
 import { Difficulty, getDifficulty } from "../utils/difficultyUtils";
 import { useAuth } from "./AuthContext";
 import { AuthModal } from "./AuthModal";
@@ -23,8 +24,8 @@ const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
   const { user, isAuthenticated, isGuest, loginAsGuest, logout } = useAuth();
 
   const [playerName, setPlayerName] = useState(() => {
-    // Initialize from localStorage or authenticated username
-    return localStorage.getItem("canvas-multiplayer-player-name") || "";
+    // Initialize from store or authenticated username
+    return gamePreferencesStore.playerName || "";
   });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -54,46 +55,15 @@ const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
     setPlayerName("");
   };
 
-  // Save player name to localStorage whenever it changes
+  // Use socket status hook for consistent connection checking
+  const { isConnected } = useSocketStatus();
+
+  // Save player name to store whenever it changes
   useEffect(() => {
     if (playerName.trim()) {
-      localStorage.setItem("canvas-multiplayer-player-name", playerName.trim());
+      gamePreferencesStore.setPlayerName(playerName.trim());
     }
   }, [playerName]);
-
-  // Establish socket connection when component mounts
-  useEffect(() => {
-    let isComponentMounted = true;
-
-    console.log("HomeMenu: Checking connection status...");
-    console.log("gameStore.isConnected:", gameStore.isConnected);
-    console.log("socketService.isConnected:", socketService.isConnected);
-
-    // Connect to the server if not already connected
-    if (!socketService.isConnected && isComponentMounted) {
-      console.log("HomeMenu: Attempting to connect...");
-      socketService.connect();
-    }
-
-    // Cleanup function to prevent issues with React's double-effect in development
-    return () => {
-      isComponentMounted = false;
-    };
-  }, []);
-
-  // Handle page unload to cleanup connections
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      console.log("HomeMenu: Page unloading, disconnecting socket...");
-      socketService.disconnect();
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, []);
 
   return (
     <div className="home-menu">

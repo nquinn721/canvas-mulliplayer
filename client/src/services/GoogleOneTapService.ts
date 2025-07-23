@@ -1,6 +1,8 @@
 // Google One Tap Integration for Canvas Multiplayer Game
 // This provides a faster, seamless Google login experience
 
+import { authStore } from "../stores";
+
 export class GoogleOneTapService {
   private clientId: string;
   private isInitialized: boolean = false;
@@ -69,9 +71,8 @@ export class GoogleOneTapService {
       if (result.ok) {
         const data = await result.json();
         if (data.success && data.data?.token) {
-          // Store auth token and redirect to lobby
-          localStorage.setItem("authToken", data.data.token);
-          localStorage.setItem("authUser", JSON.stringify(data.data.user));
+          // Use authStore to handle authentication
+          authStore.setAuthenticationData(data.data.token, data.data.user);
           window.location.href = "/lobby";
         }
       }

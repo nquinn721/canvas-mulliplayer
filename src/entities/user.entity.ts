@@ -94,6 +94,9 @@ export class User {
   @Column({ default: 0 })
   totalScore: number;
 
+  @Column({ default: 0 })
+  highScore: number;
+
   @Column({ default: 1 })
   playerLevel: number;
 

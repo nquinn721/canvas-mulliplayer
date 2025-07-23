@@ -72,8 +72,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = observer(
           console.error("OAuth error:", decodeURIComponent(error));
           window.history.replaceState({}, document.title, "/login");
         } else {
-          // Normal authentication check - refresh profile if token exists
-          if (authStore.token) {
+          // Normal authentication check - refresh profile if token exists and user is not a guest
+          if (authStore.token && !authStore.isGuest) {
             try {
               await authStore.refreshProfile();
               // If user is authenticated and on login page, redirect to lobby

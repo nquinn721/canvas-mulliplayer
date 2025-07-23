@@ -14,9 +14,9 @@ import {
 import { AuthGuard } from "@nestjs/passport";
 import { Roles } from "../decorators/roles.decorator";
 import {
-  GuestLoginDto,
   LoginDto,
   RegisterDto,
+  ScoreUpdateDto,
   UpdateUsernameDto,
 } from "../dto/auth.dto";
 import { UserRole } from "../entities/user.entity";
@@ -64,26 +64,6 @@ export class AuthController {
           message: error.message || "Login failed",
         },
         HttpStatus.UNAUTHORIZED
-      );
-    }
-  }
-
-  @Post("guest")
-  async loginAsGuest(@Body(ValidationPipe) guestDto: GuestLoginDto) {
-    try {
-      const result = await this.authService.loginAsGuest(guestDto);
-      return {
-        success: true,
-        message: "Guest login successful",
-        data: result,
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: error.message || "Guest login failed",
-        },
-        HttpStatus.BAD_REQUEST
       );
     }
   }
@@ -206,6 +186,35 @@ export class AuthController {
         {
           success: false,
           message: error.message || "Failed to update username",
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
+  @Post("update-score")
+  @UseGuards(JwtAuthGuard)
+  async updateScore(
+    @Request() req,
+    @Body(ValidationPipe) scoreUpdateDto: ScoreUpdateDto
+  ) {
+    try {
+      const result = await this.authService.updateUserScore(
+        req.user.id,
+        scoreUpdateDto.score,
+        scoreUpdateDto.kills || 0,
+        scoreUpdateDto.deaths || 0
+      );
+      return {
+        success: true,
+        message: "Score updated successfully",
+        user: result,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message || "Failed to update score",
         },
         HttpStatus.BAD_REQUEST
       );
@@ -350,5 +359,32 @@ export class AuthController {
         timestamp: new Date().toISOString(),
       },
     };
+  }
+
+  @Get("test-oauth")
+  async testOAuth(@Response() res) {
+    try {
+      // Create a test user for OAuth testing
+      const testUser = {
+        id: 999,
+        username: "TestUser",
+        email: "test@example.com",
+        isGuest: false,
+      };
+
+      // Create JWT token
+      const result = await this.authService.loginWithGoogle(testUser);
+
+      if (result && result.token) {
+        // Redirect to frontend with token (same as real OAuth flow)
+        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5174";
+        res.redirect(`${frontendUrl}?token=${result.token}`);
+      } else {
+        res.status(500).json({ error: "Failed to create test token" });
+      }
+    } catch (error) {
+      console.error("Test OAuth error:", error);
+      res.status(500).json({ error: "Test OAuth failed" });
+    }
   }
 }

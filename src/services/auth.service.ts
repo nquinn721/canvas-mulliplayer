@@ -13,7 +13,6 @@ import { Repository } from "typeorm";
 import {
   ChangePasswordDto,
   ForgotPasswordDto,
-  GuestLoginDto,
   LoginDto,
   RegisterDto,
   ResetPasswordDto,
@@ -102,46 +101,6 @@ export class AuthService {
     const token = this.generateToken(user);
 
     return { user, token };
-  }
-
-  async loginAsGuest(
-    guestLoginDto: GuestLoginDto
-  ): Promise<{ user: User; token: string }> {
-    let { username } = guestLoginDto;
-
-    // Generate username if not provided
-    if (!username) {
-      username = `Guest_${Math.random().toString(36).substr(2, 9)}`;
-    } else {
-      // Check if username is already taken by a real user
-      const existingUser = await this.userRepository.findOne({
-        where: { username },
-      });
-      if (existingUser) {
-        // Append random suffix to avoid conflicts
-        username = `${username}_${Math.random().toString(36).substr(2, 4)}`;
-      }
-    }
-
-    // Create and save guest user to database (temporary user)
-    const guestUser = this.userRepository.create({
-      id: `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      username,
-      displayName: username,
-      authProvider: AuthProvider.GUEST,
-      role: UserRole.GUEST,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    // Save guest user to database so it can be retrieved by profile endpoint
-    const savedGuestUser = await this.userRepository.save(guestUser);
-
-    // Generate JWT token for guest
-    const token = this.generateToken(savedGuestUser);
-
-    return { user: savedGuestUser, token };
   }
 
   async loginWithGoogle(
@@ -321,6 +280,50 @@ export class AuthService {
     if (!user.displayName || user.displayName === user.username) {
       user.displayName = username;
     }
+
+    return this.userRepository.save(user);
+  }
+
+  async updateUserScore(
+    userId: string,
+    score: number,
+    kills: number = 0,
+    deaths: number = 0
+  ): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    if (user.isGuest) {
+      throw new BadRequestException(
+        "Guest users scores are not saved to server"
+      );
+    }
+
+    // Update total score
+    user.totalScore = (user.totalScore || 0) + score;
+
+    // Update high score if this score is higher
+    if (!user.highScore || score > user.highScore) {
+      user.highScore = score;
+    }
+
+    // Update total kills
+    user.totalKills = (user.totalKills || 0) + kills;
+
+    // Update total deaths
+    user.totalDeaths = (user.totalDeaths || 0) + deaths;
+
+    // Update games played
+    user.gamesPlayed = (user.gamesPlayed || 0) + 1;
+
+    // Calculate experience points (simple formula: score + kills * 10)
+    const experienceGained = score + kills * 10;
+    user.experience = (user.experience || 0) + experienceGained;
+
+    // Calculate level based on experience (simple formula: level = floor(experience / 1000) + 1)
+    user.playerLevel = Math.floor((user.experience || 0) / 1000) + 1;
 
     return this.userRepository.save(user);
   }

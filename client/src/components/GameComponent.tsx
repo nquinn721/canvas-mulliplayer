@@ -4,9 +4,15 @@ import { observer } from "mobx-react-lite";
 import { useEffect, useRef, useState } from "react";
 import "../App.css";
 import { Game } from "../game/Game";
+import { useSocket } from "../hooks/useSocket";
 import { debugLogger } from "../services/DebugLogger";
 import { soundService } from "../services/SoundService";
-import { gameStore, socketService } from "../stores";
+import {
+  gameSessionService,
+  gameStore,
+  scoreService,
+  socketService,
+} from "../stores";
 import DeathMenu from "./DeathMenu";
 import EscapeMenu from "./EscapeMenu";
 import { GameStats } from "./GameStats";
@@ -19,6 +25,9 @@ interface GameComponentProps {
 
 const GameComponent = observer(
   ({ playerName, aiDifficulty, onReturnToHome }: GameComponentProps) => {
+    // Use socket hook to ensure connection
+    const { isConnected, joinGame } = useSocket();
+
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const gameRef = useRef<Game | null>(null);
     const [isMuted, setIsMuted] = useState(() => soundService.isSoundMuted());
@@ -91,6 +100,9 @@ const GameComponent = observer(
     useEffect(() => {
       if (!canvasRef.current) return;
 
+      // Start new game session for tracking
+      gameSessionService.startSession();
+
       // Initialize game with global store and socket service
       const game = new Game(canvasRef.current, gameStore, socketService);
       gameRef.current = game;
@@ -115,8 +127,8 @@ const GameComponent = observer(
           );
 
           // Join the game with the player's chosen name
-          if (socketService.isConnected) {
-            socketService.joinGame(playerName);
+          if (isConnected) {
+            joinGame(playerName);
             // Initialize game stats for this session
             gameStore?.initializeGameSession();
             // After joining, try to set the AI difficulty from home menu selection
@@ -131,8 +143,8 @@ const GameComponent = observer(
           } else {
             // Wait for connection and then join
             const checkConnection = setInterval(() => {
-              if (socketService.isConnected) {
-                socketService.joinGame(playerName);
+              if (gameStore.isConnected) {
+                joinGame(playerName);
                 // Initialize game stats for this session
                 gameStore?.initializeGameSession();
                 // After joining, try to set the AI difficulty from home menu selection
@@ -166,8 +178,42 @@ const GameComponent = observer(
         soundService.stopBackgroundMusic();
         game.cleanup();
         gameRef.current = null;
+        // End session if component unmounts
+        gameSessionService.endSession();
       };
     }, [aiDifficulty]);
+
+    // Track game stats changes in real-time for session service
+    useEffect(() => {
+      // Update session score whenever game score changes
+      gameSessionService.updateScore(gameStore.gameStats.score);
+    }, [gameStore.gameStats.score]);
+
+    // Track kills and deaths with session state
+    useEffect(() => {
+      // Update session service with current total values
+      // The session service tracks totals from the game session start
+      const sessionData = gameSessionService.getSessionStats();
+      const currentKills = gameStore.gameStats.kills;
+      const currentDeaths = gameStore.gameStats.deaths;
+
+      // Only update if the values actually changed to avoid infinite loops
+      if (
+        sessionData.kills !== currentKills ||
+        sessionData.deaths !== currentDeaths
+      ) {
+        // Calculate the delta and update session
+        const killDelta = currentKills - sessionData.kills;
+        const deathDelta = currentDeaths - sessionData.deaths;
+
+        for (let i = 0; i < killDelta; i++) {
+          gameSessionService.addKill();
+        }
+        for (let i = 0; i < deathDelta; i++) {
+          gameSessionService.addDeath();
+        }
+      }
+    }, [gameStore.gameStats.kills, gameStore.gameStats.deaths]);
 
     const toggleMute = () => {
       const newMuteState = soundService.toggleMute();
@@ -290,25 +336,57 @@ const GameComponent = observer(
       }
     };
 
-    const handleReturnToHome = () => {
+    const handleReturnToHome = async () => {
+      console.log('GameComponent: handleReturnToHome called');
+      console.log('GameComponent: Socket connected before cleanup:', gameStore.isConnected);
+      
+      // End the game session and save data
+      await gameSessionService.endSession();
+
+      // Save game score before leaving (legacy support)
+      if (gameStore.gameStats.score > 0 || gameStore.gameStats.kills > 0) {
+        const gameResult = {
+          score: gameStore.gameStats.score,
+          kills: gameStore.gameStats.kills,
+          deaths: gameStore.gameStats.deaths,
+          timeElapsed: gameStore.gameStats.gameStartTime
+            ? Date.now() - gameStore.gameStats.gameStartTime
+            : 0,
+          difficulty: currentAIDifficulty,
+        };
+
+        try {
+          const result = await scoreService.saveGameResult(gameResult);
+          console.log("Score saved:", result.message);
+        } catch (error) {
+          console.error("Failed to save score:", error);
+        }
+      }
+
       // Reset ability levels before leaving the game
       if (gameStore.isConnected && gameStore.socket) {
+        console.log('GameComponent: Sending resetAbilities command');
         gameStore.socket.emit("resetAbilities");
       }
 
       // Clean up game before returning to home
       if (gameRef.current) {
+        console.log('GameComponent: Cleaning up game');
         soundService.stopBackgroundMusic();
         gameRef.current.cleanup();
         gameRef.current = null;
       }
 
       // Reset the game store
+      console.log('GameComponent: Calling gameStore.reset()');
       gameStore.reset();
+      
+      console.log('GameComponent: Socket connected after cleanup:', gameStore.isConnected);
 
       // Restart background music for home menu if not muted
       soundService.handleRevive();
 
+      console.log('GameComponent: Calling onReturnToHome()');
       onReturnToHome();
     };
 

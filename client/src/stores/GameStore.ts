@@ -1,6 +1,6 @@
 import { Camera, GameState, KeyState, Projectile } from "@shared";
 import { SCORING_CONFIG, ScoringUtils } from "@shared/config/ScoringConfig";
-import { makeAutoObservable } from "mobx";
+import { makeAutoObservable, runInAction } from "mobx";
 import { Socket } from "socket.io-client";
 import { debugLogger } from "../services/DebugLogger";
 import { LatencyCompensationService } from "../services/LatencyCompensationService";
@@ -971,8 +971,10 @@ export class GameStore {
     this.particleSystem.createExplosion(data.x, data.y, "missile");
   }
 
-  // Cleanup
-  disconnect() {
+  // DEPRECATED: This method should not be used in the new socket connection standard
+  // The App component manages socket connections globally
+  // This is kept for compatibility but should be removed in the future
+  _deprecatedDisconnect() {
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
@@ -1069,8 +1071,10 @@ export class GameStore {
       if (this.latencyCompensation) {
         this.latencyCompensation.updateLatencyEstimate(pingStart, pongReceived);
       }
-      // Update stats display
-      this.stats.ping = Math.round((pongReceived - pingStart) / 2);
+      // Update stats display - wrap in runInAction for MobX strict mode
+      runInAction(() => {
+        this.stats.ping = Math.round((pongReceived - pingStart) / 2);
+      });
     });
   }
 

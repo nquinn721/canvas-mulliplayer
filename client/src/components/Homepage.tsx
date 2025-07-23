@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "./AuthContext";
 import "./Homepage.css";
+import { PlayerStatsCard } from "./PlayerStatsCard";
 import { TopControls } from "./TopControls";
 
 interface HomepageProps {
@@ -184,24 +185,12 @@ export const Homepage: React.FC<HomepageProps> = ({
               )}
 
               {user.email && <p className="user-email">{user.email}</p>}
-
-              <div className="user-stats">
-                <div className="stat-item">
-                  <span className="stat-label">Role:</span>
-                  <span className="stat-value">{user.role}</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">Games Played:</span>
-                  <span className="stat-value">{user.gamesPlayed || 0}</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">Best Score:</span>
-                  <span className="stat-value">{user.highScore || 0}</span>
-                </div>
-              </div>
             </div>
           </div>
         </div>
+
+        {/* Player Statistics */}
+        <PlayerStatsCard />
 
         {/* Action Buttons */}
         <div className="action-buttons">

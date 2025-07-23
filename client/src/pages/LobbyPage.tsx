@@ -4,7 +4,7 @@ import { useAuth } from "../components/AuthContext";
 import { GameSettingsModal } from "../components/GameSettingsModal";
 import { Homepage } from "../components/Homepage";
 import { Leaderboard } from "../components/Leaderboard";
-import { authService } from "../services/AuthService";
+import { authStore } from "../stores";
 
 export const LobbyPage: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -71,7 +71,7 @@ export const LobbyPage: React.FC = () => {
       {showLeaderboard && (
         <Leaderboard
           onClose={handleCloseLeaderboard}
-          authToken={authService.getToken() || undefined}
+          authToken={authStore.token || undefined}
           onError={handleLeaderboardError}
         />
       )}

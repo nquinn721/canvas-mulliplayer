@@ -140,29 +140,61 @@ export class GameGateway
       const token =
         client.handshake.auth?.token ||
         client.handshake.headers?.authorization?.replace("Bearer ", "");
+
+      console.log(
+        `Token received for client ${client.id}:`,
+        token ? `${token.substring(0, 20)}...` : "No token"
+      );
+
       let authenticatedUser = null;
       let isGuest = true;
 
       if (token) {
         try {
-          const payload = this.jwtService.verify(token);
-          if (payload.sub.startsWith("guest_")) {
-            // Guest user with token
+          // Check if it's a guest token first
+          if (token.startsWith("guest_token_")) {
+            // Handle guest token - just establish guest status
+            // The actual username will be provided in the joinGame event
             authenticatedUser = {
-              id: payload.sub,
-              username: payload.username,
+              id: token, // Use the token itself as the ID for consistency
+              username: "Guest", // Placeholder, will be updated in joinGame
               isGuest: true,
             };
             isGuest = true;
           } else {
-            // Regular authenticated user
-            authenticatedUser = await this.authService.getUserById(payload.sub);
-            isGuest = false;
+            // Try to verify as a real JWT token
+            const payload = this.jwtService.verify(token);
+            if (payload.sub.startsWith("guest_")) {
+              // Guest user with token
+              authenticatedUser = {
+                id: payload.sub,
+                username: payload.username,
+                isGuest: true,
+              };
+              isGuest = true;
+            } else {
+              // Regular authenticated user
+              authenticatedUser = await this.authService.getUserById(
+                payload.sub
+              );
+              isGuest = false;
+            }
           }
         } catch (error) {
           console.log(`Invalid token for client ${client.id}:`, error.message);
           // Continue as anonymous user
         }
+      } else {
+        // No token provided - treat as anonymous guest
+        console.log(
+          `No token provided for client ${client.id}, treating as anonymous guest`
+        );
+        authenticatedUser = {
+          id: `anonymous_${client.id}`,
+          username: "Anonymous Guest",
+          isGuest: true,
+        };
+        isGuest = true;
       }
 
       // Track connection with authentication data

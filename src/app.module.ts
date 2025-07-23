@@ -51,7 +51,7 @@ import { LocalStrategy } from "./strategies/local.strategy";
             "space_fighters",
           entities: [User, Leaderboard],
           synchronize: true, // Always enable synchronization
-          logging: !isProduction,
+          logging: false, // Disabled SQL logging
           migrations: ["dist/migrations/*.js"],
           migrationsTableName: "migrations",
         };

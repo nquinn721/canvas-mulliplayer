@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Navigate,
   Route,
@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from "./components/AuthContext";
 import { GamePage } from "./pages/GamePage";
 import { LobbyPage } from "./pages/LobbyPage";
 import { LoginPage } from "./pages/LoginPage";
+import { socketService } from "./stores";
 
 // Protected route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
@@ -70,6 +71,29 @@ const AppRoutes: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  // Global socket connection management
+  useEffect(() => {
+    console.log("App: Initializing global socket connection...");
+
+    // Establish socket connection when app starts
+    socketService.connect();
+
+    // Only disconnect when the browser window/tab is actually closing
+    const handleBeforeUnload = () => {
+      console.log("App: Browser closing, disconnecting socket...");
+      socketService.disconnect();
+    };
+
+    // Only listen for actual browser window closing, not React navigation
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    // Cleanup only on app unmount (which rarely happens in SPAs)
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      // Don't disconnect here - let beforeunload handle it
+    };
+  }, []);
+
   return (
     <AuthProvider>
       <Router>

@@ -1,5 +1,6 @@
 import { GameState } from "@shared";
 import { io, Socket } from "socket.io-client";
+import { authStore } from "../stores";
 import { GameStore } from "../stores/GameStore";
 import { soundService } from "./SoundService";
 
@@ -83,8 +84,8 @@ export class SocketService {
       const existingLock = sessionStorage.getItem(sessionKey);
       if (existingLock) {
         const lockTime = parseInt(existingLock);
-        // If lock is less than 1 second old, skip connection
-        if (now - lockTime < 1000) {
+        // If lock is less than 2 seconds old, skip connection
+        if (now - lockTime < 2000) {
           console.log(
             "SocketService: Connection attempt blocked by session lock (React StrictMode protection)"
           );
@@ -113,6 +114,12 @@ export class SocketService {
       return;
     }
 
+    // If we have a socket that's in the process of connecting, wait for it
+    if (this.socket && !this.socket.connected && this.socket.id === undefined) {
+      console.log("SocketService: Already connecting, waiting for completion");
+      return;
+    }
+
     // If we have a socket that's not connected, clean it up first
     if (this.socket && !this.socket.connected) {
       console.log("SocketService: Cleaning up existing disconnected socket");
@@ -123,12 +130,25 @@ export class SocketService {
     // Automatically determine server URL based on environment
     const serverUrl = url || this.getServerUrl();
     console.log("SocketService: Connecting to", serverUrl);
+    console.log(
+      "SocketService: Auth token:",
+      authStore.token ? `${authStore.token.substring(0, 20)}...` : "No token"
+    );
+    console.log("SocketService: User state:", {
+      isAuthenticated: authStore.isAuthenticated,
+      isGuest: authStore.isGuest,
+      username: authStore.user?.username,
+    });
 
     this.socket = io(serverUrl, {
       // Prevent duplicate connections
       forceNew: true,
       // Set timeout for connection attempts
       timeout: 10000,
+      // Pass authentication token if available
+      auth: {
+        token: authStore.token,
+      },
     });
 
     this.gameStore.setSocket(this.socket);
@@ -154,6 +174,9 @@ export class SocketService {
         "SocketService: Connected successfully with ID:",
         this.socket?.id
       );
+      console.log(
+        "SocketService: Connection established, setting connected state"
+      );
       this.gameStore.setConnected(true);
 
       // Clear session lock on successful connection
@@ -167,8 +190,8 @@ export class SocketService {
       this.startHeartbeat();
     });
 
-    this.socket.on("disconnect", () => {
-      console.log("SocketService: Disconnected");
+    this.socket.on("disconnect", (reason) => {
+      console.log("SocketService: Disconnected, reason:", reason);
       this.gameStore.setConnected(false);
       // Stop heartbeat on disconnect
       this.stopHeartbeat();
@@ -444,18 +467,9 @@ export class SocketService {
       sessionStorage.removeItem("socket-service-lock");
     }
 
-    // Clear the static instance if this is the current instance
-    if (SocketService.instance === this) {
-      SocketService.instance = null;
-    }
-
-    // Clear the window global instance as well
-    if (
-      typeof window !== "undefined" &&
-      (window as any)[SocketService.WINDOW_INSTANCE_KEY] === this
-    ) {
-      delete (window as any)[SocketService.WINDOW_INSTANCE_KEY];
-    }
+    // Note: We DON'T clear the static instance anymore
+    // This preserves the singleton pattern across reconnections
+    // Only resetInstance() should clear the singleton for testing purposes
   }
 
   // Start heartbeat to maintain connection stability

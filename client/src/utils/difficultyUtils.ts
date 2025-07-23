@@ -1,15 +1,14 @@
 // Difficulty management utilities for the game
+import { gamePreferencesStore } from "../stores";
+
 export type Difficulty = "EASY" | "MEDIUM" | "HARD";
 
-const DIFFICULTY_STORAGE_KEY = "canvas-multiplayer-difficulty";
-
 export const getDifficulty = (): Difficulty => {
-  const saved = localStorage.getItem(DIFFICULTY_STORAGE_KEY);
-  return (saved as Difficulty) || "MEDIUM";
+  return gamePreferencesStore.difficulty;
 };
 
 export const setDifficulty = (difficulty: Difficulty) => {
-  localStorage.setItem(DIFFICULTY_STORAGE_KEY, difficulty);
+  gamePreferencesStore.setDifficulty(difficulty);
 };
 
 export const difficultyInfo = {

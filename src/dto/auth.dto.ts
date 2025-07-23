@@ -1,9 +1,11 @@
 import {
   IsEmail,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   Matches,
+  Min,
   MinLength,
 } from "class-validator";
 
@@ -34,17 +36,6 @@ export class LoginDto {
 
   @IsString()
   password: string;
-}
-
-export class GuestLoginDto {
-  @IsOptional()
-  @IsString()
-  @MinLength(3, { message: "Username must be at least 3 characters long" })
-  @Matches(/^[a-zA-Z0-9_-]+$/, {
-    message:
-      "Username can only contain letters, numbers, underscores, and hyphens",
-  })
-  username?: string; // Optional for guests, will generate if not provided
 }
 
 export class ForgotPasswordDto {
@@ -131,4 +122,20 @@ export class UpdateUsernameDto {
       "Username can only contain letters, numbers, underscores, and hyphens",
   })
   username: string;
+}
+
+export class ScoreUpdateDto {
+  @IsNumber({}, { message: "Score must be a valid number" })
+  @Min(0, { message: "Score cannot be negative" })
+  score: number;
+
+  @IsOptional()
+  @IsNumber({}, { message: "Kills must be a valid number" })
+  @Min(0, { message: "Kills cannot be negative" })
+  kills?: number;
+
+  @IsOptional()
+  @IsNumber({}, { message: "Deaths must be a valid number" })
+  @Min(0, { message: "Deaths cannot be negative" })
+  deaths?: number;
 }

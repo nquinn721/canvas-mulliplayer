@@ -1,6 +1,41 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import { makePersistable } from "mobx-persist-store";
-import { authService, AuthUser } from "../services/AuthService";
+import { io, Socket } from "socket.io-client";
+
+export interface AuthUser {
+  id: string;
+  username: string;
+  email?: string;
+  role: string;
+  authProvider: string;
+  isGuest?: boolean;
+  avatar?: string;
+  gamesPlayed?: number;
+  highScore?: number;
+  totalScore?: number;
+  totalKills?: number;
+  kills?: number;
+  experience?: number;
+  totalPlayTime?: number;
+  level?: number;
+  playerLevel?: number;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    token: string;
+    user: AuthUser;
+  };
+}
+
+export interface AuthStatus {
+  isAuthenticated: boolean;
+  isGuest: boolean;
+  username?: string;
+  userId?: string;
+}
 
 export class AuthStore {
   // Observable state
@@ -10,7 +45,10 @@ export class AuthStore {
   isAuthenticated: boolean = false;
   isGuest: boolean = false;
 
-  private authServiceInstance = authService;
+  private baseUrl =
+    process.env.NODE_ENV === "production"
+      ? "https://canvas-game-203453576607.us-east1.run.app/api"
+      : "http://localhost:3001/api";
 
   constructor() {
     makeAutoObservable(this);
@@ -38,18 +76,28 @@ export class AuthStore {
     });
 
     try {
-      const response = await this.authServiceInstance.login(
-        identifier,
-        password
-      );
+      const response = await fetch(`${this.baseUrl}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ identifier, password }),
+      });
 
-      if (response.success && response.data?.token && response.data?.user) {
+      const data: AuthResponse = await response.json();
+
+      if (data.success && data.data?.token && data.data?.user) {
         runInAction(() => {
-          this.setAuth(response.data!.token, response.data!.user);
+          this.setAuth(data.data!.token, data.data!.user);
         });
       }
 
-      return { success: response.success, message: response.message };
+      return { success: data.success, message: data.message };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Network error occurred",
+      };
     } finally {
       runInAction(() => {
         this.isLoading = false;
@@ -67,19 +115,28 @@ export class AuthStore {
     });
 
     try {
-      const response = await this.authServiceInstance.register(
-        username,
-        email,
-        password
-      );
+      const response = await fetch(`${this.baseUrl}/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, email, password }),
+      });
 
-      if (response.success && response.data?.token && response.data?.user) {
+      const data: AuthResponse = await response.json();
+
+      if (data.success && data.data?.token && data.data?.user) {
         runInAction(() => {
-          this.setAuth(response.data!.token, response.data!.user);
+          this.setAuth(data.data!.token, data.data!.user);
         });
       }
 
-      return { success: response.success, message: response.message };
+      return { success: data.success, message: data.message };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Network error occurred",
+      };
     } finally {
       runInAction(() => {
         this.isLoading = false;
@@ -95,15 +152,48 @@ export class AuthStore {
     });
 
     try {
-      const response = await this.authServiceInstance.loginAsGuest(username);
-
-      if (response.success && response.data?.token && response.data?.user) {
-        runInAction(() => {
-          this.setAuth(response.data!.token, response.data!.user);
-        });
+      // Generate username if not provided
+      let guestUsername = username;
+      if (!guestUsername) {
+        guestUsername = `Guest_${Math.random().toString(36).substr(2, 9)}`;
       }
 
-      return { success: response.success, message: response.message };
+      // Create a client-side only guest user (no server call)
+      const guestUser: AuthUser = {
+        id: `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        username: guestUsername,
+        email: undefined,
+        role: "guest",
+        authProvider: "guest",
+        isGuest: true,
+        avatar: undefined,
+        gamesPlayed: 0,
+        highScore: 0,
+        totalScore: 0,
+        totalKills: 0,
+        kills: 0,
+        experience: 0,
+        totalPlayTime: 0,
+        level: 1,
+        playerLevel: 1,
+      };
+
+      // Create a fake token for guest users (client-side only)
+      const guestToken = `guest_token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      runInAction(() => {
+        this.setAuth(guestToken, guestUser);
+      });
+
+      return {
+        success: true,
+        message: `Welcome, ${guestUsername}! Playing as guest - your data will be saved locally.`,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Guest login failed",
+      };
     } finally {
       runInAction(() => {
         this.isLoading = false;
@@ -113,25 +203,33 @@ export class AuthStore {
 
   async loginWithGoogle(): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await this.authServiceInstance.initiateGoogleAuth();
-      return response;
+      // Redirect directly to backend OAuth route
+      const authUrl = `${this.baseUrl}/auth/google`;
+      window.location.href = authUrl;
+
+      return {
+        success: true,
+        message: "Redirecting to Google...",
+      };
     } catch (error) {
-      return { success: false, message: "Google authentication failed" };
+      return {
+        success: false,
+        message: "Google authentication failed",
+      };
     }
   }
 
   // Handle OAuth callback (called from AuthContext)
   async handleOAuthCallback(token: string): Promise<boolean> {
     console.log("AuthStore: handleOAuthCallback called with token:", token);
-    
+
     runInAction(() => {
       this.isLoading = true;
     });
 
     try {
-      console.log("AuthStore: Validating token with auth service...");
-      const userData =
-        await this.authServiceInstance.validateTokenAndSetAuth(token);
+      console.log("AuthStore: Validating token with backend...");
+      const userData = await this.validateToken(token);
 
       console.log("AuthStore: Token validation result:", userData);
 
@@ -154,35 +252,89 @@ export class AuthStore {
     }
   }
 
+  // Helper method to validate token and get user data
+  private async validateToken(token: string): Promise<AuthUser | null> {
+    try {
+      const response = await fetch(`${this.baseUrl}/auth/profile`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.data || null;
+      }
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
+
   async updateUsername(
     newUsername: string
   ): Promise<{ success: boolean; message: string }> {
     try {
-      const response =
-        await this.authServiceInstance.updateUsername(newUsername);
+      if (!this.token) {
+        return { success: false, message: "No authentication token available" };
+      }
 
-      if (response.success && response.data?.user && this.user) {
+      const response = await fetch(`${this.baseUrl}/auth/username`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.token}`,
+        },
+        body: JSON.stringify({ username: newUsername }),
+      });
+
+      const data: AuthResponse = await response.json();
+
+      if (data.success && data.data?.user && this.user) {
         runInAction(() => {
-          this.user!.username = response.data!.user.username;
+          this.user!.username = data.data!.user.username;
           // mobx-persist-store automatically persists the state
         });
       }
 
-      return response;
+      return { success: data.success, message: data.message };
     } catch (error) {
-      return { success: false, message: "Failed to update username" };
+      return {
+        success: false,
+        message: "Network error occurred",
+      };
     }
   }
 
   async refreshProfile(): Promise<void> {
     if (!this.token) return;
 
-    try {
-      const response = await this.authServiceInstance.getProfile();
+    // Skip API call for guest users
+    if (this.isGuest || this.user?.isGuest) return;
 
-      if (response.success && response.data) {
+    try {
+      const response = await fetch(`${this.baseUrl}/auth/profile`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+        },
+      });
+
+      if (!response.ok) {
+        // If unauthorized, clear auth data
+        if (response.status === 401) {
+          this.logout();
+          return;
+        }
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      const data: AuthResponse = await response.json();
+
+      if (data.success && data.data) {
         runInAction(() => {
-          this.user = response.data as any;
+          // Backend returns user data directly in data.data
+          this.user = data.data as any;
           // mobx-persist-store automatically persists the state
         });
       } else {
@@ -199,7 +351,6 @@ export class AuthStore {
     runInAction(() => {
       this.clearAuth();
     });
-    this.authServiceInstance.logout();
   }
 
   // Helper methods
@@ -209,6 +360,13 @@ export class AuthStore {
     this.isAuthenticated = true;
     this.isGuest = user.isGuest || false;
     // mobx-persist-store automatically persists the state
+  }
+
+  // Public method for external services to set auth
+  public setAuthenticationData(token: string, user: AuthUser): void {
+    runInAction(() => {
+      this.setAuth(token, user);
+    });
   }
 
   private clearAuth(): void {
@@ -247,5 +405,89 @@ export class AuthStore {
     return {
       "Content-Type": "application/json",
     };
+  }
+
+  // Socket.io integration
+  connectToGame(): Socket {
+    const socketUrl =
+      process.env.NODE_ENV === "production"
+        ? "https://canvas-game-203453576607.us-east1.run.app"
+        : "http://localhost:3001";
+
+    const socket = io(socketUrl, {
+      auth: {
+        token: this.token,
+      },
+    });
+
+    // Listen for authentication status from server
+    socket.on("authStatus", (status: AuthStatus) => {
+      console.log("Authentication status:", status);
+    });
+
+    // Listen for username updates from server
+    socket.on(
+      "usernameUpdated",
+      (data: { newUsername: string; message: string }) => {
+        console.log("Username updated:", data);
+        if (this.user) {
+          runInAction(() => {
+            this.user!.username = data.newUsername;
+            // mobx-persist-store automatically persists the state
+          });
+        }
+      }
+    );
+
+    // Listen for errors
+    socket.on("error", (error: { message: string }) => {
+      console.error("Socket error:", error.message);
+    });
+
+    return socket;
+  }
+
+  // Update user score on server
+  async updateUserScore(
+    score: number,
+    kills: number = 0,
+    deaths: number = 0
+  ): Promise<{ success: boolean; message: string }> {
+    if (!this.token || !this.user || this.isGuest) {
+      return { success: false, message: "No authenticated user to update" };
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/auth/update-score`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.token}`,
+        },
+        body: JSON.stringify({ score, kills, deaths }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.user) {
+        // Update local user data with the latest from server
+        runInAction(() => {
+          this.user = { ...this.user!, ...data.user };
+        });
+      }
+
+      return { success: data.success, message: data.message };
+    } catch (error) {
+      console.error("Error updating user score:", error);
+      return {
+        success: false,
+        message: "Network error occurred while updating score",
+      };
+    }
+  }
+
+  // Helper method to update username through socket
+  updateUsernameViaSocket(socket: Socket, newUsername: string) {
+    socket.emit("updateUsername", { newUsername });
   }
 }

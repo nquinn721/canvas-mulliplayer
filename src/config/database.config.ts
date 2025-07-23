@@ -15,7 +15,7 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
     "space_fighters",
   entities: [User],
   synchronize: process.env.NODE_ENV !== "production", // Only in development
-  logging: process.env.NODE_ENV === "development",
+  logging: false, // Disabled SQL logging
   migrations: ["dist/migrations/*.js"],
   migrationsTableName: "migrations",
 

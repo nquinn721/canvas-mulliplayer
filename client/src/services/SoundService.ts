@@ -1,10 +1,7 @@
+import { soundStore } from "../stores";
+
 export class SoundService {
   private audioContext: AudioContext | null = null;
-  private masterVolume: number = 0.5;
-  private sfxVolume: number = 0.7;
-  private musicVolume: number = 0.3;
-  private isMuted: boolean = false;
-  private selectedMusicTrack: number = 1; // Default to track 1
   private backgroundMusicSource: AudioBufferSourceNode | null = null;
   private backgroundMusicGain: GainNode | null = null;
   private soundBuffers: Map<string, AudioBuffer> = new Map();
@@ -24,8 +21,6 @@ export class SoundService {
     }
 
     this.initializeAudioContext();
-    this.loadMuteState(); // Load mute state from localStorage
-    this.loadVolumeSettings(); // Load volume settings from localStorage
     this.loadSoundFiles();
 
     // Register this instance globally for hot reload cleanup
@@ -41,84 +36,25 @@ export class SoundService {
     }
   }
 
-  // Load mute state from localStorage
-  private loadMuteState(): void {
-    try {
-      const savedMuteState = localStorage.getItem("soundService_muted");
-      if (savedMuteState !== null) {
-        this.isMuted = JSON.parse(savedMuteState);
-      }
-    } catch (error) {
-      console.warn("Failed to load mute state from localStorage:", error);
-    }
+  // Getters that use the store
+  get masterVolume(): number {
+    return soundStore.masterVolume;
   }
 
-  // Save mute state to localStorage
-  private saveMuteState(): void {
-    try {
-      localStorage.setItem("soundService_muted", JSON.stringify(this.isMuted));
-    } catch (error) {
-      console.warn("Failed to save mute state to localStorage:", error);
-    }
+  get sfxVolume(): number {
+    return soundStore.sfxVolume;
   }
 
-  // Load volume settings from localStorage
-  private loadVolumeSettings(): void {
-    try {
-      const savedMasterVolume = localStorage.getItem(
-        "soundService_masterVolume"
-      );
-      if (savedMasterVolume !== null) {
-        this.masterVolume = Math.max(
-          0,
-          Math.min(1, parseFloat(savedMasterVolume))
-        );
-      }
-
-      const savedSfxVolume = localStorage.getItem("soundService_sfxVolume");
-      if (savedSfxVolume !== null) {
-        this.sfxVolume = Math.max(0, Math.min(1, parseFloat(savedSfxVolume)));
-      }
-
-      const savedMusicVolume = localStorage.getItem("soundService_musicVolume");
-      if (savedMusicVolume !== null) {
-        this.musicVolume = Math.max(
-          0,
-          Math.min(1, parseFloat(savedMusicVolume))
-        );
-      }
-
-      const savedMusicTrack = localStorage.getItem("soundService_musicTrack");
-      if (savedMusicTrack !== null) {
-        this.selectedMusicTrack = Math.max(
-          1,
-          Math.min(4, parseInt(savedMusicTrack))
-        );
-      }
-    } catch (error) {
-      console.warn("Failed to load volume settings from localStorage:", error);
-    }
+  get musicVolume(): number {
+    return soundStore.musicVolume;
   }
 
-  // Save volume settings to localStorage
-  private saveVolumeSettings(): void {
-    try {
-      localStorage.setItem(
-        "soundService_masterVolume",
-        this.masterVolume.toString()
-      );
-      localStorage.setItem("soundService_sfxVolume", this.sfxVolume.toString());
-      localStorage.setItem(
-        "soundService_musicVolume",
-        this.musicVolume.toString()
-      );
-      localStorage.setItem(
-        "soundService_musicTrack",
-        this.selectedMusicTrack.toString()
-      );
-    } catch (error) {
-      console.warn("Failed to save volume settings to localStorage:", error);
-    }
+  get isMuted(): boolean {
+    return soundStore.isMuted;
+  }
+
+  get selectedMusicTrack(): number {
+    return soundStore.selectedMusicTrack;
   }
 
   // Load all sound files
@@ -312,22 +248,19 @@ export class SoundService {
 
   // Volume controls
   setMasterVolume(volume: number): void {
-    this.masterVolume = Math.max(0, Math.min(1, volume));
-    this.saveVolumeSettings();
+    soundStore.setMasterVolume(volume);
   }
 
   setSFXVolume(volume: number): void {
-    this.sfxVolume = Math.max(0, Math.min(1, volume));
-    this.saveVolumeSettings();
+    soundStore.setSfxVolume(volume);
   }
 
   setMusicVolume(volume: number): void {
-    this.musicVolume = Math.max(0, Math.min(1, volume));
+    soundStore.setMusicVolume(volume);
     if (this.backgroundMusicGain) {
       this.backgroundMusicGain.gain.value =
         this.masterVolume * this.musicVolume;
     }
-    this.saveVolumeSettings();
   }
 
   // Background music controls
@@ -396,8 +329,7 @@ export class SoundService {
 
   // Mute/unmute
   toggleMute(): boolean {
-    this.isMuted = !this.isMuted;
-    this.saveMuteState(); // Save to localStorage
+    soundStore.toggleMute();
     if (this.isMuted) {
       this.stopBackgroundMusic();
       this.stopAllContinuousSounds();
@@ -411,8 +343,7 @@ export class SoundService {
   setMuted(muted: boolean): void {
     const wasPlaying = this.isBackgroundMusicPlaying();
 
-    this.isMuted = muted;
-    this.saveMuteState(); // Save to localStorage
+    soundStore.setMuted(muted);
 
     if (muted) {
       this.stopBackgroundMusic();
@@ -458,8 +389,7 @@ export class SoundService {
 
   // Music track selection
   setMusicTrack(trackNumber: number): void {
-    this.selectedMusicTrack = Math.max(1, Math.min(4, trackNumber));
-    this.saveVolumeSettings();
+    soundStore.setSelectedMusicTrack(Math.max(1, Math.min(4, trackNumber)));
 
     // Always stop current music first if playing
     const wasPlaying = this.isBackgroundMusicPlaying();
