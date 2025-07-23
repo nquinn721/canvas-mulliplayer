@@ -256,10 +256,10 @@ export class AuthController {
   @Get("oauth-status")
   async getOAuthStatus() {
     const googleConfigured =
-      process.env.GOOGLE_CLIENT_ID &&
-      process.env.GOOGLE_CLIENT_ID !== "your-google-client-id" &&
-      process.env.GOOGLE_CLIENT_SECRET &&
-      process.env.GOOGLE_CLIENT_SECRET !== "your-google-client-secret";
+      (process.env.SPACE_FIGHTER_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID) &&
+      (process.env.SPACE_FIGHTER_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID) !== "your-google-client-id" &&
+      (process.env.SPACE_FIGHTER_GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET) &&
+      (process.env.SPACE_FIGHTER_GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET) !== "your-google-client-secret";
 
     return {
       success: true,
@@ -267,7 +267,7 @@ export class AuthController {
         google: {
           configured: googleConfigured,
           clientId: googleConfigured
-            ? process.env.GOOGLE_CLIENT_ID
+            ? (process.env.SPACE_FIGHTER_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID)
             : "Not configured",
           status: googleConfigured
             ? "Ready"

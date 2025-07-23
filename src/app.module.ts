@@ -34,16 +34,18 @@ import { LocalStrategy } from "./strategies/local.strategy";
 
         const config = {
           type: "mysql" as const,
-          host: isProduction
-            ? configService.get("DB_SOCKET_PATH") ||
-              configService.get("DB_HOST")
-            : configService.get("DB_HOST") || "localhost",
-          port: isProduction
-            ? undefined
-            : parseInt(configService.get("DB_PORT")) || 3306,
-          username: configService.get("DB_USERNAME") || "root",
-          password: configService.get("DB_PASSWORD") || "",
-          database: configService.get("DB_DATABASE") || "space_fighters",
+          username: 
+            configService.get("SPACE_FIGHTER_DB_USERNAME") ||
+            configService.get("DB_USERNAME") || 
+            "SpaceFighter",
+          password: 
+            configService.get("SPACE_FIGHTER_DB_PASSWORD") ||
+            configService.get("DB_PASSWORD") || 
+            "",
+          database: 
+            configService.get("SPACE_FIGHTER_DB_DATABASE") ||
+            configService.get("DB_DATABASE") || 
+            "space_fighters",
           entities: [User],
           synchronize: !isProduction,
           logging: !isProduction,
@@ -52,18 +54,23 @@ import { LocalStrategy } from "./strategies/local.strategy";
         };
 
         if (isProduction) {
+          const socketPath = 
+            configService.get("SPACE_FIGHTER_DB_SOCKET_PATH") ||
+            configService.get("DB_SOCKET_PATH") ||
+            "/cloudsql/heroic-footing-460117-k8:us-central1:stocktrader";
+            
           return {
             ...config,
-            extra: {
-              socketPath: configService.get("DB_SOCKET_PATH"),
-              connectionLimit: 5,
-              acquireTimeout: 60000,
-              timeout: 60000,
-            },
+            socketPath: socketPath,
+            // Remove host and port for production to ensure socket connection
+          };
+        } else {
+          return {
+            ...config,
+            host: configService.get("DB_HOST") || "localhost",
+            port: parseInt(configService.get("DB_PORT")) || 3306,
           };
         }
-
-        return config;
       },
       inject: [ConfigService],
     }),
@@ -72,7 +79,10 @@ import { LocalStrategy } from "./strategies/local.strategy";
     // Authentication modules
     PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.register({
-      secret: process.env.SPACE_FIGHTER_JWT_SECRET || process.env.JWT_SECRET || "fallback-secret-key",
+      secret:
+        process.env.SPACE_FIGHTER_JWT_SECRET ||
+        process.env.JWT_SECRET ||
+        "fallback-secret-key",
       signOptions: {
         expiresIn: process.env.JWT_EXPIRES_IN || "7d",
       },

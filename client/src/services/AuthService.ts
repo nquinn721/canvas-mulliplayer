@@ -35,7 +35,9 @@ export interface AuthStatus {
 class AuthService {
   private token: string | null = null;
   private user: AuthUser | null = null;
-  private baseUrl = "http://localhost:3001/api";
+  private baseUrl = process.env.NODE_ENV === 'production' 
+    ? "https://canvas-game-203453576607.us-east1.run.app/api"
+    : "http://localhost:3001/api";
 
   constructor() {
     // Load token from localStorage on initialization
@@ -310,7 +312,11 @@ class AuthService {
 
   // Socket.io integration
   connectToGame(): Socket {
-    const socket = io("http://localhost:3001", {
+    const socketUrl = process.env.NODE_ENV === 'production' 
+      ? "https://canvas-game-203453576607.us-east1.run.app"
+      : "http://localhost:3001";
+      
+    const socket = io(socketUrl, {
       auth: {
         token: this.token,
       },

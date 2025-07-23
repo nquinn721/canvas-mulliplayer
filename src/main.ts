@@ -1,12 +1,12 @@
 // Ensure crypto is available for TypeORM - MUST BE FIRST
-const crypto = require('crypto');
+const crypto = require("crypto");
 
 // Polyfill crypto for the container environment
 if (!globalThis.crypto) {
   globalThis.crypto = crypto.webcrypto || {
     randomUUID: () => crypto.randomUUID(),
     getRandomValues: (arr) => crypto.getRandomValues(arr),
-    ...crypto
+    ...crypto,
   };
 }
 
@@ -67,7 +67,7 @@ async function bootstrap() {
     errorLogger = app.get(ErrorLoggerService);
 
     // Set global prefix for API routes to avoid conflicts with static files
-    app.setGlobalPrefix('api');
+    app.setGlobalPrefix("api");
 
     // Enable CORS for development and production
     app.enableCors({

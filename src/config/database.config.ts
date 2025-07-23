@@ -3,9 +3,16 @@ import { User } from "../entities/user.entity";
 
 export const typeOrmConfig: TypeOrmModuleOptions = {
   type: "mysql",
-  username: process.env.SPACE_FIGHTER_DB_USERNAME || process.env.DB_USERNAME || "admin",
-  password: process.env.SPACE_FIGHTER_DB_PASSWORD || process.env.DB_PASSWORD || "password",
-  database: process.env.SPACE_FIGHTER_DB_DATABASE || process.env.DB_DATABASE || "space_fighters",
+  username:
+    process.env.SPACE_FIGHTER_DB_USERNAME || process.env.DB_USERNAME || "admin",
+  password:
+    process.env.SPACE_FIGHTER_DB_PASSWORD ||
+    process.env.DB_PASSWORD ||
+    "password",
+  database:
+    process.env.SPACE_FIGHTER_DB_DATABASE ||
+    process.env.DB_DATABASE ||
+    "space_fighters",
   entities: [User],
   synchronize: process.env.NODE_ENV !== "production", // Only in development
   logging: process.env.NODE_ENV === "development",
@@ -16,11 +23,15 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   ...(process.env.NODE_ENV === "production"
     ? {
         // Cloud SQL configuration - use socketPath directly
-        socketPath: process.env.SPACE_FIGHTER_DB_SOCKET_PATH || process.env.DB_SOCKET_PATH,
+        socketPath:
+          process.env.SPACE_FIGHTER_DB_SOCKET_PATH ||
+          process.env.DB_SOCKET_PATH ||
+          "/cloudsql/heroic-footing-460117-k8:us-central1:stocktrader",
+        // Remove host and port for production to force socket connection
       }
     : {
         // Development configuration
-        host: process.env.DB_HOST || "localhost", 
+        host: process.env.DB_HOST || "localhost",
         port: parseInt(process.env.DB_PORT) || 3306,
       }),
 };
