@@ -1,4 +1,5 @@
 import { makeAutoObservable, runInAction } from "mobx";
+import { makePersistable } from "mobx-persist-store";
 import { authService, AuthUser } from "../services/AuthService";
 
 export class AuthStore {
@@ -14,27 +15,17 @@ export class AuthStore {
   constructor() {
     makeAutoObservable(this);
 
-    // Initialize from localStorage
-    this.initializeFromStorage();
-  }
-
-  // Initialize auth state from localStorage
-  private initializeFromStorage() {
-    const savedToken = localStorage.getItem("authToken");
-    const savedUser = localStorage.getItem("authUser");
-
-    if (savedToken && savedUser) {
-      try {
-        this.token = savedToken;
-        this.user = JSON.parse(savedUser);
-        this.isAuthenticated = true;
-        this.isGuest = this.user?.isGuest || false;
-      } catch (error) {
-        console.error("Failed to parse saved user:", error);
-        this.clearAuth();
-      }
-    }
-    this.isLoading = false;
+    // Make store persistable with mobx-persist-store
+    makePersistable(this, {
+      name: "AuthStore",
+      properties: ["user", "token", "isAuthenticated", "isGuest"],
+      storage: window.localStorage,
+    }).then(() => {
+      console.log("AuthStore hydrated from storage");
+      runInAction(() => {
+        this.isLoading = false;
+      });
+    });
   }
 
   // Actions
@@ -131,20 +122,30 @@ export class AuthStore {
 
   // Handle OAuth callback (called from AuthContext)
   async handleOAuthCallback(token: string): Promise<boolean> {
+    console.log("AuthStore: handleOAuthCallback called with token:", token);
+    
     runInAction(() => {
       this.isLoading = true;
     });
 
     try {
+      console.log("AuthStore: Validating token with auth service...");
       const userData =
         await this.authServiceInstance.validateTokenAndSetAuth(token);
 
+      console.log("AuthStore: Token validation result:", userData);
+
       if (userData) {
         runInAction(() => {
+          console.log("AuthStore: Setting auth with validated user data");
           this.setAuth(token, userData);
         });
         return true;
       }
+      console.log("AuthStore: Token validation failed - no user data");
+      return false;
+    } catch (error) {
+      console.error("AuthStore: Error in handleOAuthCallback:", error);
       return false;
     } finally {
       runInAction(() => {
@@ -163,7 +164,7 @@ export class AuthStore {
       if (response.success && response.data?.user && this.user) {
         runInAction(() => {
           this.user!.username = response.data!.user.username;
-          localStorage.setItem("authUser", JSON.stringify(this.user));
+          // mobx-persist-store automatically persists the state
         });
       }
 
@@ -182,7 +183,7 @@ export class AuthStore {
       if (response.success && response.data) {
         runInAction(() => {
           this.user = response.data as any;
-          localStorage.setItem("authUser", JSON.stringify(this.user));
+          // mobx-persist-store automatically persists the state
         });
       } else {
         // Token might be invalid
@@ -207,10 +208,7 @@ export class AuthStore {
     this.user = user;
     this.isAuthenticated = true;
     this.isGuest = user.isGuest || false;
-
-    // Store in localStorage
-    localStorage.setItem("authToken", token);
-    localStorage.setItem("authUser", JSON.stringify(user));
+    // mobx-persist-store automatically persists the state
   }
 
   private clearAuth(): void {
@@ -218,10 +216,7 @@ export class AuthStore {
     this.user = null;
     this.isAuthenticated = false;
     this.isGuest = false;
-
-    // Clear localStorage
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("authUser");
+    // mobx-persist-store automatically persists the state
   }
 
   // Getters for easy access
