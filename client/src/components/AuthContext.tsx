@@ -57,30 +57,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const token = urlParams.get("token");
       const error = urlParams.get("error");
 
-      console.log('URL params:', window.location.search);
-      console.log('Token from URL:', token);
+      console.log("URL params:", window.location.search);
+      console.log("Token from URL:", token);
 
       if (token) {
         // Handle OAuth callback with token
         try {
           // Validate the token and get user data
           const userData = await authService.validateTokenAndSetAuth(token);
-          console.log('OAuth validation result:', userData);
+          console.log("OAuth validation result:", userData);
           if (userData) {
             setUser(userData);
             // Clear URL parameters and redirect to lobby
-            window.history.replaceState({}, document.title, '/lobby');
+            window.history.replaceState({}, document.title, "/lobby");
           } else {
-            console.error('OAuth validation failed');
-            window.history.replaceState({}, document.title, '/login');
+            console.error("OAuth validation failed");
+            window.history.replaceState({}, document.title, "/login");
           }
         } catch (error) {
-          console.error('OAuth error:', error);
-          window.history.replaceState({}, document.title, '/login');
+          console.error("OAuth error:", error);
+          window.history.replaceState({}, document.title, "/login");
         }
       } else if (error) {
         // Handle OAuth error
-        window.history.replaceState({}, document.title, '/login');
+        window.history.replaceState({}, document.title, "/login");
       } else {
         // Normal authentication check
         const existingToken = authService.getToken();
@@ -91,8 +91,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               // Backend returns user data directly in response.data
               setUser(response.data as any);
               // If user is authenticated and on login page, redirect to lobby
-              if (window.location.pathname === '/login' || window.location.pathname === '/') {
-                window.history.replaceState({}, document.title, '/lobby');
+              if (
+                window.location.pathname === "/login" ||
+                window.location.pathname === "/"
+              ) {
+                window.history.replaceState({}, document.title, "/lobby");
               }
             } else {
               // Token is invalid, clear it

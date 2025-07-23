@@ -7,9 +7,10 @@ export class GoogleOneTapService {
 
   constructor() {
     // Use the same Google Client ID as OAuth
-    this.clientId = process.env.NODE_ENV === "production" 
-      ? "your-production-google-client-id"  // Replace with actual
-      : "your-dev-google-client-id";        // Replace with actual
+    this.clientId =
+      process.env.NODE_ENV === "production"
+        ? "your-production-google-client-id" // Replace with actual
+        : "your-dev-google-client-id"; // Replace with actual
   }
 
   // Initialize Google One Tap
@@ -18,14 +19,14 @@ export class GoogleOneTapService {
 
     return new Promise((resolve, reject) => {
       // Load Google Identity Services library
-      const script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client';
+      const script = document.createElement("script");
+      script.src = "https://accounts.google.com/gsi/client";
       script.onload = () => {
         this.setupOneTap();
         this.isInitialized = true;
         resolve();
       };
-      script.onerror = () => reject(new Error('Failed to load Google One Tap'));
+      script.onerror = () => reject(new Error("Failed to load Google One Tap"));
       document.head.appendChild(script);
     });
   }
@@ -42,44 +43,47 @@ export class GoogleOneTapService {
     // Show the One Tap prompt
     // @ts-ignore
     google.accounts.id.prompt((notification: any) => {
-      console.log('One Tap notification:', notification.getNotDisplayedReason());
+      console.log(
+        "One Tap notification:",
+        notification.getNotDisplayedReason()
+      );
     });
   }
 
   // Handle the credential response from Google One Tap
   private async handleCredentialResponse(response: any): Promise<void> {
     try {
-      console.log('Google One Tap response:', response);
-      
+      console.log("Google One Tap response:", response);
+
       // Send the credential token to your backend
-      const result = await fetch('/api/auth/google/one-tap', {
-        method: 'POST',
+      const result = await fetch("/api/auth/google/one-tap", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          credential: response.credential
-        })
+          credential: response.credential,
+        }),
       });
 
       if (result.ok) {
         const data = await result.json();
         if (data.success && data.data?.token) {
           // Store auth token and redirect to lobby
-          localStorage.setItem('authToken', data.data.token);
-          localStorage.setItem('authUser', JSON.stringify(data.data.user));
-          window.location.href = '/lobby';
+          localStorage.setItem("authToken", data.data.token);
+          localStorage.setItem("authUser", JSON.stringify(data.data.user));
+          window.location.href = "/lobby";
         }
       }
     } catch (error) {
-      console.error('One Tap authentication failed:', error);
+      console.error("One Tap authentication failed:", error);
     }
   }
 
   // Show One Tap manually (e.g., on button click)
   showOneTap(): void {
     if (!this.isInitialized) {
-      console.error('Google One Tap not initialized');
+      console.error("Google One Tap not initialized");
       return;
     }
     // @ts-ignore
@@ -89,19 +93,16 @@ export class GoogleOneTapService {
   // Render the One Tap button
   renderButton(elementId: string): void {
     if (!this.isInitialized) {
-      console.error('Google One Tap not initialized');
+      console.error("Google One Tap not initialized");
       return;
     }
 
     // @ts-ignore
-    google.accounts.id.renderButton(
-      document.getElementById(elementId),
-      {
-        theme: 'outline',
-        size: 'large',
-        text: 'signin_with',
-        shape: 'rectangular',
-      }
-    );
+    google.accounts.id.renderButton(document.getElementById(elementId), {
+      theme: "outline",
+      size: "large",
+      text: "signin_with",
+      shape: "rectangular",
+    });
   }
 }
