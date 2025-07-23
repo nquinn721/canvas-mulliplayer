@@ -243,10 +243,27 @@ class AuthService {
 
       if (response.ok) {
         const data = await response.json();
-        return data.data?.user || null;
+        console.log('Token validation response:', data);
+        return data.data || null;
       }
       return null;
     } catch (error) {
+      console.error('Token validation error:', error);
+      return null;
+    }
+  }
+
+  // Public method to validate token and set auth state
+  async validateTokenAndSetAuth(token: string): Promise<AuthUser | null> {
+    try {
+      const userData = await this.validateToken(token);
+      if (userData) {
+        this.setAuth(token, userData);
+        return userData;
+      }
+      return null;
+    } catch (error) {
+      console.error("Token validation failed:", error);
       return null;
     }
   }
@@ -284,9 +301,11 @@ class AuthService {
       }
 
       const data: AuthResponse = await response.json();
+      console.log('Profile response:', data);
 
       if (data.success && data.data) {
-        this.user = data.data.user;
+        // Backend returns user data directly in data.data, not data.data.user
+        this.user = data.data as any; // Cast since backend returns user object directly
         localStorage.setItem("authUser", JSON.stringify(this.user));
       }
 
