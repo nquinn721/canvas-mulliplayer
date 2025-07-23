@@ -100,21 +100,42 @@ export class AuthController {
   @UseGuards(AuthGuard("google"))
   async googleCallback(@Request() req, @Response() res) {
     try {
+      console.log("Google callback called with user:", req.user);
       const result = req.user; // User data from strategy
 
       if (result && result.token) {
-        // Redirect to frontend with token
-        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+        // Determine frontend URL based on environment
+        let frontendUrl = process.env.FRONTEND_URL;
+        
+        if (!frontendUrl) {
+          if (process.env.NODE_ENV === 'production') {
+            // For Cloud Run, try to determine the frontend URL
+            const serviceUrl = process.env.SERVICE_URL || process.env.CLOUD_RUN_URL;
+            if (serviceUrl) {
+              // Assume frontend is served from the same domain
+              frontendUrl = serviceUrl;
+            } else {
+              // Fallback - you'll need to set this in your Cloud Run environment
+              frontendUrl = "https://your-cloud-run-service.run.app";
+            }
+          } else {
+            frontendUrl = "http://localhost:5173";
+          }
+        }
+
+        console.log("Redirecting to frontend with token:", frontendUrl);
         res.redirect(`${frontendUrl}?token=${result.token}`);
       } else {
+        console.error("No token in Google callback result:", result);
         // Redirect to frontend with error
-        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+        let frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
         res.redirect(
-          `${frontendUrl}?error=${encodeURIComponent("Google authentication failed")}`
+          `${frontendUrl}?error=${encodeURIComponent("Google authentication failed - no token received")}`
         );
       }
     } catch (error) {
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      console.error("Google callback error:", error);
+      let frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
       res.redirect(
         `${frontendUrl}?error=${encodeURIComponent(error.message || "Google authentication failed")}`
       );
@@ -253,6 +274,27 @@ export class AuthController {
     };
   }
 
+  @Get("debug")
+  async getDebugPage(@Response() res) {
+    // Serve the OAuth debug page
+    const fs = require('fs');
+    const path = require('path');
+    try {
+      const debugPage = fs.readFileSync(
+        path.join(process.cwd(), 'oauth-debug.html'), 
+        'utf8'
+      );
+      res.type('html');
+      res.send(debugPage);
+    } catch (error) {
+      res.json({
+        success: false,
+        message: 'Debug page not found',
+        error: error.message
+      });
+    }
+  }
+
   @Get("oauth-status")
   async getOAuthStatus() {
     const googleConfigured =
@@ -268,6 +310,7 @@ export class AuthController {
     return {
       success: true,
       data: {
+        environment: process.env.NODE_ENV || 'development',
         google: {
           configured: googleConfigured,
           clientId: googleConfigured
@@ -277,7 +320,19 @@ export class AuthController {
           status: googleConfigured
             ? "Ready"
             : "Needs real credentials from Google Cloud Console",
+          callbackUrl: process.env.GOOGLE_CALLBACK_URL || 'auto-detected',
         },
+        urls: {
+          frontendUrl: process.env.FRONTEND_URL || 'auto-detected',
+          serviceUrl: process.env.SERVICE_URL || process.env.CLOUD_RUN_URL || 'not-set',
+          port: process.env.PORT || '3001',
+        },
+        cloudRun: {
+          isCloudRun: !!(process.env.K_SERVICE || process.env.CLOUD_RUN_SERVICE),
+          service: process.env.K_SERVICE || process.env.CLOUD_RUN_SERVICE || 'not-detected',
+          revision: process.env.K_REVISION || 'not-detected',
+        },
+        timestamp: new Date().toISOString()
       },
     };
   }

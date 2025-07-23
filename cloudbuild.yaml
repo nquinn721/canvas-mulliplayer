@@ -37,8 +37,8 @@ steps:
         "--concurrency=80",
         "--timeout=3600",
         "--port=3001",
-        "--set-env-vars=NODE_ENV=production,DB_HOST=/cloudsql/heroic-footing-460117-k8:us-central1:stocktrader,DB_SOCKET_PATH=/cloudsql/heroic-footing-460117-k8:us-central1:stocktrader,DB_USERNAME=RStockTrader,DB_DATABASE=space_fighters",
-        "--set-secrets=DB_PASSWORD=database-password:latest,JWT_SECRET=JWT_SECRET:latest",
+        "--set-env-vars=NODE_ENV=production,DB_HOST=/cloudsql/heroic-footing-460117-k8:us-central1:stocktrader,DB_SOCKET_PATH=/cloudsql/heroic-footing-460117-k8:us-central1:stocktrader,DB_USERNAME=RStockTrader,DB_DATABASE=space_fighters,FRONTEND_URL=https://canvas-game-YOUR_REGION.a.run.app,GOOGLE_CALLBACK_URL=https://canvas-game-YOUR_REGION.a.run.app/api/auth/google/callback",
+        "--set-secrets=DB_PASSWORD=database-password:latest,JWT_SECRET=JWT_SECRET:latest,GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest",
         "--add-cloudsql-instances=heroic-footing-460117-k8:us-central1:stocktrader",
         "--revision-suffix=$SHORT_SHA",
       ]
