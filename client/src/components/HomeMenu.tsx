@@ -1,13 +1,7 @@
 import {
-  faBolt,
-  faBug,
   faCog,
-  faGamepad,
-  faGun,
-  faRobot,
   faRocket,
   faSignOutAlt,
-  faTimes,
   faUser,
   faVolumeMute,
   faVolumeUp,
@@ -20,7 +14,8 @@ import { gameStore, socketService } from "../stores";
 import { useAuth } from "./AuthContext";
 import { AuthModal } from "./AuthModal";
 import BackgroundCanvas from "./BackgroundCanvas";
-import { ErrorLogs } from "./ErrorLogs";
+import { GameSettingsModal } from "./GameSettingsModal";
+import { TopControls } from "./TopControls";
 import "./HomeMenu.css";
 
 interface HomeMenuProps {
@@ -42,10 +37,6 @@ const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
   });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [isMuted, setIsMuted] = useState(() => soundService.isSoundMuted());
-  const [selectedMusicTrack, setSelectedMusicTrack] = useState(() =>
-    soundService.getMusicTrack()
-  );
 
   // Update player name when user authentication changes
   useEffect(() => {
@@ -53,18 +44,6 @@ const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
       setPlayerName(user.username);
     }
   }, [user]);
-
-  // Volume toggle handler
-  const handleVolumeToggle = () => {
-    const newMutedState = soundService.toggleMute();
-    setIsMuted(newMutedState);
-  };
-
-  // Music track selection handler
-  const handleMusicTrackChange = (trackNumber: number) => {
-    setSelectedMusicTrack(trackNumber);
-    soundService.setMusicTrack(trackNumber);
-  };
 
   // Authentication handlers
   const handleAuthModalClose = () => {
@@ -93,15 +72,36 @@ const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
 
   // Establish socket connection when component mounts
   useEffect(() => {
+    let isComponentMounted = true;
+
     console.log("HomeMenu: Checking connection status...");
     console.log("gameStore.isConnected:", gameStore.isConnected);
     console.log("socketService.isConnected:", socketService.isConnected);
 
     // Connect to the server if not already connected
-    if (!socketService.isConnected) {
+    if (!socketService.isConnected && isComponentMounted) {
       console.log("HomeMenu: Attempting to connect...");
       socketService.connect();
     }
+
+    // Cleanup function to prevent issues with React's double-effect in development
+    return () => {
+      isComponentMounted = false;
+    };
+  }, []);
+
+  // Handle page unload to cleanup connections
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      console.log("HomeMenu: Page unloading, disconnecting socket...");
+      socketService.disconnect();
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
   }, []);
 
   const difficultyDescriptions = {
@@ -141,35 +141,11 @@ const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
         ))}
       </div>
 
-      {/* Settings Cog Button */}
-      <button
-        className="settings-cog"
-        onClick={() => setShowSettingsModal(true)}
-        title="Game Settings & Controls"
-      >
-        <FontAwesomeIcon icon={faCog} />
-      </button>
-
-      {/* Connection Status Indicator */}
-      <div
-        className={`connection-status ${gameStore.isConnected ? "connected" : "disconnected"}`}
-        title={
-          gameStore.isConnected
-            ? "Connected to server"
-            : "Disconnected from server"
-        }
-      >
-        <div className="connection-light"></div>
-      </div>
-
-      {/* Volume Toggle Button */}
-      <button
-        className={`volume-toggle ${isMuted ? "muted" : "unmuted"}`}
-        onClick={handleVolumeToggle}
-        title={isMuted ? "Unmute Sound" : "Mute Sound"}
-      >
-        <FontAwesomeIcon icon={isMuted ? faVolumeMute : faVolumeUp} />
-      </button>
+      {/* Top Controls (Settings, Connection, Volume) */}
+      <TopControls 
+        showSettings={true}
+        onShowSettings={() => setShowSettingsModal(true)}
+      />
 
       <div className="home-content">
         <header className="home-header">
@@ -289,211 +265,7 @@ const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
 
       {/* Settings Modal */}
       {showSettingsModal && (
-        <div
-          className="modal-overlay"
-          onClick={() => setShowSettingsModal(false)}
-        >
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="modal-close"
-              onClick={() => setShowSettingsModal(false)}
-            >
-              <FontAwesomeIcon icon={faTimes} />
-            </button>
-
-            <div className="modal-header">
-              <h2>
-                <FontAwesomeIcon icon={faCog} /> Game Settings & Controls
-              </h2>
-            </div>
-
-            <div className="modal-body">
-              <div className="settings-section">
-                <h3>
-                  <FontAwesomeIcon icon={faRobot} /> AI Bot Difficulty Settings
-                </h3>
-                <div className="settings-grid">
-                  <div className="setting-item easy">
-                    <div className="setting-header">
-                      <span className="difficulty-dot easy-dot"></span>
-                      <strong>EASY</strong>
-                    </div>
-                    <ul>
-                      <li>Detection Range: 800px</li>
-                      <li>Accuracy: 60%</li>
-                      <li>Reaction Speed: Slow</li>
-                      <li>Aggression: Low</li>
-                    </ul>
-                  </div>
-
-                  <div className="setting-item medium">
-                    <div className="setting-header">
-                      <span className="difficulty-dot medium-dot"></span>
-                      <strong>MEDIUM</strong>
-                    </div>
-                    <ul>
-                      <li>Detection Range: 1200px</li>
-                      <li>Accuracy: 75%</li>
-                      <li>Reaction Speed: Normal</li>
-                      <li>Aggression: Balanced</li>
-                    </ul>
-                  </div>
-
-                  <div className="setting-item hard">
-                    <div className="setting-header">
-                      <span className="difficulty-dot hard-dot"></span>
-                      <strong>HARD</strong>
-                    </div>
-                    <ul>
-                      <li>Detection Range: 1600px</li>
-                      <li>Accuracy: 90%</li>
-                      <li>Reaction Speed: Fast</li>
-                      <li>Aggression: High</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              <div className="settings-section">
-                <h3>
-                  <FontAwesomeIcon icon={faRocket} /> Weapons & Combat Systems
-                </h3>
-                <div className="weapons-grid">
-                  <div className="weapon-item">
-                    <div className="weapon-header">
-                      <span className="weapon-icon">
-                        <FontAwesomeIcon icon={faGun} />
-                      </span>
-                      <strong>Laser Cannons</strong>
-                    </div>
-                    <p>
-                      Primary weapon with unlimited ammo. Fast firing rate,
-                      moderate damage.
-                    </p>
-                    <span className="weapon-key">Left Click</span>
-                  </div>
-
-                  <div className="weapon-item">
-                    <div className="weapon-header">
-                      <span className="weapon-icon">
-                        <FontAwesomeIcon icon={faRocket} />
-                      </span>
-                      <strong>Homing Missiles</strong>
-                    </div>
-                    <p>
-                      Heat-seeking missiles that track enemies. High damage,
-                      limited ammo.
-                    </p>
-                    <span className="weapon-key">Right Click</span>
-                  </div>
-
-                  <div className="weapon-item">
-                    <div className="weapon-header">
-                      <span className="weapon-icon">
-                        <FontAwesomeIcon icon={faBolt} />
-                      </span>
-                      <strong>Flash Teleport</strong>
-                    </div>
-                    <p>
-                      Instant teleportation ability. Cooldown-based defensive
-                      maneuver.
-                    </p>
-                    <span className="weapon-key">F Key</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="settings-section">
-                <h3>
-                  <FontAwesomeIcon icon={faGamepad} /> Flight Controls
-                </h3>
-                <div className="controls-grid">
-                  <div className="control-group">
-                    <h4>Movement Controls</h4>
-                    <div className="control-item">
-                      <span className="control-key">W / S</span>
-                      <span>Thrust Forward / Reverse</span>
-                    </div>
-                    <div className="control-item">
-                      <span className="control-key">A / D</span>
-                      <span>Precision Strafe Left / Right</span>
-                    </div>
-                    <div className="control-item">
-                      <span className="control-key">Q / E</span>
-                      <span>Combat Strafe Left / Right</span>
-                    </div>
-                    <div className="control-item">
-                      <span className="control-key">Shift</span>
-                      <span>Afterburner Boost</span>
-                    </div>
-                  </div>
-
-                  <div className="control-group">
-                    <h4>Combat Controls</h4>
-                    <div className="control-item">
-                      <span className="control-key">Mouse</span>
-                      <span>Target Acquisition & Aiming</span>
-                    </div>
-                    <div className="control-item">
-                      <span className="control-key">Left Click</span>
-                      <span>Fire Laser Cannons</span>
-                    </div>
-                    <div className="control-item">
-                      <span className="control-key">Right Click</span>
-                      <span>Launch Homing Missile</span>
-                    </div>
-                    <div className="control-item">
-                      <span className="control-key">F</span>
-                      <span>Flash Teleport</span>
-                    </div>
-                    <div className="control-item">
-                      <span className="control-key">ESC</span>
-                      <span>Tactical Pause Menu</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="settings-section">
-                <h3>
-                  <FontAwesomeIcon icon={faVolumeUp} /> Background Music
-                </h3>
-                <div className="music-selection">
-                  <p>Choose your preferred background music track:</p>
-                  <div className="music-tracks">
-                    {[1, 2, 3, 4].map((trackNumber) => (
-                      <button
-                        key={trackNumber}
-                        className={`music-track-button ${
-                          selectedMusicTrack === trackNumber ? "selected" : ""
-                        }`}
-                        onClick={() => handleMusicTrackChange(trackNumber)}
-                      >
-                        Track {trackNumber}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="settings-section">
-                <h3>
-                  <FontAwesomeIcon icon={faBug} /> Server Error Logs
-                </h3>
-                <p
-                  style={{
-                    color: "rgba(255, 255, 255, 0.7)",
-                    marginBottom: "15px",
-                  }}
-                >
-                  Monitor server health and view recent error logs for debugging
-                  purposes.
-                </p>
-                <ErrorLogs />
-              </div>
-            </div>
-          </div>
-        </div>
+        <GameSettingsModal onClose={() => setShowSettingsModal(false)} />
       )}
 
       {/* Authentication Modal */}

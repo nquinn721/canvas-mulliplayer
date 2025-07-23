@@ -123,7 +123,7 @@ export class AuthService {
       }
     }
 
-    // Create guest user (not persisted to database)
+    // Create and save guest user to database (temporary user)
     const guestUser = this.userRepository.create({
       id: `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       username,
@@ -135,10 +135,13 @@ export class AuthService {
       updatedAt: new Date(),
     });
 
-    // Generate JWT token for guest
-    const token = this.generateToken(guestUser);
+    // Save guest user to database so it can be retrieved by profile endpoint
+    const savedGuestUser = await this.userRepository.save(guestUser);
 
-    return { user: guestUser, token };
+    // Generate JWT token for guest
+    const token = this.generateToken(savedGuestUser);
+
+    return { user: savedGuestUser, token };
   }
 
   async loginWithGoogle(
@@ -161,9 +164,12 @@ export class AuthService {
       }
     } else {
       // Generate a unique username from email or displayName
-      let baseUsername = email?.split('@')[0] || displayName?.replace(/\s+/g, '').toLowerCase() || 'user';
-      baseUsername = baseUsername.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-      
+      let baseUsername =
+        email?.split("@")[0] ||
+        displayName?.replace(/\s+/g, "").toLowerCase() ||
+        "user";
+      baseUsername = baseUsername.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+
       // Ensure username is unique
       let username = baseUsername;
       let counter = 1;
@@ -549,7 +555,7 @@ export class AuthService {
   async getUserById(userId: string) {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
-      throw new Error("User not found");
+      throw new NotFoundException("User not found");
     }
     return user;
   }

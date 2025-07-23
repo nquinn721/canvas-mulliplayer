@@ -6,9 +6,11 @@ import GameComponent from "../components/GameComponent";
 export const GamePage: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
-  
+
   // Default difficulty - could be passed as state from lobby in the future
-  const [aiDifficulty] = useState<"EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE">("MEDIUM");
+  const [aiDifficulty] = useState<
+    "EASY" | "MEDIUM" | "HARD" | "EXPERT" | "NIGHTMARE"
+  >("MEDIUM");
 
   const handleReturnToLobby = () => {
     navigate("/lobby");

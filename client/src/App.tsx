@@ -1,10 +1,15 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import {
+  Navigate,
+  Route,
+  BrowserRouter as Router,
+  Routes,
+} from "react-router-dom";
 import "./App.css";
 import { AuthProvider } from "./components/AuthContext";
 import { GamePage } from "./pages/GamePage";
-import { LoginPage } from "./pages/LoginPage";
 import { LobbyPage } from "./pages/LobbyPage";
+import { LoginPage } from "./pages/LoginPage";
 
 const App: React.FC = () => {
   return (

@@ -7,6 +7,8 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { AppController } from "./app.controller";
 import { AuthController } from "./controllers/auth.controller";
 import { ErrorsController } from "./controllers/errors.controller";
+import { LeaderboardController } from "./controllers/leaderboard.controller";
+import { Leaderboard } from "./entities/leaderboard.entity";
 import { User } from "./entities/user.entity";
 import { GlobalExceptionFilter } from "./filters/global-exception.filter";
 import { GameGateway } from "./game/game.gateway";
@@ -14,6 +16,7 @@ import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { RolesGuard } from "./guards/roles.guard";
 import { AuthService } from "./services/auth.service";
 import { ErrorLoggerService } from "./services/error-logger.service";
+import { LeaderboardService } from "./services/leaderboard.service";
 import { GoogleStrategy } from "./strategies/google.strategy";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 import { LocalStrategy } from "./strategies/local.strategy";
@@ -34,19 +37,19 @@ import { LocalStrategy } from "./strategies/local.strategy";
 
         const config = {
           type: "mysql" as const,
-          username: 
+          username:
             configService.get("SPACE_FIGHTER_DB_USERNAME") ||
-            configService.get("DB_USERNAME") || 
+            configService.get("DB_USERNAME") ||
             "SpaceFighter",
-          password: 
+          password:
             configService.get("SPACE_FIGHTER_DB_PASSWORD") ||
-            configService.get("DB_PASSWORD") || 
+            configService.get("DB_PASSWORD") ||
             "",
-          database: 
+          database:
             configService.get("SPACE_FIGHTER_DB_DATABASE") ||
-            configService.get("DB_DATABASE") || 
+            configService.get("DB_DATABASE") ||
             "space_fighters",
-          entities: [User],
+          entities: [User, Leaderboard],
           synchronize: true, // Always enable synchronization
           logging: !isProduction,
           migrations: ["dist/migrations/*.js"],
@@ -54,11 +57,11 @@ import { LocalStrategy } from "./strategies/local.strategy";
         };
 
         if (isProduction) {
-          const socketPath = 
+          const socketPath =
             configService.get("SPACE_FIGHTER_DB_SOCKET_PATH") ||
             configService.get("DB_SOCKET_PATH") ||
             "/cloudsql/heroic-footing-460117-k8:us-central1:stocktrader";
-            
+
           return {
             ...config,
             socketPath: socketPath,
@@ -74,7 +77,7 @@ import { LocalStrategy } from "./strategies/local.strategy";
       },
       inject: [ConfigService],
     }),
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, Leaderboard]),
 
     // Authentication modules
     PassportModule.register({ defaultStrategy: "jwt" }),
@@ -88,11 +91,17 @@ import { LocalStrategy } from "./strategies/local.strategy";
       },
     }),
   ],
-  controllers: [AppController, ErrorsController, AuthController],
+  controllers: [
+    AppController,
+    ErrorsController,
+    AuthController,
+    LeaderboardController,
+  ],
   providers: [
     GameGateway,
     ErrorLoggerService,
     AuthService,
+    LeaderboardService,
     JwtStrategy,
     LocalStrategy,
     GoogleStrategy,

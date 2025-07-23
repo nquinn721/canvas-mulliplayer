@@ -91,8 +91,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="auth-modal-overlay">
-      <div className="auth-modal">
+    <div className="auth-modal-overlay" onClick={onClose}>
+      <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
         <div className="auth-modal-header">
           <h2>{mode === "login" ? "Sign In" : "Create Account"}</h2>
           <button className="close-button" onClick={onClose}>

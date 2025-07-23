@@ -34,3 +34,11 @@ export {
   XP_REWARDS,
 } from "./config/ExperienceConfig";
 export { POWER_UP_CONFIG } from "./config/PowerUpConfig";
+export {
+  SCORING_CONFIG,
+  ScoringUtils,
+  type ScoreMultipliers,
+  type ScoringConfig,
+  type StreakBonuses,
+  type TimeBasedMultipliers,
+} from "./config/ScoringConfig";

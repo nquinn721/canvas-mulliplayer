@@ -1084,6 +1084,13 @@ export class GameGateway
                 console.log(
                   `Player ${killer.name} killed ${player.name} and gained ${XP_REWARDS.playerKill} XP`
                 );
+
+                // Emit kill event to the killer
+                this.server.to(killer.id).emit("playerKill", {
+                  killType: "player",
+                  victim: player.name,
+                  xpGained: XP_REWARDS.playerKill,
+                });
               }
             }
 
@@ -1097,6 +1104,8 @@ export class GameGateway
             x: projectile.x,
             y: projectile.y,
             targetId: playerId,
+            damage: projectile.damage,
+            ownerId: projectile.ownerId,
           });
         }
       });
@@ -1117,6 +1126,13 @@ export class GameGateway
               console.log(
                 `Player ${killer.name} killed AI enemy and gained ${XP_REWARDS.aiEnemyKill} XP`
               );
+
+              // Emit kill event to the killer
+              this.server.to(killer.id).emit("playerKill", {
+                killType: "ai",
+                victim: "AI Enemy",
+                xpGained: XP_REWARDS.aiEnemyKill,
+              });
             }
 
             // Respawn AI at a safe location
@@ -1132,6 +1148,8 @@ export class GameGateway
             x: projectile.x,
             y: projectile.y,
             targetId: aiId,
+            damage: projectile.damage,
+            ownerId: projectile.ownerId,
           });
         }
       });
@@ -1282,6 +1300,8 @@ export class GameGateway
             x: projectile.x,
             y: projectile.y,
             targetId: aiId,
+            damage: projectile.damage,
+            ownerId: projectile.ownerId,
           });
         }
       });

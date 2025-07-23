@@ -4,24 +4,133 @@ import { GameStore } from "../stores/GameStore";
 import { soundService } from "./SoundService";
 
 export class SocketService {
+  private static instance: SocketService | null = null;
   private socket: Socket | null = null;
   private gameStore: GameStore;
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private readonly HEARTBEAT_INTERVAL = 5000; // 5 seconds
+  private static readonly WINDOW_INSTANCE_KEY =
+    "__CANVAS_MULTIPLAYER_SOCKET_SERVICE__";
+  private static lastConnectionAttempt: number = 0;
+  private static readonly CONNECTION_DEBOUNCE_MS = 1000; // 1 second debounce
+  private static isConnecting: boolean = false;
+  private static connectionPromise: Promise<void> | null = null;
 
   constructor(gameStore: GameStore) {
     this.gameStore = gameStore;
+
+    // Check if there's already an instance in the global window object
+    if (
+      typeof window !== "undefined" &&
+      (window as any)[SocketService.WINDOW_INSTANCE_KEY]
+    ) {
+      console.warn(
+        "SocketService: Global instance already exists, returning existing instance"
+      );
+      return (window as any)[SocketService.WINDOW_INSTANCE_KEY];
+    }
+
+    // Ensure only one instance exists in class level
+    if (SocketService.instance && SocketService.instance !== this) {
+      console.warn(
+        "SocketService: Class instance already exists, disconnecting previous instance"
+      );
+      SocketService.instance.disconnect();
+    }
+
+    SocketService.instance = this;
+
+    // Store in global window object to prevent React StrictMode duplicates
+    if (typeof window !== "undefined") {
+      (window as any)[SocketService.WINDOW_INSTANCE_KEY] = this;
+    }
+  }
+
+  static getInstance(gameStore?: GameStore): SocketService {
+    // First check window global
+    if (
+      typeof window !== "undefined" &&
+      (window as any)[SocketService.WINDOW_INSTANCE_KEY]
+    ) {
+      return (window as any)[SocketService.WINDOW_INSTANCE_KEY];
+    }
+
+    // Then check class static
+    if (!SocketService.instance && gameStore) {
+      SocketService.instance = new SocketService(gameStore);
+    }
+    return SocketService.instance!;
+  }
+
+  static resetInstance() {
+    if (SocketService.instance) {
+      SocketService.instance.disconnect();
+      SocketService.instance = null;
+    }
+
+    // Clear window global as well
+    if (typeof window !== "undefined") {
+      delete (window as any)[SocketService.WINDOW_INSTANCE_KEY];
+    }
   }
 
   connect(url?: string) {
-    if (this.socket?.connected) {
+    const now = Date.now();
+
+    // Check for browser session lock to prevent React StrictMode double connections
+    const sessionKey = "socket-service-lock";
+    if (typeof window !== "undefined") {
+      const existingLock = sessionStorage.getItem(sessionKey);
+      if (existingLock) {
+        const lockTime = parseInt(existingLock);
+        // If lock is less than 1 second old, skip connection
+        if (now - lockTime < 1000) {
+          console.log(
+            "SocketService: Connection attempt blocked by session lock (React StrictMode protection)"
+          );
+          return;
+        }
+      }
+      // Set new lock
+      sessionStorage.setItem(sessionKey, now.toString());
+    }
+
+    // Debounce connection attempts to prevent React StrictMode double calls
+    if (
+      now - SocketService.lastConnectionAttempt <
+      SocketService.CONNECTION_DEBOUNCE_MS
+    ) {
+      console.log("SocketService: Connection attempt debounced");
       return;
+    }
+    SocketService.lastConnectionAttempt = now;
+
+    // Return early if already connected or connecting
+    if (this.socket?.connected) {
+      console.log(
+        "SocketService: Already connected, skipping connection attempt"
+      );
+      return;
+    }
+
+    // If we have a socket that's not connected, clean it up first
+    if (this.socket && !this.socket.connected) {
+      console.log("SocketService: Cleaning up existing disconnected socket");
+      this.socket.removeAllListeners();
+      this.socket = null;
     }
 
     // Automatically determine server URL based on environment
     const serverUrl = url || this.getServerUrl();
+    console.log("SocketService: Connecting to", serverUrl);
 
-    this.socket = io(serverUrl);
+    this.socket = io(serverUrl, {
+      // Prevent duplicate connections
+      forceNew: true,
+      // Set timeout for connection attempts
+      timeout: 10000,
+    });
+
     this.gameStore.setSocket(this.socket);
     this.setupEventListeners();
   }
@@ -41,7 +150,17 @@ export class SocketService {
 
     // Connection events
     this.socket.on("connect", () => {
+      console.log(
+        "SocketService: Connected successfully with ID:",
+        this.socket?.id
+      );
       this.gameStore.setConnected(true);
+
+      // Clear session lock on successful connection
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("socket-service-lock");
+      }
+
       // Start ping measurement for latency compensation
       this.startPingMeasurement();
       // Start heartbeat to maintain connection
@@ -49,6 +168,7 @@ export class SocketService {
     });
 
     this.socket.on("disconnect", () => {
+      console.log("SocketService: Disconnected");
       this.gameStore.setConnected(false);
       // Stop heartbeat on disconnect
       this.stopHeartbeat();
@@ -108,8 +228,19 @@ export class SocketService {
         y: number;
         targetId?: string;
         wallHit?: boolean;
+        damage?: number;
+        ownerId?: string;
       }) => {
         this.gameStore.handleProjectileHit(data);
+
+        // Track hits for scoring if this was the current player's projectile
+        if (
+          data.ownerId === this.gameStore.playerId &&
+          data.targetId &&
+          !data.wallHit
+        ) {
+          this.gameStore.addHit(data.damage || 0);
+        }
 
         const currentPlayer = this.gameStore.currentPlayer;
         const explosionPos = { x: data.x, y: data.y };
@@ -271,6 +402,26 @@ export class SocketService {
       }
     });
 
+    // Kill events for stats tracking
+    this.socket.on(
+      "playerKill",
+      (data: { killType: string; victim: string; xpGained: number }) => {
+        // Track the kill in game stats
+        if (data.killType === "player") {
+          this.gameStore.addKill();
+        } else if (data.killType === "ai") {
+          this.gameStore.addKill(); // AI kills also count as kills
+        }
+
+        // Play kill sound effect
+        soundService.playSound("kill", 0.8);
+
+        console.log(
+          `Kill recorded: ${data.killType} kill (${data.victim}) - ${data.xpGained} XP`
+        );
+      }
+    );
+
     // Error handling
     this.socket.on("connect_error", (error) => {
       console.error("Connection error:", error);
@@ -279,11 +430,31 @@ export class SocketService {
   }
 
   disconnect() {
+    console.log("SocketService: Disconnecting...");
     if (this.socket) {
       this.stopHeartbeat();
+      this.socket.removeAllListeners();
       this.socket.disconnect();
       this.socket = null;
       this.gameStore.setConnected(false);
+    }
+
+    // Clear session lock on disconnect
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("socket-service-lock");
+    }
+
+    // Clear the static instance if this is the current instance
+    if (SocketService.instance === this) {
+      SocketService.instance = null;
+    }
+
+    // Clear the window global instance as well
+    if (
+      typeof window !== "undefined" &&
+      (window as any)[SocketService.WINDOW_INSTANCE_KEY] === this
+    ) {
+      delete (window as any)[SocketService.WINDOW_INSTANCE_KEY];
     }
   }
 

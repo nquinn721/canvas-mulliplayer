@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthContext";
 import HomeMenu from "../components/HomeMenu";
@@ -6,6 +6,13 @@ import HomeMenu from "../components/HomeMenu";
 export const LoginPage: React.FC = () => {
   const { isAuthenticated, isLoading, loginAsGuest } = useAuth();
   const navigate = useNavigate();
+
+  // Handle navigation in useEffect to avoid React Router warnings
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      navigate("/lobby");
+    }
+  }, [isLoading, isAuthenticated, navigate]);
 
   const handlePlayAsGuest = async (
     playerName: string,
@@ -33,9 +40,8 @@ export const LoginPage: React.FC = () => {
     );
   }
 
-  // If already authenticated, redirect to lobby
+  // Don't render anything if already authenticated (useEffect will handle redirect)
   if (isAuthenticated) {
-    navigate("/lobby");
     return null;
   }
 

@@ -1,4 +1,5 @@
 import { Camera, GameState, KeyState, Projectile } from "@shared";
+import { SCORING_CONFIG, ScoringUtils } from "@shared/config/ScoringConfig";
 import { makeAutoObservable } from "mobx";
 import { Socket } from "socket.io-client";
 import { debugLogger } from "../services/DebugLogger";
@@ -22,6 +23,36 @@ export class GameStore {
   camera: Camera;
   stats = { ping: 0, fps: 0 };
   isConnected = false;
+
+  // Game session stats
+  gameStats = {
+    score: 0,
+    kills: 0,
+    deaths: 0,
+    assists: 0,
+    gameStartTime: 0,
+    lastKillTime: 0,
+    currentKillStreak: 0,
+    maxKillStreak: 0,
+    damageDealt: 0,
+    damageTaken: 0,
+    powerUpsCollected: 0,
+    enemiesDestroyed: 0,
+    meteorsDestroyed: 0,
+    headshots: 0,
+    // Time-based tracking
+    killTimes: [] as number[],
+    lastHitTime: 0,
+    hitStreak: 0,
+    consecutiveHits: 0,
+    comboStartTime: 0,
+    comboActionCount: 0,
+    currentHitMultiplier: 1.0,
+    // Survival scoring
+    lastSurvivalScoreTime: 0,
+    survivalBonusMultiplier: 1.0,
+    totalSurvivalScore: 0,
+  };
 
   // Missile ability state
   lastMissileTime: number = 0;
@@ -96,6 +127,12 @@ export class GameStore {
 
   setPlayerId(id: string) {
     const previousId = this.playerId;
+
+    // Only update and log if the ID actually changed
+    if (previousId === id) {
+      return; // No change, exit early
+    }
+
     this.playerId = id;
 
     // Initialize latency compensation for this player
@@ -109,7 +146,7 @@ export class GameStore {
       this.latencyCompensation = new LatencyCompensationService(id);
     }
 
-    // Debug logging for player ID changes
+    // Debug logging only for actual player ID changes
     debugLogger.logStateIssue(
       "Player ID changed",
       {
@@ -119,7 +156,7 @@ export class GameStore {
         hasPlayers: Object.keys(this.gameState.players).length > 0,
         playerExists: !!this.gameState.players[id],
       },
-      previousId && previousId !== id ? "HIGH" : "LOW"
+      "LOW" // Reduced severity since this is normal during connection
     );
 
     this.updateCameraPosition();
@@ -139,6 +176,11 @@ export class GameStore {
     if (this.playerId && newPlayer) {
       const wasAlive = currentPlayer && currentPlayer.health > 0;
       const isNowAlive = newPlayer.health > 0;
+
+      // Player died - track the death
+      if (wasAlive && !isNowAlive) {
+        this.addDeath();
+      }
 
       // Player spawned for the first time or respawned after death
       if (!wasAlive && isNowAlive) {
@@ -168,6 +210,323 @@ export class GameStore {
   updateStats(stats: { ping?: number; fps?: number }) {
     if (stats.ping !== undefined) this.stats.ping = stats.ping;
     if (stats.fps !== undefined) this.stats.fps = stats.fps;
+  }
+
+  // Game stats management
+  initializeGameSession() {
+    this.gameStats = {
+      score: 0,
+      kills: 0,
+      deaths: 0,
+      assists: 0,
+      gameStartTime: Date.now(),
+      lastKillTime: 0,
+      currentKillStreak: 0,
+      maxKillStreak: 0,
+      damageDealt: 0,
+      damageTaken: 0,
+      powerUpsCollected: 0,
+      enemiesDestroyed: 0,
+      meteorsDestroyed: 0,
+      headshots: 0,
+      // Time-based tracking
+      killTimes: [],
+      lastHitTime: 0,
+      hitStreak: 0,
+      consecutiveHits: 0,
+      comboStartTime: 0,
+      comboActionCount: 0,
+      currentHitMultiplier: 1.0,
+      // Survival scoring
+      lastSurvivalScoreTime: Date.now(),
+      survivalBonusMultiplier: 1.0,
+      totalSurvivalScore: 0,
+    };
+  }
+
+  addKill(isHeadshot: boolean = false) {
+    const currentTime = Date.now();
+    this.gameStats.kills++;
+    this.gameStats.currentKillStreak++;
+    this.gameStats.lastKillTime = currentTime;
+    this.gameStats.killTimes.push(currentTime);
+
+    // Keep only recent kill times (last 10 kills for performance)
+    if (this.gameStats.killTimes.length > 10) {
+      this.gameStats.killTimes = this.gameStats.killTimes.slice(-10);
+    }
+
+    if (this.gameStats.currentKillStreak > this.gameStats.maxKillStreak) {
+      this.gameStats.maxKillStreak = this.gameStats.currentKillStreak;
+    }
+
+    if (isHeadshot) {
+      this.gameStats.headshots++;
+    }
+
+    // Calculate score with time-based multipliers
+    this.calculateAndAddScore("kill", {
+      isHeadshot,
+      streakCount: this.gameStats.currentKillStreak,
+      killTimes: this.gameStats.killTimes,
+      currentTime,
+    });
+  }
+
+  addDeath() {
+    this.gameStats.deaths++;
+    this.gameStats.currentKillStreak = 0; // Reset kill streak on death
+
+    // Subtract score for death
+    this.calculateAndAddScore("death");
+  }
+
+  addAssist() {
+    this.gameStats.assists++;
+
+    // Add score for assist
+    this.calculateAndAddScore("assist");
+  }
+
+  addHit(damage: number = 0) {
+    const currentTime = Date.now();
+
+    // Update hit streak
+    const streakData = ScoringUtils.updateHitStreak(
+      SCORING_CONFIG,
+      this.gameStats.lastHitTime,
+      currentTime,
+      this.gameStats.hitStreak
+    );
+
+    this.gameStats.hitStreak = streakData.streak;
+    this.gameStats.currentHitMultiplier = streakData.multiplier;
+    this.gameStats.lastHitTime = currentTime;
+
+    // Update consecutive hits (resets if too much time passed)
+    if (
+      currentTime - this.gameStats.lastHitTime <=
+      SCORING_CONFIG.timeBasedMultipliers.hitStreakWindow
+    ) {
+      this.gameStats.consecutiveHits++;
+    } else {
+      this.gameStats.consecutiveHits = 1;
+    }
+
+    // Update combo tracking
+    if (this.gameStats.comboStartTime === 0) {
+      this.gameStats.comboStartTime = currentTime;
+      this.gameStats.comboActionCount = 1;
+    } else {
+      this.gameStats.comboActionCount++;
+    }
+
+    // Add damage dealt
+    if (damage > 0) {
+      this.addDamageDealt(damage);
+    }
+
+    // Calculate hit score with multipliers
+    this.calculateAndAddScore("hit", {
+      consecutiveHits: this.gameStats.consecutiveHits,
+      hitStreakMultiplier: this.gameStats.currentHitMultiplier,
+      comboStartTime: this.gameStats.comboStartTime,
+      comboActionCount: this.gameStats.comboActionCount,
+      currentTime,
+    });
+  }
+
+  addDamageDealt(damage: number) {
+    this.gameStats.damageDealt += damage;
+  }
+
+  addDamageTaken(damage: number) {
+    this.gameStats.damageTaken += damage;
+
+    // Small score penalty for damage taken
+    this.calculateAndAddScore("damageTaken", { damage });
+  }
+
+  addPowerUpCollected() {
+    this.gameStats.powerUpsCollected++;
+    this.calculateAndAddScore("powerUpCollection");
+  }
+
+  addEnemyDestroyed() {
+    this.gameStats.enemiesDestroyed++;
+    this.calculateAndAddScore("enemyDestroyed");
+  }
+
+  addMeteorDestroyed() {
+    this.gameStats.meteorsDestroyed++;
+    this.calculateAndAddScore("meteorDestroyed");
+  }
+
+  // Calculate and add score based on action
+  private calculateAndAddScore(action: string, params?: any) {
+    let scoreToAdd = 0;
+
+    switch (action) {
+      case "kill":
+        scoreToAdd = ScoringUtils.calculateKillScore(
+          SCORING_CONFIG,
+          params?.isHeadshot || false,
+          params?.streakCount || 0,
+          false // firstBlood - TODO: implement
+        );
+
+        // Apply rapid kill multiplier
+        if (params?.killTimes && params?.currentTime) {
+          const rapidMultiplier = ScoringUtils.calculateRapidKillMultiplier(
+            SCORING_CONFIG,
+            params.killTimes,
+            params.currentTime
+          );
+          scoreToAdd = Math.floor(scoreToAdd * rapidMultiplier);
+        }
+        break;
+
+      case "hit":
+        scoreToAdd = ScoringUtils.calculateHitScore(
+          SCORING_CONFIG,
+          params?.consecutiveHits || 0,
+          params?.hitStreakMultiplier || 1.0
+        );
+
+        // Apply combo multiplier
+        if (
+          params?.comboStartTime &&
+          params?.currentTime &&
+          params?.comboActionCount
+        ) {
+          const comboMultiplier = ScoringUtils.calculateComboMultiplier(
+            SCORING_CONFIG,
+            params.comboStartTime,
+            params.currentTime,
+            params.comboActionCount
+          );
+          scoreToAdd = Math.floor(scoreToAdd * comboMultiplier);
+        }
+        break;
+
+      case "assist":
+        scoreToAdd = SCORING_CONFIG.multipliers.assist;
+        break;
+      case "death":
+        scoreToAdd = SCORING_CONFIG.multipliers.death;
+        break;
+      case "powerUpCollection":
+        scoreToAdd = SCORING_CONFIG.multipliers.powerUpCollection;
+        break;
+      case "enemyDestroyed":
+        scoreToAdd = SCORING_CONFIG.multipliers.enemyDestroyed;
+        break;
+      case "meteorDestroyed":
+        scoreToAdd = SCORING_CONFIG.multipliers.meteorDestroyed;
+        break;
+      case "damageTaken":
+        scoreToAdd =
+          SCORING_CONFIG.multipliers.damageTaken * (params?.damage || 0);
+        break;
+    }
+
+    this.gameStats.score = Math.max(0, this.gameStats.score + scoreToAdd);
+  }
+
+  // Simple method to add score directly (used by survival scoring)
+  addScore(points: number) {
+    this.gameStats.score = Math.max(0, this.gameStats.score + points);
+  }
+
+  // Check and reset combos/streaks if too much time has passed
+  updateTimeBasedTracking() {
+    const currentTime = Date.now();
+
+    // Update survival scoring continuously
+    this.updateSurvivalScore(currentTime);
+
+    // Reset combo if it has expired
+    if (this.gameStats.comboStartTime > 0) {
+      const comboDuration = currentTime - this.gameStats.comboStartTime;
+      if (comboDuration > SCORING_CONFIG.timeBasedMultipliers.comboDuration) {
+        this.gameStats.comboStartTime = 0;
+        this.gameStats.comboActionCount = 0;
+      }
+    }
+
+    // Reset hit streak if too much time has passed
+    if (this.gameStats.lastHitTime > 0) {
+      const timeSinceLastHit = currentTime - this.gameStats.lastHitTime;
+      if (
+        timeSinceLastHit > SCORING_CONFIG.timeBasedMultipliers.hitStreakWindow
+      ) {
+        this.gameStats.hitStreak = 0;
+        this.gameStats.consecutiveHits = 0;
+        this.gameStats.currentHitMultiplier = 1.0;
+      }
+    }
+  }
+
+  // Update survival score continuously (called every frame)
+  updateSurvivalScore(currentTime: number) {
+    // Only award survival points if the game has started
+    if (this.gameStats.gameStartTime === 0) return;
+
+    // Award survival points every second
+    const timeSinceLastSurvivalScore =
+      currentTime - this.gameStats.lastSurvivalScoreTime;
+    if (timeSinceLastSurvivalScore >= 1000) {
+      // Every 1 second
+      const survivalTimeMs = currentTime - this.gameStats.gameStartTime;
+      const survivalData = ScoringUtils.calculateProgressiveSurvivalScore(
+        SCORING_CONFIG,
+        survivalTimeMs
+      );
+
+      // Calculate the score for this second
+      const scoreThisSecond = Math.floor(
+        survivalData.score - this.gameStats.totalSurvivalScore
+      );
+
+      if (scoreThisSecond > 0) {
+        this.gameStats.totalSurvivalScore = survivalData.score;
+        this.gameStats.survivalBonusMultiplier = survivalData.multiplier;
+        this.gameStats.score = Math.max(
+          0,
+          this.gameStats.score + scoreThisSecond
+        );
+      }
+
+      this.gameStats.lastSurvivalScoreTime = currentTime;
+    }
+  }
+
+  // Computed values for display
+  get currentKDA(): string {
+    const k = this.gameStats.kills;
+    const d = Math.max(1, this.gameStats.deaths); // Avoid division by zero
+    const a = this.gameStats.assists;
+    const ratio = ((k + a) / d).toFixed(2);
+    return `${k}/${this.gameStats.deaths}/${a} (${ratio})`;
+  }
+
+  get killDeathRatio(): number {
+    const deaths = Math.max(1, this.gameStats.deaths);
+    return this.gameStats.kills / deaths;
+  }
+
+  get survivalTime(): number {
+    if (this.gameStats.gameStartTime === 0) return 0;
+    return Date.now() - this.gameStats.gameStartTime;
+  }
+
+  get survivalBonusText(): string {
+    if (this.gameStats.gameStartTime === 0) return "";
+    return ScoringUtils.getSurvivalBonusText(this.survivalTime, SCORING_CONFIG);
+  }
+
+  get currentSurvivalMultiplier(): number {
+    return this.gameStats.survivalBonusMultiplier;
   }
 
   // Input management
@@ -635,6 +994,36 @@ export class GameStore {
     };
     this.playerId = "";
     this.latencyCompensation = null;
+
+    // Reset game stats
+    this.gameStats = {
+      score: 0,
+      kills: 0,
+      deaths: 0,
+      assists: 0,
+      gameStartTime: 0,
+      lastKillTime: 0,
+      currentKillStreak: 0,
+      maxKillStreak: 0,
+      damageDealt: 0,
+      damageTaken: 0,
+      powerUpsCollected: 0,
+      enemiesDestroyed: 0,
+      meteorsDestroyed: 0,
+      headshots: 0,
+      // Time-based tracking
+      killTimes: [],
+      lastHitTime: 0,
+      hitStreak: 0,
+      consecutiveHits: 0,
+      comboStartTime: 0,
+      comboActionCount: 0,
+      currentHitMultiplier: 1.0,
+      // Survival scoring
+      lastSurvivalScoreTime: 0,
+      survivalBonusMultiplier: 1.0,
+      totalSurvivalScore: 0,
+    };
   }
 
   // Get interpolated game state for smooth rendering

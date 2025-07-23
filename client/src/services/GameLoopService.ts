@@ -55,6 +55,9 @@ export class GameLoopService {
     // Update particle effects
     this.gameStore.updateParticles(deltaTime);
 
+    // Update time-based scoring tracking
+    this.gameStore.updateTimeBasedTracking();
+
     // Generate wind effects for moving players
     this.updateWindEffects();
 

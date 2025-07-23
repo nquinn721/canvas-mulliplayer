@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "./AuthContext";
+import { TopControls } from "./TopControls";
 import "./Homepage.css";
 
 interface HomepageProps {
@@ -75,11 +76,37 @@ export const Homepage: React.FC<HomepageProps> = ({
 
   return (
     <div className="homepage">
+      {/* Top Controls (Connection Status, Volume) */}
+      <TopControls 
+        showSettings={true}
+        onShowSettings={onShowSettings}
+      />
+      
       <div className="homepage-container">
         {/* Header */}
         <div className="homepage-header">
-          <h1>Space Fighters</h1>
-          <p className="welcome-message">Welcome back, Commander!</p>
+          <div className="header-content">
+            <div className="header-title">
+              <h1>SPACE FIGHTERS</h1>
+              <p className="welcome-message">Welcome back, Commander!</p>
+            </div>
+            <div className="header-actions">
+              {user.authProvider === "guest" ? (
+                <button
+                  className="login-button"
+                  onClick={() => window.open("/api/auth/google", "_self")}
+                >
+                  <i className="fas fa-sign-in-alt"></i>
+                  Login with Google
+                </button>
+              ) : (
+                <button className="logout-button" onClick={logout}>
+                  <i className="fas fa-sign-out-alt"></i>
+                  Logout
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* User Profile Card */}

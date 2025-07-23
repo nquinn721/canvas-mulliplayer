@@ -1,0 +1,321 @@
+/* Game Stats Component Styles */
+.game-stats {
+  position: fixed;
+  top: 60px; /* Below the header */
+  right: 20px;
+  background: linear-gradient(135deg, rgba(20, 20, 40, 0.95) 0%, rgba(40, 40, 80, 0.95) 100%);
+  border: 2px solid #00d4ff;
+  border-radius: 8px;
+  padding: 8px 12px;
+  box-shadow: 
+    0 4px 16px rgba(0, 212, 255, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  min-width: 180px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  z-index: 1000;
+  user-select: none;
+}
+
+.stats-header {
+  text-align: center;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+  padding-bottom: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.stats-header h3 {
+  color: #00d4ff;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+}
+
+.stats-content {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Score Section */
+.score-group {
+  text-align: center;
+  background: rgba(0, 212, 255, 0.1);
+  border-radius: 4px;
+  padding: 4px 6px;
+  flex: 1;
+}
+
+.score-group .stat-label {
+  color: #00d4ff;
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.score-value {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+  display: block;
+  margin-top: 2px;
+}
+
+/* KDA Section */
+.kda-group {
+  text-align: center;
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: 4px;
+  padding: 4px 6px;
+  flex: 1;
+}
+
+.kda-group .stat-label {
+  color: #ffd700;
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kda-value {
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+  display: block;
+  margin-top: 2px;
+}
+
+/* Stats Row */
+.stats-row {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  align-items: center;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  padding: 3px 4px;
+  transition: all 0.2s ease;
+  flex: 1;
+  min-width: 0;
+}
+
+.stat-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.stat-icon {
+  font-size: 10px;
+  margin-bottom: 1px;
+}
+
+.stat-number {
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.stat-text {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 7px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 1px;
+}
+
+/* Kill Streak Section */
+.streak-group {
+  background: rgba(255, 0, 128, 0.1);
+  border-radius: 4px;
+  padding: 4px 6px;
+  flex: 1;
+}
+
+.streak-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.streak-current,
+.streak-max {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.streak-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 8px;
+}
+
+.streak-number {
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.streak-status {
+  text-align: center;
+  font-size: 8px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  animation: pulseGlow 1.5s ease-in-out infinite;
+  text-shadow: 0 0 8px currentColor;
+}
+
+/* Animations */
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .game-stats {
+    top: 50px;
+    right: 10px;
+    min-width: 180px;
+    padding: 12px;
+  }
+
+  .score-value {
+    font-size: 20px;
+  }
+
+  .kda-value {
+    font-size: 14px;
+  }
+
+  .stat-number {
+    font-size: 14px;
+  }
+
+  .stats-row {
+    gap: 6px;
+  }
+}
+
+/* Color variants for different streak levels */
+.streak-double { color: #00ff00 !important; }
+.streak-triple { color: #ffd700 !important; }
+.streak-multi { color: #ff4500 !important; }
+.streak-ultra { color: #ff1493 !important; }
+.streak-rampage { color: #ff0080 !important; }
+.streak-godlike { color: #ff0080 !important; }
+
+/* Stat group animations */
+.stat-group {
+  transition: all 0.3s ease;
+}
+
+.stat-group:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+}
+
+/* Score increase animation */
+@keyframes scoreIncrease {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); color: #00ff00; }
+  100% { transform: scale(1); }
+}
+
+.score-value.updated {
+  animation: scoreIncrease 0.3s ease;
+}
+
+/* Kill streak milestone animations */
+@keyframes streakMilestone {
+  0% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.2) rotate(5deg); }
+  50% { transform: scale(1.1) rotate(-5deg); }
+  75% { transform: scale(1.2) rotate(5deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+.streak-milestone {
+  animation: streakMilestone 0.5s ease;
+}
+
+/* Connection Status Indicator */
+.stats-header .connection-indicator {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.stats-header .connection-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.stats-header .connection-dot.connected {
+  background: #4caf50;
+  box-shadow: 
+    0 0 6px rgba(76, 175, 80, 0.8),
+    0 0 12px rgba(76, 175, 80, 0.4);
+  animation: pulseGreen 2s infinite;
+}
+
+.stats-header .connection-dot.disconnected {
+  background: #f44336;
+  box-shadow: 
+    0 0 6px rgba(244, 67, 54, 0.8),
+    0 0 12px rgba(244, 67, 54, 0.4);
+  animation: pulseRed 1s infinite;
+}
+
+/* Connection status pulse animations */
+@keyframes pulseGreen {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes pulseRed {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.15);
+  }
+}

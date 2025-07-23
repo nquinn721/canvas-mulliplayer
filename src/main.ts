@@ -79,7 +79,7 @@ async function bootstrap() {
               "http://localhost:5174", // Alternative Vite dev server port
               /^http:\/\/localhost:\d+$/, // Allow any localhost port in development
             ],
-      methods: ["GET", "POST"],
+      methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
       credentials: true,
     });
 

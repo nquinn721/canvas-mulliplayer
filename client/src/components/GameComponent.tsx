@@ -9,6 +9,7 @@ import { soundService } from "../services/SoundService";
 import { gameStore, socketService } from "../stores";
 import DeathMenu from "./DeathMenu";
 import EscapeMenu from "./EscapeMenu";
+import { GameStats } from "./GameStats";
 
 interface GameComponentProps {
   playerName: string;
@@ -116,6 +117,8 @@ const GameComponent = observer(
           // Join the game with the player's chosen name
           if (socketService.isConnected) {
             socketService.joinGame(playerName);
+            // Initialize game stats for this session
+            gameStore?.initializeGameSession();
             // After joining, try to set the AI difficulty from home menu selection
             // This will only succeed if the player has permission to change it
             setTimeout(() => {
@@ -130,6 +133,8 @@ const GameComponent = observer(
             const checkConnection = setInterval(() => {
               if (socketService.isConnected) {
                 socketService.joinGame(playerName);
+                // Initialize game stats for this session
+                gameStore?.initializeGameSession();
                 // After joining, try to set the AI difficulty from home menu selection
                 setTimeout(() => {
                   if (gameStore?.socket) {
@@ -357,6 +362,22 @@ const GameComponent = observer(
             }}
           />
         </div>
+
+        {/* Game Stats Display - Top Right Corner */}
+        {!isPlayerDead && (
+          <GameStats
+            score={gameStore?.gameStats.score || 0}
+            kills={gameStore?.gameStats.kills || 0}
+            deaths={gameStore?.gameStats.deaths || 0}
+            assists={gameStore?.gameStats.assists || 0}
+            currentStreak={gameStore?.gameStats.currentKillStreak || 0}
+            maxStreak={gameStore?.gameStats.maxKillStreak || 0}
+            kda={gameStore?.currentKDA || "0/0/0 (0.00)"}
+            hitStreak={gameStore?.gameStats.hitStreak || 0}
+            survivalBonusText={gameStore?.survivalBonusText || ""}
+            survivalMultiplier={gameStore?.currentSurvivalMultiplier || 1.0}
+          />
+        )}
 
         {/* Death Menu */}
         {isPlayerDead && (

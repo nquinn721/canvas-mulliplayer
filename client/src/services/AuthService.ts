@@ -35,9 +35,10 @@ export interface AuthStatus {
 class AuthService {
   private token: string | null = null;
   private user: AuthUser | null = null;
-  private baseUrl = process.env.NODE_ENV === 'production' 
-    ? "https://canvas-game-203453576607.us-east1.run.app/api"
-    : "http://localhost:3001/api";
+  private baseUrl =
+    process.env.NODE_ENV === "production"
+      ? "https://canvas-game-203453576607.us-east1.run.app/api"
+      : "http://localhost:3001/api";
 
   constructor() {
     // Load token from localStorage on initialization
@@ -252,12 +253,35 @@ class AuthService {
 
   async getProfile(): Promise<AuthResponse> {
     try {
+      if (!this.token) {
+        return {
+          success: false,
+          message: "No authentication token available",
+        };
+      }
+
       const response = await fetch(`${this.baseUrl}/auth/profile`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${this.token}`,
         },
       });
+
+      if (!response.ok) {
+        // If unauthorized, clear local auth data
+        if (response.status === 401) {
+          this.logout();
+          return {
+            success: false,
+            message: "Authentication expired",
+          };
+        }
+
+        return {
+          success: false,
+          message: `Server error: ${response.status}`,
+        };
+      }
 
       const data: AuthResponse = await response.json();
 
@@ -268,6 +292,7 @@ class AuthService {
 
       return data;
     } catch (error) {
+      console.error("Profile fetch error:", error);
       return {
         success: false,
         message: "Network error occurred",
@@ -312,10 +337,11 @@ class AuthService {
 
   // Socket.io integration
   connectToGame(): Socket {
-    const socketUrl = process.env.NODE_ENV === 'production' 
-      ? "https://canvas-game-203453576607.us-east1.run.app"
-      : "http://localhost:3001";
-      
+    const socketUrl =
+      process.env.NODE_ENV === "production"
+        ? "https://canvas-game-203453576607.us-east1.run.app"
+        : "http://localhost:3001";
+
     const socket = io(socketUrl, {
       auth: {
         token: this.token,
