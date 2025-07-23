@@ -15,6 +15,22 @@ if (!global.crypto) {
   global.crypto = globalThis.crypto;
 }
 
+// Global error handlers to catch unhandled errors
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('=== UNHANDLED PROMISE REJECTION ===');
+  console.error('Promise:', promise);
+  console.error('Reason:', reason);
+  if (reason && typeof reason === 'object' && 'stack' in reason) {
+    console.error('Stack:', (reason as Error).stack);
+  }
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('=== UNCAUGHT EXCEPTION ===');
+  console.error('Error:', error);
+  console.error('Stack:', error.stack);
+});
+
 import { NestFactory } from "@nestjs/core";
 import * as express from "express";
 import { Request, Response } from "express";
@@ -69,6 +85,30 @@ async function bootstrap() {
 
     // Set global prefix for API routes to avoid conflicts with static files
     app.setGlobalPrefix("api");
+
+    // Add global exception filter to catch and log all unhandled exceptions
+    app.useGlobalFilters({
+      catch: (exception: any, host: any) => {
+        const ctx = host.switchToHttp();
+        const request = ctx.getRequest();
+        const response = ctx.getResponse();
+        
+        console.error('=== GLOBAL EXCEPTION FILTER ===');
+        console.error('Request URL:', request.url);
+        console.error('Request method:', request.method);
+        console.error('Exception:', exception);
+        console.error('Exception stack:', exception?.stack);
+        console.error('Exception message:', exception?.message);
+        
+        const status = exception?.getStatus ? exception.getStatus() : 500;
+        response.status(status).json({
+          statusCode: status,
+          timestamp: new Date().toISOString(),
+          path: request.url,
+          message: exception?.message || 'Internal server error',
+        });
+      }
+    });
 
     // Enable CORS for development and production
     app.enableCors({
