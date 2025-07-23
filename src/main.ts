@@ -16,19 +16,19 @@ if (!global.crypto) {
 }
 
 // Global error handlers to catch unhandled errors
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('=== UNHANDLED PROMISE REJECTION ===');
-  console.error('Promise:', promise);
-  console.error('Reason:', reason);
-  if (reason && typeof reason === 'object' && 'stack' in reason) {
-    console.error('Stack:', (reason as Error).stack);
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("=== UNHANDLED PROMISE REJECTION ===");
+  console.error("Promise:", promise);
+  console.error("Reason:", reason);
+  if (reason && typeof reason === "object" && "stack" in reason) {
+    console.error("Stack:", (reason as Error).stack);
   }
 });
 
-process.on('uncaughtException', (error) => {
-  console.error('=== UNCAUGHT EXCEPTION ===');
-  console.error('Error:', error);
-  console.error('Stack:', error.stack);
+process.on("uncaughtException", (error) => {
+  console.error("=== UNCAUGHT EXCEPTION ===");
+  console.error("Error:", error);
+  console.error("Stack:", error.stack);
 });
 
 import { NestFactory } from "@nestjs/core";
@@ -92,22 +92,22 @@ async function bootstrap() {
         const ctx = host.switchToHttp();
         const request = ctx.getRequest();
         const response = ctx.getResponse();
-        
-        console.error('=== GLOBAL EXCEPTION FILTER ===');
-        console.error('Request URL:', request.url);
-        console.error('Request method:', request.method);
-        console.error('Exception:', exception);
-        console.error('Exception stack:', exception?.stack);
-        console.error('Exception message:', exception?.message);
-        
+
+        console.error("=== GLOBAL EXCEPTION FILTER ===");
+        console.error("Request URL:", request.url);
+        console.error("Request method:", request.method);
+        console.error("Exception:", exception);
+        console.error("Exception stack:", exception?.stack);
+        console.error("Exception message:", exception?.message);
+
         const status = exception?.getStatus ? exception.getStatus() : 500;
         response.status(status).json({
           statusCode: status,
           timestamp: new Date().toISOString(),
           path: request.url,
-          message: exception?.message || 'Internal server error',
+          message: exception?.message || "Internal server error",
         });
-      }
+      },
     });
 
     // Enable CORS for development and production
@@ -149,7 +149,7 @@ async function bootstrap() {
     if (process.env.NODE_ENV === "production") {
       const clientPath = join(process.cwd(), "client", "dist");
       const expressApp = app.getHttpAdapter().getInstance();
-      
+
       console.log(`Setting up static file serving from: ${clientPath}`);
 
       // Serve static assets (CSS, JS, images, etc.)
@@ -178,7 +178,7 @@ async function bootstrap() {
         console.log(`SPA fallback serving index.html for route: ${req.path}`);
         res.sendFile(join(clientPath, "index.html"));
       });
-      
+
       console.log(`Static file serving configured for production`);
     }
 

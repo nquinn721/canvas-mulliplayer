@@ -12,7 +12,11 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useState } from "react";
 import { soundService } from "../services/SoundService";
-import { getDifficulty, setDifficulty, Difficulty } from "../utils/difficultyUtils";
+import {
+  Difficulty,
+  getDifficulty,
+  setDifficulty,
+} from "../utils/difficultyUtils";
 import { ErrorLogs } from "./ErrorLogs";
 
 interface GameSettingsModalProps {
@@ -56,18 +60,30 @@ export const GameSettingsModal: React.FC<GameSettingsModalProps> = ({
               <FontAwesomeIcon icon={faRobot} /> AI Difficulty Selection
             </h3>
             <div className="difficulty-selector">
-              {(["EASY", "MEDIUM", "HARD"] as Difficulty[]).map((difficulty) => (
-                <button
-                  key={difficulty}
-                  className={`difficulty-button ${selectedDifficulty === difficulty ? "selected" : ""} ${difficulty.toLowerCase()}`}
-                  onClick={() => handleDifficultyChange(difficulty)}
-                >
-                  <span className="difficulty-name">{difficulty}</span>
-                </button>
-              ))}
+              {(["EASY", "MEDIUM", "HARD"] as Difficulty[]).map(
+                (difficulty) => (
+                  <button
+                    key={difficulty}
+                    className={`difficulty-button ${selectedDifficulty === difficulty ? "selected" : ""} ${difficulty.toLowerCase()}`}
+                    onClick={() => handleDifficultyChange(difficulty)}
+                  >
+                    <span className="difficulty-name">{difficulty}</span>
+                  </button>
+                )
+              )}
             </div>
             <p className="current-difficulty">
-              Current Difficulty: <strong style={{ color: selectedDifficulty === "EASY" ? "#4CAF50" : selectedDifficulty === "MEDIUM" ? "#FF9800" : "#F44336" }}>
+              Current Difficulty:{" "}
+              <strong
+                style={{
+                  color:
+                    selectedDifficulty === "EASY"
+                      ? "#4CAF50"
+                      : selectedDifficulty === "MEDIUM"
+                        ? "#FF9800"
+                        : "#F44336",
+                }}
+              >
                 {selectedDifficulty}
               </strong>
             </p>

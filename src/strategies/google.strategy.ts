@@ -29,9 +29,24 @@ export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
 
     console.log("=== Google OAuth Strategy Configuration ===");
     console.log("Callback URL:", callbackURL);
-    console.log("Client ID:", process.env.SPACE_FIGHTER_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID);
-    console.log("Client Secret present:", !!(process.env.SPACE_FIGHTER_GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET));
-    console.log("Client Secret length:", (process.env.SPACE_FIGHTER_GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET)?.length || 0);
+    console.log(
+      "Client ID:",
+      process.env.SPACE_FIGHTER_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID
+    );
+    console.log(
+      "Client Secret present:",
+      !!(
+        process.env.SPACE_FIGHTER_GOOGLE_CLIENT_SECRET ||
+        process.env.GOOGLE_CLIENT_SECRET
+      )
+    );
+    console.log(
+      "Client Secret length:",
+      (
+        process.env.SPACE_FIGHTER_GOOGLE_CLIENT_SECRET ||
+        process.env.GOOGLE_CLIENT_SECRET
+      )?.length || 0
+    );
 
     super({
       clientID:
@@ -57,7 +72,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
       console.log("Profile ID:", profile?.id);
       console.log("Profile emails:", profile?.emails);
       console.log("Full profile:", JSON.stringify(profile, null, 2));
-      
+
       const result = await this.authService.loginWithGoogle(profile);
       console.log("=== Google Strategy Success ===");
       console.log("Auth result:", JSON.stringify(result, null, 2));

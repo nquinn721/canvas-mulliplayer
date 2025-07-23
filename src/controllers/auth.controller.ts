@@ -104,7 +104,7 @@ export class AuthController {
       console.log("Request user:", JSON.stringify(req.user, null, 2));
       console.log("Request query:", JSON.stringify(req.query, null, 2));
       console.log("Request headers:", JSON.stringify(req.headers, null, 2));
-      
+
       const result = req.user; // User data from strategy
 
       if (result && result.token) {

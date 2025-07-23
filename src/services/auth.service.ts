@@ -150,11 +150,18 @@ export class AuthService {
     try {
       console.log("=== Auth Service loginWithGoogle Start ===");
       console.log("Google user data:", JSON.stringify(googleUser, null, 2));
-      
+
       const { id, emails, displayName, photos } = googleUser;
       const email = emails[0]?.value;
 
-      console.log("Extracted - ID:", id, "Email:", email, "Display Name:", displayName);
+      console.log(
+        "Extracted - ID:",
+        id,
+        "Email:",
+        email,
+        "Display Name:",
+        displayName
+      );
 
       // Check if user exists
       let user = await this.userRepository.findOne({
@@ -213,7 +220,7 @@ export class AuthService {
       console.log("Generating token for user:", user.id);
       const token = this.generateToken(user);
       console.log("Token generated successfully");
-      
+
       const result = { user, token };
       console.log("=== Auth Service loginWithGoogle Success ===");
       return result;

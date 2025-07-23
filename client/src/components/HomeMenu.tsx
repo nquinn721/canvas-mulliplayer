@@ -7,7 +7,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { observer } from "mobx-react-lite";
 import React, { useEffect, useState } from "react";
 import { gameStore, socketService } from "../stores";
-import { getDifficulty, Difficulty } from "../utils/difficultyUtils";
+import { Difficulty, getDifficulty } from "../utils/difficultyUtils";
 import { useAuth } from "./AuthContext";
 import { AuthModal } from "./AuthModal";
 import BackgroundCanvas from "./BackgroundCanvas";
@@ -16,10 +16,7 @@ import "./HomeMenu.css";
 import { TopControls } from "./TopControls";
 
 interface HomeMenuProps {
-  onStartGame: (
-    playerName: string,
-    difficulty: Difficulty
-  ) => void;
+  onStartGame: (playerName: string, difficulty: Difficulty) => void;
 }
 
 const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {

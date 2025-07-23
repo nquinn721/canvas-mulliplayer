@@ -20,18 +20,18 @@ export const difficultyInfo = {
       detection: "800px",
       accuracy: "60%",
       reaction: "Slow",
-      aggression: "Low"
-    }
+      aggression: "Low",
+    },
   },
   MEDIUM: {
-    color: "#FF9800", 
+    color: "#FF9800",
     description: "Balanced AI behavior. Recommended.",
     details: {
       detection: "1200px",
       accuracy: "75%",
       reaction: "Normal",
-      aggression: "Balanced"
-    }
+      aggression: "Balanced",
+    },
   },
   HARD: {
     color: "#F44336",
@@ -40,7 +40,7 @@ export const difficultyInfo = {
       detection: "1600px",
       accuracy: "90%",
       reaction: "Fast",
-      aggression: "High"
-    }
-  }
+      aggression: "High",
+    },
+  },
 };
