@@ -27,7 +27,11 @@ export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
       }
     }
 
-    console.log("Google OAuth Callback URL:", callbackURL);
+    console.log("=== Google OAuth Strategy Configuration ===");
+    console.log("Callback URL:", callbackURL);
+    console.log("Client ID:", process.env.SPACE_FIGHTER_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID);
+    console.log("Client Secret present:", !!(process.env.SPACE_FIGHTER_GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET));
+    console.log("Client Secret length:", (process.env.SPACE_FIGHTER_GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET)?.length || 0);
 
     super({
       clientID:
