@@ -2,7 +2,8 @@ import { Controller, Get, Query } from "@nestjs/common";
 import { ErrorLoggerService } from "../services/error-logger.service";
 
 // Simple IP-based guard for development - replace with proper auth in production
-@Controller("api/errors")
+
+@Controller("errors")
 export class ErrorsController {
   constructor(private readonly errorLogger: ErrorLoggerService) {}
 

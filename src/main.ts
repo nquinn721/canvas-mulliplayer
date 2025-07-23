@@ -124,40 +124,6 @@ async function bootstrap() {
       credentials: true,
     });
 
-    // Serve static files in production
-    if (process.env.NODE_ENV === "production") {
-      const clientPath = join(process.cwd(), "client", "dist");
-      console.log(`Serving static files from: ${clientPath}`);
-
-      // Serve static assets (CSS, JS, images, etc.)
-      app.use("/assets", express.static(join(clientPath, "assets")));
-      app.use("/vite.svg", express.static(join(clientPath, "vite.svg")));
-
-      // Serve other static files with proper cache headers
-      app.use(
-        express.static(clientPath, {
-          maxAge: "1d", // Cache static assets for 1 day
-          setHeaders: (res, path) => {
-            // Don't cache index.html
-            if (path.endsWith("index.html")) {
-              res.setHeader(
-                "Cache-Control",
-                "no-cache, no-store, must-revalidate"
-              );
-            }
-          },
-        })
-      );
-
-      // SPA fallback - serve index.html for all non-API routes
-      // This must come after static file serving to allow static assets to be served first
-      const expressApp = app.getHttpAdapter().getInstance();
-      expressApp.get(/^(?!\/api).*/, (req: Request, res: Response) => {
-        console.log(`SPA fallback serving index.html for route: ${req.path}`);
-        res.sendFile(join(clientPath, "index.html"));
-      });
-    }
-
     // Use PORT environment variable for Cloud Run or default to 3001
     const preferredPort = process.env.PORT ? parseInt(process.env.PORT) : 3001;
 
@@ -177,6 +143,43 @@ async function bootstrap() {
         message: `Port conflict: using ${port} instead of ${preferredPort}`,
         metadata: { preferredPort, actualPort: port },
       });
+    }
+
+    // Serve static files in production - BEFORE listening but AFTER NestJS routes
+    if (process.env.NODE_ENV === "production") {
+      const clientPath = join(process.cwd(), "client", "dist");
+      const expressApp = app.getHttpAdapter().getInstance();
+      
+      console.log(`Setting up static file serving from: ${clientPath}`);
+
+      // Serve static assets (CSS, JS, images, etc.)
+      expressApp.use("/assets", express.static(join(clientPath, "assets")));
+      expressApp.use("/vite.svg", express.static(join(clientPath, "vite.svg")));
+
+      // Serve other static files with proper cache headers
+      expressApp.use(
+        express.static(clientPath, {
+          maxAge: "1d", // Cache static assets for 1 day
+          setHeaders: (res, path) => {
+            // Don't cache index.html
+            if (path.endsWith("index.html")) {
+              res.setHeader(
+                "Cache-Control",
+                "no-cache, no-store, must-revalidate"
+              );
+            }
+          },
+        })
+      );
+
+      // SPA fallback - serve index.html for all non-API routes
+      // This must come LAST to catch everything not handled by API or static routes
+      expressApp.get(/^(?!\/api).*/, (req: Request, res: Response) => {
+        console.log(`SPA fallback serving index.html for route: ${req.path}`);
+        res.sendFile(join(clientPath, "index.html"));
+      });
+      
+      console.log(`Static file serving configured for production`);
     }
 
     await app.listen(port, "0.0.0.0"); // Bind to all interfaces for Cloud Run
