@@ -7,6 +7,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { observer } from "mobx-react-lite";
 import React, { useEffect, useState } from "react";
 import { gameStore, socketService } from "../stores";
+import { getDifficulty, Difficulty } from "../utils/difficultyUtils";
 import { useAuth } from "./AuthContext";
 import { AuthModal } from "./AuthModal";
 import BackgroundCanvas from "./BackgroundCanvas";
@@ -17,16 +18,13 @@ import { TopControls } from "./TopControls";
 interface HomeMenuProps {
   onStartGame: (
     playerName: string,
-    difficulty: "EASY" | "MEDIUM" | "HARD"
+    difficulty: Difficulty
   ) => void;
 }
 
 const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
   const { user, isAuthenticated, isGuest, loginAsGuest, logout } = useAuth();
 
-  const [selectedDifficulty, setSelectedDifficulty] = useState<
-    "EASY" | "MEDIUM" | "HARD"
-  >("MEDIUM");
   const [playerName, setPlayerName] = useState(() => {
     // Initialize from localStorage or authenticated username
     return localStorage.getItem("canvas-multiplayer-player-name") || "";
@@ -99,24 +97,6 @@ const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, []);
-
-  const difficultyDescriptions = {
-    EASY: {
-      color: "#4CAF50",
-      description: "Slower, less accurate AI. Good for beginners.",
-      details: ["Detection: 800px", "Accuracy: 60%"],
-    },
-    MEDIUM: {
-      color: "#FF9800",
-      description: "Balanced AI behavior. Recommended.",
-      details: ["Detection: 1200px", "Accuracy: 75%"],
-    },
-    HARD: {
-      color: "#F44336",
-      description: "Fast, accurate, aggressive AI. For experts.",
-      details: ["Detection: 1600px", "Accuracy: 90%"],
-    },
-  };
 
   return (
     <div className="home-menu">
@@ -230,28 +210,9 @@ const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
             )}
           </div>
 
-          <div className="setup-section">
-            <label className="setup-label">Difficulty</label>
-            <div className="difficulty-selector">
-              {(
-                Object.keys(difficultyDescriptions) as Array<
-                  keyof typeof difficultyDescriptions
-                >
-              ).map((difficulty) => (
-                <button
-                  key={difficulty}
-                  className={`difficulty-button ${selectedDifficulty === difficulty ? "selected" : ""}`}
-                  onClick={() => setSelectedDifficulty(difficulty)}
-                >
-                  <span className="difficulty-name">{difficulty}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
           <button
             className="start-button"
-            onClick={() => onStartGame(playerName.trim(), selectedDifficulty)}
+            onClick={() => onStartGame(playerName.trim(), getDifficulty())}
             disabled={!playerName.trim() || playerName.trim().length < 3}
           >
             Play as Guest

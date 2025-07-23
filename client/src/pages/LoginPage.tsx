@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthContext";
 import HomeMenu from "../components/HomeMenu";
+import { Difficulty } from "../utils/difficultyUtils";
 
 export const LoginPage: React.FC = () => {
   const { isAuthenticated, isLoading, loginAsGuest } = useAuth();
@@ -16,7 +17,7 @@ export const LoginPage: React.FC = () => {
 
   const handlePlayAsGuest = async (
     playerName: string,
-    difficulty: "EASY" | "MEDIUM" | "HARD"
+    difficulty: Difficulty
   ) => {
     try {
       await loginAsGuest(playerName);
