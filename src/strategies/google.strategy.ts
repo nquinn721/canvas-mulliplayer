@@ -12,14 +12,13 @@ export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
     if (!callbackURL) {
       // Auto-detect based on environment
       if (process.env.NODE_ENV === "production") {
-        // For Cloud Run, use the service URL
+        // For Cloud Run, use the service URL or construct from known service URL
         const serviceUrl = process.env.SERVICE_URL || process.env.CLOUD_RUN_URL;
         if (serviceUrl) {
           callbackURL = `${serviceUrl}/api/auth/google/callback`;
         } else {
-          // Fallback for production
-          callbackURL =
-            "https://your-cloud-run-service.run.app/api/auth/google/callback";
+          // Use the known Cloud Run service URL
+          callbackURL = "https://canvas-game-203453576607.us-east1.run.app/api/auth/google/callback";
         }
       } else {
         // Development callback
