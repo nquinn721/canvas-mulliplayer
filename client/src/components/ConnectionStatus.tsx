@@ -1,5 +1,5 @@
-import React from "react";
 import { observer } from "mobx-react-lite";
+import React from "react";
 import { gameStore } from "../stores";
 import "./ConnectionStatus.css";
 
@@ -19,7 +19,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = observer(
           status: "disconnected",
           color: "#ff4444",
           label: "Disconnected",
-          icon: "●"
+          icon: "●",
         };
       }
 
@@ -28,7 +28,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = observer(
           status: "connecting",
           color: "#ffaa00",
           label: "Connecting...",
-          icon: "●"
+          icon: "●",
         };
       }
 
@@ -37,28 +37,28 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = observer(
           status: "excellent",
           color: "#00ff00",
           label: `Connected (${ping}ms)`,
-          icon: "●"
+          icon: "●",
         };
       } else if (ping < 100) {
         return {
           status: "good",
           color: "#88ff00",
           label: `Connected (${ping}ms)`,
-          icon: "●"
+          icon: "●",
         };
       } else if (ping < 200) {
         return {
           status: "fair",
           color: "#ffaa00",
           label: `Connected (${ping}ms)`,
-          icon: "●"
+          icon: "●",
         };
       } else {
         return {
           status: "poor",
           color: "#ff6600",
           label: `Connected (${ping}ms)`,
-          icon: "●"
+          icon: "●",
         };
       }
     };

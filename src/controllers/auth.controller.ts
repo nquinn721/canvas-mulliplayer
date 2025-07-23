@@ -106,11 +106,12 @@ export class AuthController {
       if (result && result.token) {
         // Determine frontend URL based on environment
         let frontendUrl = process.env.FRONTEND_URL;
-        
+
         if (!frontendUrl) {
-          if (process.env.NODE_ENV === 'production') {
+          if (process.env.NODE_ENV === "production") {
             // For Cloud Run, try to determine the frontend URL
-            const serviceUrl = process.env.SERVICE_URL || process.env.CLOUD_RUN_URL;
+            const serviceUrl =
+              process.env.SERVICE_URL || process.env.CLOUD_RUN_URL;
             if (serviceUrl) {
               // Assume frontend is served from the same domain
               frontendUrl = serviceUrl;
@@ -277,20 +278,20 @@ export class AuthController {
   @Get("debug")
   async getDebugPage(@Response() res) {
     // Serve the OAuth debug page
-    const fs = require('fs');
-    const path = require('path');
+    const fs = require("fs");
+    const path = require("path");
     try {
       const debugPage = fs.readFileSync(
-        path.join(process.cwd(), 'oauth-debug.html'), 
-        'utf8'
+        path.join(process.cwd(), "oauth-debug.html"),
+        "utf8"
       );
-      res.type('html');
+      res.type("html");
       res.send(debugPage);
     } catch (error) {
       res.json({
         success: false,
-        message: 'Debug page not found',
-        error: error.message
+        message: "Debug page not found",
+        error: error.message,
       });
     }
   }
@@ -310,7 +311,7 @@ export class AuthController {
     return {
       success: true,
       data: {
-        environment: process.env.NODE_ENV || 'development',
+        environment: process.env.NODE_ENV || "development",
         google: {
           configured: googleConfigured,
           clientId: googleConfigured
@@ -320,19 +321,25 @@ export class AuthController {
           status: googleConfigured
             ? "Ready"
             : "Needs real credentials from Google Cloud Console",
-          callbackUrl: process.env.GOOGLE_CALLBACK_URL || 'auto-detected',
+          callbackUrl: process.env.GOOGLE_CALLBACK_URL || "auto-detected",
         },
         urls: {
-          frontendUrl: process.env.FRONTEND_URL || 'auto-detected',
-          serviceUrl: process.env.SERVICE_URL || process.env.CLOUD_RUN_URL || 'not-set',
-          port: process.env.PORT || '3001',
+          frontendUrl: process.env.FRONTEND_URL || "auto-detected",
+          serviceUrl:
+            process.env.SERVICE_URL || process.env.CLOUD_RUN_URL || "not-set",
+          port: process.env.PORT || "3001",
         },
         cloudRun: {
-          isCloudRun: !!(process.env.K_SERVICE || process.env.CLOUD_RUN_SERVICE),
-          service: process.env.K_SERVICE || process.env.CLOUD_RUN_SERVICE || 'not-detected',
-          revision: process.env.K_REVISION || 'not-detected',
+          isCloudRun: !!(
+            process.env.K_SERVICE || process.env.CLOUD_RUN_SERVICE
+          ),
+          service:
+            process.env.K_SERVICE ||
+            process.env.CLOUD_RUN_SERVICE ||
+            "not-detected",
+          revision: process.env.K_REVISION || "not-detected",
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       },
     };
   }

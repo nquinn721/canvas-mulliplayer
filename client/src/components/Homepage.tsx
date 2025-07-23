@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "./AuthContext";
-import { TopControls } from "./TopControls";
 import "./Homepage.css";
+import { TopControls } from "./TopControls";
 
 interface HomepageProps {
   onStartGame: () => void;
@@ -77,11 +77,8 @@ export const Homepage: React.FC<HomepageProps> = ({
   return (
     <div className="homepage">
       {/* Top Controls (Connection Status, Volume) */}
-      <TopControls 
-        showSettings={true}
-        onShowSettings={onShowSettings}
-      />
-      
+      <TopControls showSettings={true} onShowSettings={onShowSettings} />
+
       <div className="homepage-container">
         {/* Header */}
         <div className="homepage-header">

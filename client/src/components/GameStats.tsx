@@ -55,7 +55,11 @@ export const GameStats: React.FC<GameStatsProps> = observer(
           <div className="connection-indicator">
             <div
               className={`connection-dot ${gameStore.isConnected ? "connected" : "disconnected"}`}
-              title={gameStore.isConnected ? `Connected (${gameStore.stats.ping || 0}ms)` : "Disconnected"}
+              title={
+                gameStore.isConnected
+                  ? `Connected (${gameStore.stats.ping || 0}ms)`
+                  : "Disconnected"
+              }
             />
           </div>
         </div>

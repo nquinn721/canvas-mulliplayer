@@ -1,96 +1,154 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
+  <head>
     <title>OAuth Debug - Space Fighters</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .container { max-width: 800px; margin: 0 auto; }
-        .status { padding: 20px; border-radius: 8px; margin: 20px 0; }
-        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
-        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
-        .info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
-        pre { background: #f8f9fa; padding: 15px; border-radius: 4px; overflow-x: auto; }
-        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #0056b3; }
+      body {
+        font-family: Arial, sans-serif;
+        margin: 40px;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      .status {
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+      }
+      .success {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+      }
+      .error {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+      }
+      .info {
+        background: #d1ecf1;
+        border: 1px solid #bee5eb;
+        color: #0c5460;
+      }
+      pre {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 4px;
+        overflow-x: auto;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #0056b3;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <h1>🚀 Space Fighters - OAuth Debug</h1>
-        
-        <div id="status" class="status info">
-            <strong>Loading OAuth status...</strong>
-        </div>
+      <h1>🚀 Space Fighters - OAuth Debug</h1>
 
-        <h2>Quick Actions</h2>
-        <button onclick="window.location.href='/api/auth/google'">Test Google Login</button>
-        <button onclick="checkStatus()">Refresh Status</button>
-        <button onclick="window.location.href='/'">Go to Game</button>
+      <div id="status" class="status info">
+        <strong>Loading OAuth status...</strong>
+      </div>
 
-        <h2>Environment Information</h2>
-        <pre id="envInfo">Loading...</pre>
+      <h2>Quick Actions</h2>
+      <button onclick="window.location.href='/api/auth/google'">
+        Test Google Login
+      </button>
+      <button onclick="checkStatus()">Refresh Status</button>
+      <button onclick="window.location.href='/'">Go to Game</button>
 
-        <h2>URL Parameters</h2>
-        <pre id="urlParams"></pre>
+      <h2>Environment Information</h2>
+      <pre id="envInfo">Loading...</pre>
 
-        <h2>Troubleshooting</h2>
-        <div class="info">
-            <h3>Common Cloud Run OAuth Issues:</h3>
-            <ul>
-                <li><strong>Callback URL Mismatch:</strong> Make sure your Google OAuth app has the correct Cloud Run URL</li>
-                <li><strong>Missing Environment Variables:</strong> Ensure secrets are properly mounted</li>
-                <li><strong>CORS Issues:</strong> Frontend and backend domains must match</li>
-                <li><strong>HTTPS Required:</strong> Google OAuth requires HTTPS in production</li>
-            </ul>
-        </div>
+      <h2>URL Parameters</h2>
+      <pre id="urlParams"></pre>
+
+      <h2>Troubleshooting</h2>
+      <div class="info">
+        <h3>Common Cloud Run OAuth Issues:</h3>
+        <ul>
+          <li>
+            <strong>Callback URL Mismatch:</strong> Make sure your Google OAuth
+            app has the correct Cloud Run URL
+          </li>
+          <li>
+            <strong>Missing Environment Variables:</strong> Ensure secrets are
+            properly mounted
+          </li>
+          <li>
+            <strong>CORS Issues:</strong> Frontend and backend domains must
+            match
+          </li>
+          <li>
+            <strong>HTTPS Required:</strong> Google OAuth requires HTTPS in
+            production
+          </li>
+        </ul>
+      </div>
     </div>
 
     <script>
-        // Check URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
-        const error = urlParams.get('error');
-        
-        document.getElementById('urlParams').textContent = 
-            window.location.search || 'No URL parameters';
+      // Check URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get("token");
+      const error = urlParams.get("error");
 
-        if (token) {
-            document.getElementById('status').innerHTML = 
-                '<strong>✅ OAuth Success!</strong><br>Token received: ' + token.substring(0, 50) + '...';
-            document.getElementById('status').className = 'status success';
-        } else if (error) {
-            document.getElementById('status').innerHTML = 
-                '<strong>❌ OAuth Error:</strong><br>' + decodeURIComponent(error);
-            document.getElementById('status').className = 'status error';
-        }
+      document.getElementById("urlParams").textContent =
+        window.location.search || "No URL parameters";
 
-        async function checkStatus() {
-            try {
-                const response = await fetch('/api/auth/oauth-status');
-                const data = await response.json();
-                document.getElementById('envInfo').textContent = JSON.stringify(data, null, 2);
-                
-                if (data.success && data.data.google.configured) {
-                    if (!token && !error) {
-                        document.getElementById('status').innerHTML = 
-                            '<strong>🟡 Ready for OAuth</strong><br>Google OAuth is configured. Click "Test Google Login" to try.';
-                        document.getElementById('status').className = 'status info';
-                    }
-                } else {
-                    document.getElementById('status').innerHTML = 
-                        '<strong>⚠️ OAuth Not Configured</strong><br>Google OAuth credentials are missing or invalid.';
-                    document.getElementById('status').className = 'status error';
-                }
-            } catch (err) {
-                document.getElementById('envInfo').textContent = 'Error: ' + err.message;
-                document.getElementById('status').innerHTML = 
-                    '<strong>❌ Connection Error</strong><br>Cannot reach auth service: ' + err.message;
-                document.getElementById('status').className = 'status error';
+      if (token) {
+        document.getElementById("status").innerHTML =
+          "<strong>✅ OAuth Success!</strong><br>Token received: " +
+          token.substring(0, 50) +
+          "...";
+        document.getElementById("status").className = "status success";
+      } else if (error) {
+        document.getElementById("status").innerHTML =
+          "<strong>❌ OAuth Error:</strong><br>" + decodeURIComponent(error);
+        document.getElementById("status").className = "status error";
+      }
+
+      async function checkStatus() {
+        try {
+          const response = await fetch("/api/auth/oauth-status");
+          const data = await response.json();
+          document.getElementById("envInfo").textContent = JSON.stringify(
+            data,
+            null,
+            2
+          );
+
+          if (data.success && data.data.google.configured) {
+            if (!token && !error) {
+              document.getElementById("status").innerHTML =
+                '<strong>🟡 Ready for OAuth</strong><br>Google OAuth is configured. Click "Test Google Login" to try.';
+              document.getElementById("status").className = "status info";
             }
+          } else {
+            document.getElementById("status").innerHTML =
+              "<strong>⚠️ OAuth Not Configured</strong><br>Google OAuth credentials are missing or invalid.";
+            document.getElementById("status").className = "status error";
+          }
+        } catch (err) {
+          document.getElementById("envInfo").textContent =
+            "Error: " + err.message;
+          document.getElementById("status").innerHTML =
+            "<strong>❌ Connection Error</strong><br>Cannot reach auth service: " +
+            err.message;
+          document.getElementById("status").className = "status error";
         }
+      }
 
-        // Load status on page load
-        checkStatus();
+      // Load status on page load
+      checkStatus();
     </script>
-</body>
+  </body>
 </html>

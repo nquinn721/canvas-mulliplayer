@@ -8,17 +8,18 @@ export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
   constructor(private authService: AuthService) {
     // Determine the callback URL based on environment
     let callbackURL = process.env.GOOGLE_CALLBACK_URL;
-    
+
     if (!callbackURL) {
       // Auto-detect based on environment
-      if (process.env.NODE_ENV === 'production') {
+      if (process.env.NODE_ENV === "production") {
         // For Cloud Run, use the service URL
         const serviceUrl = process.env.SERVICE_URL || process.env.CLOUD_RUN_URL;
         if (serviceUrl) {
           callbackURL = `${serviceUrl}/api/auth/google/callback`;
         } else {
           // Fallback for production
-          callbackURL = "https://your-cloud-run-service.run.app/api/auth/google/callback";
+          callbackURL =
+            "https://your-cloud-run-service.run.app/api/auth/google/callback";
         }
       } else {
         // Development callback

@@ -1,13 +1,13 @@
-import React, { useState } from "react";
-import { observer } from "mobx-react-lite";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+  faCog,
   faVolumeMute,
   faVolumeUp,
-  faCog,
 } from "@fortawesome/free-solid-svg-icons";
-import { gameStore } from "../stores";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { observer } from "mobx-react-lite";
+import React, { useState } from "react";
 import { soundService } from "../services/SoundService";
+import { gameStore } from "../stores";
 import "./TopControls.css";
 
 interface TopControlsProps {
