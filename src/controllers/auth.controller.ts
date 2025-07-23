@@ -120,8 +120,10 @@ export class AuthController {
               // Assume frontend is served from the same domain
               frontendUrl = serviceUrl;
             } else {
-              // Fallback - you'll need to set this in your Cloud Run environment
-              frontendUrl = "https://your-cloud-run-service.run.app";
+              // Use the current request host as fallback
+              const protocol = req.headers["x-forwarded-proto"] || "https";
+              const host = req.headers.host;
+              frontendUrl = `${protocol}://${host}`;
             }
           } else {
             frontendUrl = "http://localhost:5173";
@@ -135,14 +137,24 @@ export class AuthController {
         console.error("=== Google Callback Error: No token ===");
         console.error("Result:", JSON.stringify(result, null, 2));
         // Redirect to frontend with error
-        let frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+        let frontendUrl = process.env.FRONTEND_URL;
+        if (!frontendUrl) {
+          const protocol = req.headers["x-forwarded-proto"] || "https";
+          const host = req.headers.host;
+          frontendUrl = `${protocol}://${host}`;
+        }
         res.redirect(
           `${frontendUrl}?error=${encodeURIComponent("Google authentication failed - no token received")}`
         );
       }
     } catch (error) {
       console.error("Google callback error:", error);
-      let frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      let frontendUrl = process.env.FRONTEND_URL;
+      if (!frontendUrl) {
+        const protocol = req.headers["x-forwarded-proto"] || "https";
+        const host = req.headers.host;
+        frontendUrl = `${protocol}://${host}`;
+      }
       res.redirect(
         `${frontendUrl}?error=${encodeURIComponent(error.message || "Google authentication failed")}`
       );
