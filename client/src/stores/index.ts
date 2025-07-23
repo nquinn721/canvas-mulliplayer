@@ -1,7 +1,11 @@
 import { SocketService } from "../services/SocketService";
+import { ApiStore } from "./ApiStore";
+import { AuthStore } from "./AuthStore";
 import { GameStore } from "./GameStore";
 
-// Create a global game store instance
+// Create global store instances
+export const authStore = new AuthStore();
+export const apiStore = new ApiStore();
 export const gameStore = new GameStore();
 
 // Create socket service using singleton pattern (but don't auto-connect)
