@@ -147,58 +147,82 @@ export class AuthService {
   async loginWithGoogle(
     googleUser: any
   ): Promise<{ user: User; token: string }> {
-    const { id, emails, displayName, photos } = googleUser;
-    const email = emails[0]?.value;
+    try {
+      console.log("=== Auth Service loginWithGoogle Start ===");
+      console.log("Google user data:", JSON.stringify(googleUser, null, 2));
+      
+      const { id, emails, displayName, photos } = googleUser;
+      const email = emails[0]?.value;
 
-    // Check if user exists
-    let user = await this.userRepository.findOne({
-      where: [{ googleId: id }, { email }],
-    });
+      console.log("Extracted - ID:", id, "Email:", email, "Display Name:", displayName);
 
-    if (user) {
-      // Update Google ID if not set
-      if (!user.googleId) {
-        user.googleId = id;
-        user.authProvider = AuthProvider.GOOGLE;
-        await this.userRepository.save(user);
-      }
-    } else {
-      // Generate a unique username from email or displayName
-      let baseUsername =
-        email?.split("@")[0] ||
-        displayName?.replace(/\s+/g, "").toLowerCase() ||
-        "user";
-      baseUsername = baseUsername.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-
-      // Ensure username is unique
-      let username = baseUsername;
-      let counter = 1;
-      while (await this.userRepository.findOne({ where: { username } })) {
-        username = `${baseUsername}${counter}`;
-        counter++;
-      }
-
-      // Create new user
-      user = this.userRepository.create({
-        googleId: id,
-        username,
-        email,
-        displayName,
-        avatar: photos[0]?.value,
-        authProvider: AuthProvider.GOOGLE,
-        emailVerified: true,
-        isActive: true,
-        role: UserRole.USER,
+      // Check if user exists
+      let user = await this.userRepository.findOne({
+        where: [{ googleId: id }, { email }],
       });
+
+      console.log("Existing user found:", user ? "Yes" : "No");
+
+      if (user) {
+        // Update Google ID if not set
+        if (!user.googleId) {
+          console.log("Updating user with Google ID");
+          user.googleId = id;
+          user.authProvider = AuthProvider.GOOGLE;
+          await this.userRepository.save(user);
+        }
+      } else {
+        console.log("Creating new user");
+        // Generate a unique username from email or displayName
+        let baseUsername =
+          email?.split("@")[0] ||
+          displayName?.replace(/\s+/g, "").toLowerCase() ||
+          "user";
+        baseUsername = baseUsername.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+
+        // Ensure username is unique
+        let username = baseUsername;
+        let counter = 1;
+        while (await this.userRepository.findOne({ where: { username } })) {
+          username = `${baseUsername}${counter}`;
+          counter++;
+        }
+
+        console.log("Generated username:", username);
+
+        // Create new user
+        user = this.userRepository.create({
+          googleId: id,
+          username,
+          email,
+          displayName,
+          avatar: photos[0]?.value,
+          authProvider: AuthProvider.GOOGLE,
+          emailVerified: true,
+          isActive: true,
+          role: UserRole.USER,
+        });
+        await this.userRepository.save(user);
+        console.log("New user created with ID:", user.id);
+      }
+
+      // Update last login
+      user.lastLoginAt = new Date();
       await this.userRepository.save(user);
+
+      console.log("Generating token for user:", user.id);
+      const token = this.generateToken(user);
+      console.log("Token generated successfully");
+      
+      const result = { user, token };
+      console.log("=== Auth Service loginWithGoogle Success ===");
+      return result;
+    } catch (error) {
+      console.error("=== Auth Service loginWithGoogle Error ===");
+      console.error("Error:", error);
+      console.error("Stack:", error.stack);
+      throw error;
     }
-
-    // Update last login
-    user.lastLoginAt = new Date();
-    await this.userRepository.save(user);
-
-    const token = this.generateToken(user);
-    return { user, token };
   }
 
   async loginWithFacebook(
