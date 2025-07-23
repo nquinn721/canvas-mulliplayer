@@ -3,47 +3,24 @@ import { User } from "../entities/user.entity";
 
 export const typeOrmConfig: TypeOrmModuleOptions = {
   type: "mysql",
-  host:
-    process.env.NODE_ENV === "production"
-      ? undefined // Don't set host when using socket path
-      : process.env.DB_HOST || "localhost",
-  port:
-    process.env.NODE_ENV === "production"
-      ? undefined
-      : parseInt(process.env.DB_PORT) || 3306,
-  username: process.env.DB_USERNAME || "admin",
-  password: process.env.DB_PASSWORD || "password",
-  database: process.env.DB_DATABASE || "space_fighters",
+  username: process.env.SPACE_FIGHTER_DB_USERNAME || process.env.DB_USERNAME || "admin",
+  password: process.env.SPACE_FIGHTER_DB_PASSWORD || process.env.DB_PASSWORD || "password",
+  database: process.env.SPACE_FIGHTER_DB_DATABASE || process.env.DB_DATABASE || "space_fighters",
   entities: [User],
   synchronize: process.env.NODE_ENV !== "production", // Only in development
   logging: process.env.NODE_ENV === "development",
   migrations: ["dist/migrations/*.js"],
   migrationsTableName: "migrations",
 
-  // Cloud SQL configuration for production
-  ...(process.env.NODE_ENV === "production" && {
-    extra: {
-      socketPath: process.env.DB_SOCKET_PATH,
-      connectionLimit: 5,
-      acquireTimeout: 60000,
-      timeout: 60000,
-    },
-  }),
-
-  // SSL configuration
-  ssl:
-    process.env.NODE_ENV === "production"
-      ? {
-          rejectUnauthorized: false,
-          ca: undefined,
-        }
-      : false,
-
-  // Connection pooling for production
-  ...(process.env.NODE_ENV === "production" && {
-    poolSize: 5,
-    keepConnectionAlive: true,
-    retryAttempts: 3,
-    retryDelay: 3000,
-  }),
+  // Production vs development configuration
+  ...(process.env.NODE_ENV === "production"
+    ? {
+        // Cloud SQL configuration - use socketPath directly
+        socketPath: process.env.SPACE_FIGHTER_DB_SOCKET_PATH || process.env.DB_SOCKET_PATH,
+      }
+    : {
+        // Development configuration
+        host: process.env.DB_HOST || "localhost", 
+        port: parseInt(process.env.DB_PORT) || 3306,
+      }),
 };

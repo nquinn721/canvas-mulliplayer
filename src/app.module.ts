@@ -72,7 +72,7 @@ import { LocalStrategy } from "./strategies/local.strategy";
     // Authentication modules
     PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || "fallback-secret-key",
+      secret: process.env.SPACE_FIGHTER_JWT_SECRET || process.env.JWT_SECRET || "fallback-secret-key",
       signOptions: {
         expiresIn: process.env.JWT_EXPIRES_IN || "7d",
       },
