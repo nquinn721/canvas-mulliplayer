@@ -17,6 +17,7 @@ import {
   LoginDto,
   RegisterDto,
   ScoreUpdateDto,
+  UpdateDisplayNameDto,
   UpdateUsernameDto,
 } from "../dto/auth.dto";
 import { UserRole } from "../entities/user.entity";
@@ -79,10 +80,15 @@ export class AuthController {
   @Get("google/callback")
   @UseGuards(AuthGuard("google"))
   async googleCallback(@Request() req, @Response() res) {
+    console.log("=== Google OAuth Callback Hit ===");
+    console.log("Request user:", req.user);
+    console.log("Request query:", req.query);
     try {
       const result = req.user; // User data from strategy
+      console.log("OAuth result:", result);
 
       if (result && result.token) {
+        console.log("Valid OAuth result with token:", result.token);
         // Determine frontend URL based on environment
         let frontendUrl = process.env.FRONTEND_URL;
 
@@ -101,33 +107,45 @@ export class AuthController {
               frontendUrl = `${protocol}://${host}`;
             }
           } else {
-            frontendUrl = "http://localhost:5173";
+            frontendUrl = "http://localhost:5173"; // Updated to match current client port
           }
         }
 
-        res.redirect(`${frontendUrl}?token=${result.token}`);
+        const redirectUrl = `${frontendUrl}/login?token=${result.token}`;
+        console.log("Redirecting to:", redirectUrl);
+        res.redirect(redirectUrl);
       } else {
+        console.log("No token in OAuth result:", result);
         // Redirect to frontend with error
         let frontendUrl = process.env.FRONTEND_URL;
         if (!frontendUrl) {
+          if (process.env.NODE_ENV === "production") {
+            const protocol = req.headers["x-forwarded-proto"] || "https";
+            const host = req.headers.host;
+            frontendUrl = `${protocol}://${host}`;
+          } else {
+            frontendUrl = "http://localhost:5173"; // Updated to match current client port
+          }
+        }
+        const errorRedirectUrl = `${frontendUrl}/login?error=${encodeURIComponent("Google authentication failed - no token received")}`;
+        console.log("Error redirect to:", errorRedirectUrl);
+        res.redirect(errorRedirectUrl);
+      }
+    } catch (error) {
+      console.error("OAuth callback error:", error);
+      let frontendUrl = process.env.FRONTEND_URL;
+      if (!frontendUrl) {
+        if (process.env.NODE_ENV === "production") {
           const protocol = req.headers["x-forwarded-proto"] || "https";
           const host = req.headers.host;
           frontendUrl = `${protocol}://${host}`;
+        } else {
+          frontendUrl = "http://localhost:5173"; // Updated to match current client port
         }
-        res.redirect(
-          `${frontendUrl}?error=${encodeURIComponent("Google authentication failed - no token received")}`
-        );
       }
-    } catch (error) {
-      let frontendUrl = process.env.FRONTEND_URL;
-      if (!frontendUrl) {
-        const protocol = req.headers["x-forwarded-proto"] || "https";
-        const host = req.headers.host;
-        frontendUrl = `${protocol}://${host}`;
-      }
-      res.redirect(
-        `${frontendUrl}?error=${encodeURIComponent(error.message || "Google authentication failed")}`
-      );
+      const errorRedirectUrl = `${frontendUrl}/login?error=${encodeURIComponent(error.message || "Google authentication failed")}`;
+      console.log("Exception redirect to:", errorRedirectUrl);
+      res.redirect(errorRedirectUrl);
     }
   }
 
@@ -141,6 +159,7 @@ export class AuthController {
         data: {
           id: user.id,
           username: user.username,
+          displayName: user.displayName,
           email: user.email,
           role: user.role,
           authProvider: user.authProvider,
@@ -186,6 +205,33 @@ export class AuthController {
         {
           success: false,
           message: error.message || "Failed to update username",
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
+  @Put("display-name")
+  @UseGuards(JwtAuthGuard)
+  async updateDisplayName(
+    @Request() req,
+    @Body(ValidationPipe) updateDisplayNameDto: UpdateDisplayNameDto
+  ) {
+    try {
+      const result = await this.authService.updateDisplayName(
+        req.user.id,
+        updateDisplayNameDto
+      );
+      return {
+        success: true,
+        message: "Display name updated successfully",
+        data: result,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message || "Failed to update display name",
         },
         HttpStatus.BAD_REQUEST
       );

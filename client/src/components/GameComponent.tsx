@@ -337,9 +337,12 @@ const GameComponent = observer(
     };
 
     const handleReturnToHome = async () => {
-      console.log('GameComponent: handleReturnToHome called');
-      console.log('GameComponent: Socket connected before cleanup:', gameStore.isConnected);
-      
+      console.log("GameComponent: handleReturnToHome called");
+      console.log(
+        "GameComponent: Socket connected before cleanup:",
+        gameStore.isConnected
+      );
+
       // End the game session and save data
       await gameSessionService.endSession();
 
@@ -365,28 +368,31 @@ const GameComponent = observer(
 
       // Reset ability levels before leaving the game
       if (gameStore.isConnected && gameStore.socket) {
-        console.log('GameComponent: Sending resetAbilities command');
+        console.log("GameComponent: Sending resetAbilities command");
         gameStore.socket.emit("resetAbilities");
       }
 
       // Clean up game before returning to home
       if (gameRef.current) {
-        console.log('GameComponent: Cleaning up game');
+        console.log("GameComponent: Cleaning up game");
         soundService.stopBackgroundMusic();
         gameRef.current.cleanup();
         gameRef.current = null;
       }
 
       // Reset the game store
-      console.log('GameComponent: Calling gameStore.reset()');
+      console.log("GameComponent: Calling gameStore.reset()");
       gameStore.reset();
-      
-      console.log('GameComponent: Socket connected after cleanup:', gameStore.isConnected);
+
+      console.log(
+        "GameComponent: Socket connected after cleanup:",
+        gameStore.isConnected
+      );
 
       // Restart background music for home menu if not muted
       soundService.handleRevive();
 
-      console.log('GameComponent: Calling onReturnToHome()');
+      console.log("GameComponent: Calling onReturnToHome()");
       onReturnToHome();
     };
 

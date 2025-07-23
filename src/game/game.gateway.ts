@@ -201,7 +201,8 @@ export class GameGateway
       this.connectedClients.set(client.id, {
         lastHeartbeat: Date.now(),
         userId: authenticatedUser?.id,
-        playerName: authenticatedUser?.username,
+        playerName:
+          authenticatedUser?.displayName || authenticatedUser?.username,
         isAuthenticated: !!authenticatedUser,
         isGuest: isGuest,
       });
@@ -214,6 +215,7 @@ export class GameGateway
         isAuthenticated: !!authenticatedUser,
         isGuest: isGuest,
         username: authenticatedUser?.username,
+        displayName: authenticatedUser?.displayName,
         userId: authenticatedUser?.id,
       });
 
@@ -351,6 +353,54 @@ export class GameGateway
       }
     } catch (error) {
       this.errorLogger.logWebSocketError(error, client.id, "updateUsername");
+    }
+  }
+
+  @SubscribeMessage("updateDisplayName")
+  async handleUpdateDisplayName(
+    @MessageBody() data: { newDisplayName: string },
+    @ConnectedSocket() client: Socket
+  ) {
+    try {
+      const clientData = this.connectedClients.get(client.id);
+
+      if (!clientData?.isAuthenticated || clientData.isGuest) {
+        client.emit("error", {
+          message: "Only authenticated users can change display names",
+        });
+        return;
+      }
+
+      // Update display name in database
+      try {
+        await this.authService.updateDisplayName(clientData.userId!, {
+          displayName: data.newDisplayName,
+        });
+
+        // Update local client data to use display name as ship name
+        clientData.playerName = data.newDisplayName;
+
+        // Update player name in game
+        const player = this.players.get(client.id);
+        if (player) {
+          player.name = data.newDisplayName;
+        }
+
+        // Notify client of successful update
+        client.emit("displayNameUpdated", {
+          newDisplayName: data.newDisplayName,
+          message: "Display name updated successfully",
+        });
+
+        // Broadcast updated game state so other players see the new name
+        this.broadcastGameState();
+      } catch (error) {
+        client.emit("error", {
+          message: error.message || "Failed to update display name",
+        });
+      }
+    } catch (error) {
+      this.errorLogger.logWebSocketError(error, client.id, "updateDisplayName");
     }
   }
 

@@ -17,6 +17,7 @@ import {
   RegisterDto,
   ResetPasswordDto,
   SocialAuthDto,
+  UpdateDisplayNameDto,
   UpdateProfileDto,
   UpdateUsernameDto,
 } from "../dto/auth.dto";
@@ -281,6 +282,25 @@ export class AuthService {
       user.displayName = username;
     }
 
+    return this.userRepository.save(user);
+  }
+
+  async updateDisplayName(
+    userId: string,
+    updateDisplayNameDto: UpdateDisplayNameDto
+  ): Promise<User> {
+    const { displayName } = updateDisplayNameDto;
+
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    if (user.isGuest) {
+      throw new BadRequestException("Guest users cannot update display names");
+    }
+
+    user.displayName = displayName;
     return this.userRepository.save(user);
   }
 

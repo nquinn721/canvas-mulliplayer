@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+  <head>
+    <title>OAuth Test Page</title>
+  </head>
+  <body>
+    <h1>Google OAuth Flow Test</h1>
+
+    <h2>Step 1: Initiate OAuth</h2>
+    <a href="http://localhost:3001/api/auth/google" target="_blank">
+      <button style="padding: 10px 20px; font-size: 16px">
+        🔗 Start Google OAuth Flow
+      </button>
+    </a>
+
+    <h2>Step 2: OAuth Status</h2>
+    <button
+      onclick="checkOAuthStatus()"
+      style="padding: 10px 20px; font-size: 16px"
+    >
+      📊 Check OAuth Configuration
+    </button>
+    <pre id="status-result"></pre>
+
+    <h2>Step 3: Test Token Validation</h2>
+    <input
+      type="text"
+      id="token-input"
+      placeholder="Paste JWT token here"
+      style="width: 500px; padding: 5px"
+    />
+    <br /><br />
+    <button onclick="testToken()" style="padding: 10px 20px; font-size: 16px">
+      🔍 Test Token Validation
+    </button>
+    <pre id="token-result"></pre>
+
+    <script>
+      async function checkOAuthStatus() {
+        try {
+          const response = await fetch(
+            "http://localhost:3001/api/auth/oauth-status"
+          );
+          const data = await response.json();
+          document.getElementById("status-result").textContent = JSON.stringify(
+            data,
+            null,
+            2
+          );
+        } catch (error) {
+          document.getElementById("status-result").textContent =
+            "Error: " + error.message;
+        }
+      }
+
+      async function testToken() {
+        const token = document.getElementById("token-input").value;
+        if (!token) {
+          alert("Please enter a JWT token");
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            "http://localhost:3001/api/auth/profile",
+            {
+              headers: {
+                Authorization: "Bearer " + token,
+              },
+            }
+          );
+          const data = await response.json();
+          document.getElementById("token-result").textContent = JSON.stringify(
+            data,
+            null,
+            2
+          );
+        } catch (error) {
+          document.getElementById("token-result").textContent =
+            "Error: " + error.message;
+        }
+      }
+
+      // Check for token in URL (OAuth callback simulation)
+      window.onload = function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get("token");
+        if (token) {
+          document.getElementById("token-input").value = token;
+          alert(
+            'Token detected in URL! Click "Test Token Validation" to verify it.'
+          );
+        }
+      };
+    </script>
+  </body>
+</html>

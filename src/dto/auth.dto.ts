@@ -124,6 +124,16 @@ export class UpdateUsernameDto {
   username: string;
 }
 
+export class UpdateDisplayNameDto {
+  @IsString()
+  @MinLength(1, { message: "Display name must be at least 1 character long" })
+  @Matches(/^[a-zA-Z0-9\s_-]+$/, {
+    message:
+      "Display name can only contain letters, numbers, spaces, underscores, and hyphens",
+  })
+  displayName: string;
+}
+
 export class ScoreUpdateDto {
   @IsNumber({}, { message: "Score must be a valid number" })
   @Min(0, { message: "Score cannot be negative" })

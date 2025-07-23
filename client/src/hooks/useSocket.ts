@@ -10,7 +10,10 @@ export const useSocket = () => {
     // Always attempt to connect when a component mounts
     // The socketService will handle checking if already connected
     console.log("useSocket: Ensuring socket connection...");
-    console.log("useSocket: Current connection status:", socketService.isConnected);
+    console.log(
+      "useSocket: Current connection status:",
+      socketService.isConnected
+    );
     socketService.connect();
 
     // No cleanup - let the socket persist across component unmounts

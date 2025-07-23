@@ -51,14 +51,14 @@ export class Game {
 
   // Stop the game
   stop() {
-    console.log('Game.stop() called - this should NOT disconnect the socket');
+    console.log("Game.stop() called - this should NOT disconnect the socket");
     this.gameLoopService.stop();
     this.stopRenderLoop();
     // Note: We don't disconnect the socket here - that's managed by the App component
     // The socket should persist across game sessions
-    console.log('Game.stop() calling gameStore.reset()');
+    console.log("Game.stop() calling gameStore.reset()");
     this.gameStore.reset();
-    console.log('Game.stop() completed');
+    console.log("Game.stop() completed");
   }
 
   // Start the render loop (separate from game loop for better performance)

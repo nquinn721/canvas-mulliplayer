@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthContext";
 import GameComponent from "../components/GameComponent";
+import { getDisplayNameWithFallback } from "../utils/displayName";
 
 export const GamePage: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -37,7 +38,7 @@ export const GamePage: React.FC = () => {
 
   return (
     <GameComponent
-      playerName={user.username}
+      playerName={getDisplayNameWithFallback(user, "Anonymous")}
       aiDifficulty={aiDifficulty}
       onReturnToHome={handleReturnToLobby}
     />

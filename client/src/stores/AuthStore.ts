@@ -5,6 +5,7 @@ import { io, Socket } from "socket.io-client";
 export interface AuthUser {
   id: string;
   username: string;
+  displayName?: string;
   email?: string;
   role: string;
   authProvider: string;
@@ -288,11 +289,60 @@ export class AuthStore {
         body: JSON.stringify({ username: newUsername }),
       });
 
-      const data: AuthResponse = await response.json();
+      const data = await response.json();
 
-      if (data.success && data.data?.user && this.user) {
+      if (data.success && data.data && this.user) {
         runInAction(() => {
-          this.user!.username = data.data!.user.username;
+          // Handle both formats: data.user (login) and direct user object (update)
+          const updatedUser = data.data.user || data.data;
+          if (updatedUser.username) {
+            this.user!.username = updatedUser.username;
+          }
+          if (updatedUser.displayName !== undefined) {
+            this.user!.displayName = updatedUser.displayName;
+          }
+          // mobx-persist-store automatically persists the state
+        });
+      }
+
+      return { success: data.success, message: data.message };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Network error occurred",
+      };
+    }
+  }
+
+  async updateDisplayName(
+    newDisplayName: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      if (!this.token) {
+        return { success: false, message: "No authentication token available" };
+      }
+
+      const response = await fetch(`${this.baseUrl}/auth/display-name`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.token}`,
+        },
+        body: JSON.stringify({ displayName: newDisplayName }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.data && this.user) {
+        runInAction(() => {
+          // Handle both formats: data.user (login) and direct user object (update)
+          const updatedUser = data.data.user || data.data;
+          if (updatedUser.displayName !== undefined) {
+            this.user!.displayName = updatedUser.displayName;
+          }
+          if (updatedUser.username) {
+            this.user!.username = updatedUser.username;
+          }
           // mobx-persist-store automatically persists the state
         });
       }

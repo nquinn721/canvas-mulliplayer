@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { getDisplayName } from "../utils/displayName";
 import { useAuth } from "./AuthContext";
 import "./Homepage.css";
 import { PlayerStatsCard } from "./PlayerStatsCard";
@@ -15,16 +16,36 @@ export const Homepage: React.FC<HomepageProps> = ({
   onShowLeaderboard,
   onShowSettings,
 }) => {
-  const { user, logout, updateUsername } = useAuth();
+  const { user, logout, updateUsername, updateDisplayName, refreshProfile } =
+    useAuth();
   const [showUsernameEdit, setShowUsernameEdit] = useState(false);
-  const [newUsername, setNewUsername] = useState(user?.username || "");
+  const [newUsername, setNewUsername] = useState(getDisplayName(user) || "");
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateMessage, setUpdateMessage] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   if (!user) return null;
 
+  // Use displayName for display, fallback to username
+  const displayName = getDisplayName(user);
+
+  // Update newUsername when user data changes
+  useEffect(() => {
+    if (!showUsernameEdit) {
+      setNewUsername(displayName || "");
+    }
+  }, [user, displayName, showUsernameEdit]);
+
+  // Auto-focus input when edit mode starts
+  useEffect(() => {
+    if (showUsernameEdit && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select(); // Select all text for easy replacement
+    }
+  }, [showUsernameEdit]);
+
   const handleUsernameUpdate = async () => {
-    if (newUsername.trim() === user.username) {
+    if (newUsername.trim() === displayName) {
       setShowUsernameEdit(false);
       return;
     }
@@ -33,18 +54,31 @@ export const Homepage: React.FC<HomepageProps> = ({
     setUpdateMessage("");
 
     try {
-      const result = await updateUsername(newUsername.trim());
+      const result = await updateDisplayName(newUsername.trim());
       if (result.success) {
-        setUpdateMessage("Username updated successfully!");
+        setUpdateMessage("Display name updated successfully!");
         setShowUsernameEdit(false);
+        // Refresh profile to ensure display name is updated
+        await refreshProfile();
       } else {
         setUpdateMessage(result.message);
       }
     } catch (error) {
-      setUpdateMessage("Failed to update username");
+      setUpdateMessage("Failed to update display name");
     } finally {
       setIsUpdating(false);
       setTimeout(() => setUpdateMessage(""), 3000);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !isUpdating && newUsername.trim()) {
+      e.preventDefault();
+      handleUsernameUpdate();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setShowUsernameEdit(false);
+      setNewUsername(displayName || "");
     }
   };
 
@@ -116,7 +150,7 @@ export const Homepage: React.FC<HomepageProps> = ({
                   <img src={user.avatar} alt="Profile" />
                 ) : (
                   <div className="avatar-placeholder">
-                    {user.username?.charAt(0).toUpperCase() || "?"}
+                    {displayName?.charAt(0).toUpperCase() || "?"}
                   </div>
                 )}
               </div>
@@ -135,10 +169,12 @@ export const Homepage: React.FC<HomepageProps> = ({
                 {showUsernameEdit ? (
                   <div className="username-edit">
                     <input
+                      ref={inputRef}
                       type="text"
                       value={newUsername}
                       onChange={(e) => setNewUsername(e.target.value)}
-                      placeholder="Enter new username"
+                      onKeyDown={handleKeyDown}
+                      placeholder="Enter new display name"
                       maxLength={20}
                       disabled={isUpdating}
                     />
@@ -153,7 +189,7 @@ export const Homepage: React.FC<HomepageProps> = ({
                       <button
                         onClick={() => {
                           setShowUsernameEdit(false);
-                          setNewUsername(user.username || "");
+                          setNewUsername(displayName || "");
                         }}
                         className="cancel-btn"
                         disabled={isUpdating}
@@ -164,11 +200,11 @@ export const Homepage: React.FC<HomepageProps> = ({
                   </div>
                 ) : (
                   <div className="username-display">
-                    <h2>{user.username}</h2>
+                    <h2>{displayName}</h2>
                     <button
                       onClick={() => setShowUsernameEdit(true)}
                       className="edit-username-btn"
-                      title="Edit username"
+                      title="Edit display name"
                     >
                       ✏️
                     </button>

@@ -1,5 +1,6 @@
 import { observer } from "mobx-react-lite";
 import React, { createContext, ReactNode, useContext, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { AuthUser } from "../services/AuthService";
 import { authStore } from "../stores";
 
@@ -24,6 +25,9 @@ interface AuthContextType {
   updateUsername: (
     newUsername: string
   ) => Promise<{ success: boolean; message: string }>;
+  updateDisplayName: (
+    newDisplayName: string
+  ) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
 }
@@ -44,9 +48,24 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = observer(
   ({ children }) => {
+    const navigate = useNavigate();
+
     useEffect(() => {
       // Check for OAuth callback when component mounts
       const initializeAuth = async () => {
+        console.log("AuthContext: initializeAuth called");
+        console.log("AuthContext: Current pathname:", window.location.pathname);
+        console.log(
+          "AuthContext: Current search params:",
+          window.location.search
+        );
+        console.log("AuthContext: Current authStore state:", {
+          isAuthenticated: authStore.isAuthenticated,
+          isLoading: authStore.isLoading,
+          hasToken: !!authStore.token,
+          isGuest: authStore.isGuest,
+        });
+
         // Check for OAuth callback first
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get("token");
@@ -57,23 +76,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = observer(
 
         if (token) {
           // Handle OAuth callback with token using the store
+          console.log("Processing OAuth callback with token");
           const success = await authStore.handleOAuthCallback(token);
           console.log("OAuth validation result:", success);
 
+          // Clear URL parameters first
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+          );
+
           if (success) {
-            // Clear URL parameters and redirect to lobby
-            window.history.replaceState({}, document.title, "/lobby");
+            console.log("OAuth success, navigating to lobby");
+            navigate("/lobby", { replace: true });
           } else {
-            console.error("OAuth validation failed");
-            window.history.replaceState({}, document.title, "/login");
+            console.error("OAuth validation failed, staying on login");
+            navigate("/login", { replace: true });
           }
         } else if (error) {
           // Handle OAuth error
           console.error("OAuth error:", decodeURIComponent(error));
-          window.history.replaceState({}, document.title, "/login");
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+          );
+          navigate("/login", { replace: true });
         } else {
           // Normal authentication check - refresh profile if token exists and user is not a guest
           if (authStore.token && !authStore.isGuest) {
+            console.log(
+              "AuthContext: Existing token found, refreshing profile"
+            );
             try {
               await authStore.refreshProfile();
               // If user is authenticated and on login page, redirect to lobby
@@ -82,17 +117,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = observer(
                 (window.location.pathname === "/login" ||
                   window.location.pathname === "/")
               ) {
-                window.history.replaceState({}, document.title, "/lobby");
+                console.log("User already authenticated, redirecting to lobby");
+                navigate("/lobby", { replace: true });
               }
             } catch (error) {
               console.error("Profile refresh failed:", error);
             }
+          } else {
+            console.log("AuthContext: No existing valid token found");
           }
         }
       };
 
       initializeAuth();
-    }, []);
+    }, [navigate]);
 
     const contextValue: AuthContextType = {
       user: authStore.user,
@@ -104,6 +142,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = observer(
       loginAsGuest: authStore.loginAsGuest.bind(authStore),
       loginWithGoogle: authStore.loginWithGoogle.bind(authStore),
       updateUsername: authStore.updateUsername.bind(authStore),
+      updateDisplayName: authStore.updateDisplayName.bind(authStore),
       logout: authStore.logout.bind(authStore),
       refreshProfile: authStore.refreshProfile.bind(authStore),
     };

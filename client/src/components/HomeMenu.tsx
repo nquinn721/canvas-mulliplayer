@@ -9,6 +9,7 @@ import React, { useEffect, useState } from "react";
 import { useSocketStatus } from "../hooks/useSocket";
 import { gamePreferencesStore } from "../stores";
 import { Difficulty, getDifficulty } from "../utils/difficultyUtils";
+import { getDisplayName } from "../utils/displayName";
 import { useAuth } from "./AuthContext";
 import { AuthModal } from "./AuthModal";
 import BackgroundCanvas from "./BackgroundCanvas";
@@ -32,8 +33,11 @@ const HomeMenu: React.FC<HomeMenuProps> = observer(({ onStartGame }) => {
 
   // Update player name when user authentication changes
   useEffect(() => {
-    if (user?.username) {
-      setPlayerName(user.username);
+    if (user) {
+      const displayName = getDisplayName(user);
+      if (displayName) {
+        setPlayerName(displayName);
+      }
     }
   }, [user]);
 
