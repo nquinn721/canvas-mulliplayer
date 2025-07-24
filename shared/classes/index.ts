@@ -3,6 +3,6 @@ export { Camera } from "./Camera";
 export { Meteor } from "./Meteor";
 export { Player } from "./Player";
 export type { KeyState } from "./Player";
+export { SwarmAI } from "./SwarmAI";
 export { World } from "./World";
 export type { Wall } from "./World";
-export { SwarmAI } from "./SwarmAI";

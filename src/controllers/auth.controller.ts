@@ -493,7 +493,10 @@ export class AuthController {
       );
 
       if (user.playerLevel !== calculatedLevel) {
-        await this.authService.updateUserLevel(user.id, calculatedLevel);
+        await this.authService.updateUserLevel(
+          parseInt(user.id),
+          calculatedLevel
+        );
 
         return {
           success: true,

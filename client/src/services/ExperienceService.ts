@@ -38,15 +38,15 @@ export class ExperienceService {
     ) {
       // Authenticated user - use data from user record
       const experience = this.authStore.user.experience || 0;
-      
+
       // Always calculate level from experience using ExperienceConfig (single source of truth)
       const calculatedLevel = calculateLevelFromExperience(experience);
-      
+
       // Update user's playerLevel if it doesn't match calculated level
       if (this.authStore.user.playerLevel !== calculatedLevel) {
         this.authStore.user.playerLevel = calculatedLevel;
       }
-      
+
       return this.calculateProgressionInfo(experience);
     } else {
       // Guest user - use localStorage

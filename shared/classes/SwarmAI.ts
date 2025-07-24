@@ -1,5 +1,9 @@
+import {
+  getSwarmConfig,
+  getSwarmDifficultyIndicator,
+  type SwarmDifficultyConfig,
+} from "../config/SwarmConfig";
 import { Player } from "./Player";
-import { getAIConfig, type AIDifficultyConfig } from "../config/AIConfig";
 
 interface Point {
   x: number;
@@ -38,48 +42,36 @@ interface SwarmContext {
  */
 export class SwarmAI extends Player {
   private difficulty: string = "MEDIUM";
-  private settings: AIDifficultyConfig;
-  private lastAttackTime: number = 0;
-  private attackCooldown: number = 1000; // 1 second between attacks
+  private settings: SwarmDifficultyConfig;
+  public lastAttackTime: number = 0; // Made public for server access
+  private attackCooldown: number = 1000; // Will be overridden by config
   private rushSpeed: number;
   private detectionRange: number;
   private attackRange: number;
   private baseAttackDamage: number = 5;
-  
+
   // Swarm behavior properties
   private swarmCenter: Point = { x: 0, y: 0 };
   private separationRadius: number = 30; // Minimum distance from other swarm members
   private cohesionRadius: number = 100; // Distance to maintain group cohesion
   private alignmentRadius: number = 80; // Distance for velocity alignment
-  
+
   // Target tracking
   private currentTarget: Player | null = null;
   private lastTargetUpdate: number = 0;
   private targetUpdateInterval: number = 200; // Update target every 200ms
-  
+
   // Movement properties
   private velocityX: number = 0;
   private velocityY: number = 0;
-  private maxAcceleration: number = 0.8;
+  private maxAcceleration: number = 0.3; // Reduced from 0.8 for smoother movement
   private rushMode: boolean = false;
   private rushStartTime: number = 0;
   private rushDuration: number = 2000; // 2 seconds of rushing
+  private wasInAttackRange: boolean = false; // Track if we were in attack range last frame
 
   static getDifficultyIndicator(difficulty: string): string {
-    switch (difficulty.toUpperCase()) {
-      case "EASY":
-        return "Drone-E";
-      case "MEDIUM":
-        return "Drone-M";
-      case "HARD":
-        return "Drone-H";
-      case "EXPERT":
-        return "Drone-X";
-      case "NIGHTMARE":
-        return "Drone-N";
-      default:
-        return "Drone-M";
-    }
+    return getSwarmDifficultyIndicator(difficulty);
   }
 
   constructor(
@@ -89,36 +81,36 @@ export class SwarmAI extends Player {
     difficulty: string = "MEDIUM",
     color: string = "#cc2244" // Darker red for aggressive appearance
   ) {
-    const aiConfig = getAIConfig(difficulty);
-    
-    // Override some properties for swarm characteristics
+    const swarmConfig = getSwarmConfig(difficulty);
+
+    // Use swarm-specific configuration
     const swarmName = SwarmAI.getDifficultyIndicator(difficulty);
-    
-    // Swarm AI has different stats than regular AI
-    const swarmHealth = 5; // Always 5 HP regardless of difficulty
-    const swarmRadius = 8 + (aiConfig.radius - 15) * 0.3; // Smaller than regular AI (8-12 radius)
-    const swarmSpeed = aiConfig.speed * 1.8; // 80% faster than regular AI
-    
-    super(id, swarmName, x, y, color, swarmHealth, swarmSpeed);
+
+    super(id, swarmName, x, y, color, swarmConfig.health, swarmConfig.speed);
 
     this.difficulty = difficulty;
-    this.settings = aiConfig;
-    this.radius = Math.max(8, Math.min(12, swarmRadius)); // Clamp between 8-12
-    this.maxHealth = swarmHealth;
-    this.rushSpeed = swarmSpeed * 1.4; // Even faster when rushing
-    
-    // Scale properties with difficulty
-    this.detectionRange = 150 + (aiConfig.detectionRange - 200) * 0.5; // Shorter detection range
-    this.attackRange = 15 + this.radius; // Close combat range
-    this.baseAttackDamage = 5 + Math.floor(difficulty === "EASY" ? 0 : 
-                                         difficulty === "MEDIUM" ? 1 :
-                                         difficulty === "HARD" ? 2 :
-                                         difficulty === "EXPERT" ? 3 : 4);
-    
+    this.settings = swarmConfig;
+    this.radius = swarmConfig.radius;
+    this.maxHealth = swarmConfig.health;
+    this.rushSpeed = swarmConfig.rushSpeed;
+
+    // Use config values
+    this.detectionRange = swarmConfig.detectionRange;
+    this.attackRange = swarmConfig.attackRange;
+    this.baseAttackDamage = swarmConfig.damage;
+    this.attackCooldown = swarmConfig.attackCooldown;
+
+    // Swarm behavior properties from config
+    this.separationRadius = swarmConfig.separationRadius;
+    this.cohesionRadius = swarmConfig.cohesionRadius;
+    this.alignmentRadius = swarmConfig.alignmentRadius;
+    this.maxAcceleration = swarmConfig.maxAcceleration;
+    this.rushDuration = swarmConfig.rushDuration;
+
     // No weapon upgrades for swarm AI - they use melee attacks
     this.laserUpgradeLevel = 0;
     this.missileUpgradeLevel = 0;
-    
+
     // Note: Visual properties (no health bars, no names) will be handled in rendering
   }
 
@@ -127,58 +119,150 @@ export class SwarmAI extends Player {
    */
   update(context: SwarmContext): void {
     const currentTime = context.currentTime;
-    
+
+    // Debug logging every 10 seconds (reduced frequency)
+    if (currentTime % 10000 < 50) {
+      // Log every ~10 seconds instead of 3 seconds
+      console.log(
+        `Swarm ${this.id} status: pos=(${this.x.toFixed(1)}, ${this.y.toFixed(1)}), distanceToPlayer=${context.distanceToPlayer.toFixed(1)}, detectionRange=${this.detectionRange}, hasTarget=${!!this.currentTarget}, rushMode=${this.rushMode}`
+      );
+    }
+
     // Update target periodically
     if (currentTime - this.lastTargetUpdate > this.targetUpdateInterval) {
       this.updateTarget(context);
       this.lastTargetUpdate = currentTime;
     }
-    
+
     // Calculate swarm behaviors
     const swarmForces = this.calculateSwarmForces(context);
     const huntForce = this.calculateHuntForce(context);
-    
+    const wallAvoidanceForce = this.calculateWallAvoidanceForce(context);
+
     // Combine forces with different weights
     let totalForceX = 0;
     let totalForceY = 0;
-    
-    if (this.currentTarget && context.distanceToPlayer < this.detectionRange) {
-      // Hunting mode - prioritize chasing player
-      totalForceX += huntForce.x * 0.7;
-      totalForceY += huntForce.y * 0.7;
-      
-      // Add swarm forces for coordination
-      totalForceX += swarmForces.separation.x * 0.4;
-      totalForceY += swarmForces.separation.y * 0.4;
-      totalForceX += swarmForces.cohesion.x * 0.1;
-      totalForceY += swarmForces.cohesion.y * 0.1;
-      totalForceX += swarmForces.alignment.x * 0.2;
-      totalForceY += swarmForces.alignment.y * 0.2;
-      
-      // Check if we should enter rush mode
-      if (context.distanceToPlayer < 60 && !this.rushMode) {
+
+    // Check if any player is within detection range using context.closestPlayer
+    const hasNearbyPlayer =
+      context.distanceToPlayer < this.detectionRange &&
+      context.closestPlayer &&
+      context.closestPlayer.health > 0;
+
+    // Always update target to closest player within detection range for consistency
+    if (hasNearbyPlayer) {
+      this.currentTarget = context.closestPlayer;
+    } else {
+      this.currentTarget = null; // Clear target if no players in range
+    }
+
+    if (hasNearbyPlayer) {
+      // Enter rush mode immediately when detecting a player
+      if (!this.rushMode) {
         this.enterRushMode(currentTime);
+        // Rush mode entry logged at reduced frequency
       }
+
+      // AGGRESSIVE BITING BEHAVIOR - Direct charge at player
+      const distanceToTarget = context.distanceToPlayer;
+      const attackRange = this.attackRange;
+
+      if (distanceToTarget > attackRange) {
+        // CHARGE PHASE: When far from target, charge directly with maximum force
+        this.wasInAttackRange = false; // Reset attack range tracking when outside range
+
+        const huntingForceMultiplier = this.rushMode ? 5.0 : 3.0; // Much stronger direct charge
+        totalForceX +=
+          huntForce.x * this.settings.huntingForce * huntingForceMultiplier;
+        totalForceY +=
+          huntForce.y * this.settings.huntingForce * huntingForceMultiplier;
+
+        // Add wall avoidance force with high priority during charge
+        totalForceX += wallAvoidanceForce.x * 2.0; // High priority for wall avoidance
+        totalForceY += wallAvoidanceForce.y * 2.0;
+
+        // Minimal swarm forces to prevent interference with charge
+        const swarmForceReduction = 0.1; // Reduce swarm forces to 10% when charging
+        totalForceX +=
+          swarmForces.separation.x *
+          this.settings.separationForce *
+          swarmForceReduction;
+        totalForceY +=
+          swarmForces.separation.y *
+          this.settings.separationForce *
+          swarmForceReduction;
+      } else {
+        // BITE PHASE: When in attack range, use "biting" pattern - short bursts toward player
+        const biteForceMultiplier = this.rushMode ? 4.0 : 2.5; // Strong bite force
+
+        // If we just entered attack range, allow immediate attack
+        if (!this.wasInAttackRange) {
+          // Force immediate attack by setting lastAttackTime way in the past
+          this.lastAttackTime = 0; // Set to 0 to guarantee immediate attack
+          // Removed spammy log - attack entry is handled by server logs
+        }
+        this.wasInAttackRange = true;
+
+        // Add some randomness to create erratic "biting" movement
+        const biteRandomness = 0.3;
+        const randomAngle = (Math.random() - 0.5) * biteRandomness;
+        const biteAngle = Math.atan2(huntForce.y, huntForce.x) + randomAngle;
+
+        totalForceX +=
+          Math.cos(biteAngle) *
+          this.settings.huntingForce *
+          biteForceMultiplier;
+        totalForceY +=
+          Math.sin(biteAngle) *
+          this.settings.huntingForce *
+          biteForceMultiplier;
+
+        // Add wall avoidance force during biting (lower priority)
+        totalForceX += wallAvoidanceForce.x * 1.0;
+        totalForceY += wallAvoidanceForce.y * 1.0;
+
+        // Reduce cohesion to prevent orbiting behavior
+        totalForceX +=
+          swarmForces.separation.x * this.settings.separationForce * 0.8;
+        totalForceY +=
+          swarmForces.separation.y * this.settings.separationForce * 0.8;
+        // No cohesion forces when biting to prevent orbiting
+      }
+
+      // Debug logging removed for cleaner console output
     } else {
       // Swarm behavior - stay together and patrol
-      totalForceX += swarmForces.separation.x * 0.6;
-      totalForceY += swarmForces.separation.y * 0.6;
-      totalForceX += swarmForces.cohesion.x * 0.3;
-      totalForceY += swarmForces.cohesion.y * 0.3;
-      totalForceX += swarmForces.alignment.x * 0.1;
-      totalForceY += swarmForces.alignment.y * 0.1;
-      
+      this.wasInAttackRange = false; // Reset attack range tracking when not hunting
+
+      totalForceX +=
+        swarmForces.separation.x * (this.settings.separationForce * 1.2);
+      totalForceY +=
+        swarmForces.separation.y * (this.settings.separationForce * 1.2);
+      totalForceX +=
+        swarmForces.cohesion.x * (this.settings.cohesionForce * 1.5);
+      totalForceY +=
+        swarmForces.cohesion.y * (this.settings.cohesionForce * 1.5);
+      totalForceX += swarmForces.alignment.x * this.settings.alignmentForce;
+      totalForceY += swarmForces.alignment.y * this.settings.alignmentForce;
+
+      // Add wall avoidance during patrol mode
+      totalForceX += wallAvoidanceForce.x * 1.5;
+      totalForceY += wallAvoidanceForce.y * 1.5;
+
       this.rushMode = false;
     }
-    
+
     // Apply movement
     this.applyMovement(totalForceX, totalForceY, context);
-    
-    // Try to attack if in range
-    this.tryAttack(context);
-    
+
+    // Note: Attack logic is handled entirely by the server in game.gateway.ts
+    // The client-side AI only handles movement and targeting behavior
+
     // Handle rush mode timeout
-    if (this.rushMode && currentTime - this.rushStartTime > this.rushDuration) {
+    if (
+      this.rushMode &&
+      currentTime - this.rushStartTime > this.settings.rushDuration
+    ) {
       this.rushMode = false;
     }
   }
@@ -189,20 +273,20 @@ export class SwarmAI extends Player {
   private updateTarget(context: SwarmContext): void {
     let closestPlayer: Player | null = null;
     let closestDistance = Infinity;
-    
+
     context.players.forEach((player) => {
       if (player.health <= 0) return; // Skip dead players
-      
+
       const distance = Math.sqrt(
         Math.pow(player.x - this.x, 2) + Math.pow(player.y - this.y, 2)
       );
-      
+
       if (distance < this.detectionRange && distance < closestDistance) {
         closestDistance = distance;
         closestPlayer = player;
       }
     });
-    
+
     this.currentTarget = closestPlayer;
   }
 
@@ -214,20 +298,23 @@ export class SwarmAI extends Player {
     cohesion: Point;
     alignment: Point;
   } {
-    let separationX = 0, separationY = 0;
-    let cohesionX = 0, cohesionY = 0;
-    let alignmentX = 0, alignmentY = 0;
+    let separationX = 0,
+      separationY = 0;
+    let cohesionX = 0,
+      cohesionY = 0;
+    let alignmentX = 0,
+      alignmentY = 0;
     let separationCount = 0;
     let cohesionCount = 0;
     let alignmentCount = 0;
-    
+
     context.swarmMembers.forEach((member) => {
       if (member.id === this.id) return; // Skip self
-      
+
       const distance = Math.sqrt(
         Math.pow(member.x - this.x, 2) + Math.pow(member.y - this.y, 2)
       );
-      
+
       // Separation - avoid getting too close
       if (distance < this.separationRadius && distance > 0) {
         const separationForce = this.separationRadius / distance;
@@ -235,14 +322,14 @@ export class SwarmAI extends Player {
         separationY += (this.y - member.y) * separationForce;
         separationCount++;
       }
-      
+
       // Cohesion - move toward group center
       if (distance < this.cohesionRadius) {
         cohesionX += member.x;
         cohesionY += member.y;
         cohesionCount++;
       }
-      
+
       // Alignment - match group velocity
       if (distance < this.alignmentRadius) {
         alignmentX += member.velocityX;
@@ -250,27 +337,27 @@ export class SwarmAI extends Player {
         alignmentCount++;
       }
     });
-    
+
     // Normalize forces
     if (separationCount > 0) {
       separationX /= separationCount;
       separationY /= separationCount;
     }
-    
+
     if (cohesionCount > 0) {
       cohesionX = cohesionX / cohesionCount - this.x;
       cohesionY = cohesionY / cohesionCount - this.y;
     }
-    
+
     if (alignmentCount > 0) {
       alignmentX /= alignmentCount;
       alignmentY /= alignmentCount;
     }
-    
+
     return {
       separation: { x: separationX, y: separationY },
       cohesion: { x: cohesionX, y: cohesionY },
-      alignment: { x: alignmentX, y: alignmentY }
+      alignment: { x: alignmentX, y: alignmentY },
     };
   }
 
@@ -281,60 +368,152 @@ export class SwarmAI extends Player {
     if (!this.currentTarget) {
       return { x: 0, y: 0 };
     }
-    
+
     const deltaX = this.currentTarget.x - this.x;
     const deltaY = this.currentTarget.y - this.y;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    
+
     if (distance === 0) return { x: 0, y: 0 };
-    
-    // Normalize and apply hunting force
-    const huntingStrength = this.rushMode ? 2.0 : 1.0;
+
+    // Normalize and apply hunting force using config values
+    const huntingStrength = this.rushMode
+      ? this.settings.rushHuntingForce
+      : this.settings.huntingForce;
     return {
       x: (deltaX / distance) * huntingStrength,
-      y: (deltaY / distance) * huntingStrength
+      y: (deltaY / distance) * huntingStrength,
     };
+  }
+
+  /**
+   * Calculate wall avoidance force to navigate around obstacles
+   */
+  private calculateWallAvoidanceForce(context: SwarmContext): Point {
+    if (!context.walls || !context.checkWallCollision) {
+      return { x: 0, y: 0 };
+    }
+
+    let avoidanceX = 0;
+    let avoidanceY = 0;
+    const lookAheadDistance = 60; // How far ahead to look for walls
+    const avoidanceStrength = 2.0; // How strong the avoidance force is
+
+    // Check multiple directions around the swarm for walls
+    const checkDirections = [
+      { angle: 0, weight: 1.0 }, // Forward
+      { angle: Math.PI / 4, weight: 0.8 }, // Forward-right
+      { angle: -Math.PI / 4, weight: 0.8 }, // Forward-left
+      { angle: Math.PI / 2, weight: 0.6 }, // Right
+      { angle: -Math.PI / 2, weight: 0.6 }, // Left
+    ];
+
+    checkDirections.forEach(({ angle, weight }) => {
+      const checkX = this.x + Math.cos(this.angle + angle) * lookAheadDistance;
+      const checkY = this.y + Math.sin(this.angle + angle) * lookAheadDistance;
+
+      if (context.checkWallCollision(checkX, checkY, this.radius)) {
+        // Found a wall in this direction, apply avoidance force
+        const avoidAngle = this.angle + angle + Math.PI; // Opposite direction
+        avoidanceX += Math.cos(avoidAngle) * avoidanceStrength * weight;
+        avoidanceY += Math.sin(avoidAngle) * avoidanceStrength * weight;
+      }
+    });
+
+    // Also check for walls directly around the swarm
+    context.walls.forEach((wall) => {
+      const wallCenterX = wall.x + wall.width / 2;
+      const wallCenterY = wall.y + wall.height / 2;
+      const distanceToWall = Math.sqrt(
+        Math.pow(wallCenterX - this.x, 2) + Math.pow(wallCenterY - this.y, 2)
+      );
+
+      // If close to a wall, add strong avoidance force
+      if (distanceToWall < 80) {
+        const avoidanceDistance = 80 - distanceToWall;
+        const avoidanceForce = (avoidanceDistance / 80) * avoidanceStrength * 2;
+        const avoidAngleFromWall = Math.atan2(
+          this.y - wallCenterY,
+          this.x - wallCenterX
+        );
+
+        avoidanceX += Math.cos(avoidAngleFromWall) * avoidanceForce;
+        avoidanceY += Math.sin(avoidAngleFromWall) * avoidanceForce;
+      }
+    });
+
+    return { x: avoidanceX, y: avoidanceY };
   }
 
   /**
    * Apply movement forces to velocity and position
    */
-  private applyMovement(forceX: number, forceY: number, context: SwarmContext): void {
-    // Apply acceleration
-    this.velocityX += forceX * this.maxAcceleration * context.deltaTime;
-    this.velocityY += forceY * this.maxAcceleration * context.deltaTime;
-    
-    // Limit velocity
+  private applyMovement(
+    forceX: number,
+    forceY: number,
+    context: SwarmContext
+  ): void {
+    // Simplified acceleration - much more responsive
+    const deltaTimeSeconds = context.deltaTime / 1000; // Convert to seconds
+    const accelerationMultiplier = this.rushMode ? 2.0 : 1.5; // Extra acceleration when rushing
+
+    this.velocityX +=
+      forceX * this.settings.maxAcceleration * accelerationMultiplier;
+    this.velocityY +=
+      forceY * this.settings.maxAcceleration * accelerationMultiplier;
+
+    // Apply light dampening to prevent jittery movement
+    const dampening = 0.98;
+    this.velocityX *= dampening;
+    this.velocityY *= dampening;
+
+    // Limit velocity to configured speed
     const currentSpeed = this.rushMode ? this.rushSpeed : this.speed;
-    const velocityMagnitude = Math.sqrt(this.velocityX * this.velocityX + this.velocityY * this.velocityY);
-    
+    const velocityMagnitude = Math.sqrt(
+      this.velocityX * this.velocityX + this.velocityY * this.velocityY
+    );
+
     if (velocityMagnitude > currentSpeed) {
       this.velocityX = (this.velocityX / velocityMagnitude) * currentSpeed;
       this.velocityY = (this.velocityY / velocityMagnitude) * currentSpeed;
     }
-    
-    // Calculate new position
-    const newX = this.x + this.velocityX * context.deltaTime;
-    const newY = this.y + this.velocityY * context.deltaTime;
-    
+
+    // Calculate new position - direct velocity application for responsive movement
+    const newX = this.x + this.velocityX * deltaTimeSeconds;
+    const newY = this.y + this.velocityY * deltaTimeSeconds;
+
     // Check wall collisions
-    if (context.checkWallCollision && !context.checkWallCollision(newX, newY, this.radius)) {
+    if (
+      context.checkWallCollision &&
+      !context.checkWallCollision(newX, newY, this.radius)
+    ) {
       this.x = newX;
       this.y = newY;
     } else {
       // Bounce off walls
-      if (context.checkWallCollision && context.checkWallCollision(newX, this.y, this.radius)) {
+      if (
+        context.checkWallCollision &&
+        context.checkWallCollision(newX, this.y, this.radius)
+      ) {
         this.velocityX *= -0.5;
       }
-      if (context.checkWallCollision && context.checkWallCollision(this.x, newY, this.radius)) {
+      if (
+        context.checkWallCollision &&
+        context.checkWallCollision(this.x, newY, this.radius)
+      ) {
         this.velocityY *= -0.5;
       }
     }
-    
+
     // Keep within world bounds
-    this.x = Math.max(this.radius, Math.min(context.worldWidth - this.radius, this.x));
-    this.y = Math.max(this.radius, Math.min(context.worldHeight - this.radius, this.y));
-    
+    this.x = Math.max(
+      this.radius,
+      Math.min(context.worldWidth - this.radius, this.x)
+    );
+    this.y = Math.max(
+      this.radius,
+      Math.min(context.worldHeight - this.radius, this.y)
+    );
+
     // Update angle based on movement direction
     if (this.velocityX !== 0 || this.velocityY !== 0) {
       this.angle = Math.atan2(this.velocityY, this.velocityX);
@@ -350,28 +529,13 @@ export class SwarmAI extends Player {
   }
 
   /**
-   * Try to attack the target if in range
+   * Try to attack the target if in range - DEPRECATED
+   * This method is no longer used as attacks are handled entirely by the server
    */
   private tryAttack(context: SwarmContext): void {
-    if (!this.currentTarget || context.currentTime - this.lastAttackTime < this.attackCooldown) {
-      return;
-    }
-    
-    const distance = Math.sqrt(
-      Math.pow(this.currentTarget.x - this.x, 2) + Math.pow(this.currentTarget.y - this.y, 2)
-    );
-    
-    if (distance <= this.attackRange) {
-      // Perform melee attack
-      const damage = this.calculateAttackDamage();
-      
-      // Note: In actual implementation, this would be handled by the game server
-      // This is just for the AI logic calculation
-      this.lastAttackTime = context.currentTime;
-      
-      // TODO: Emit attack event to game server
-      // server.emit('swarmAttack', { attackerId: this.id, targetId: this.currentTarget.id, damage });
-    }
+    // DEPRECATED: All attack logic is now handled by the server in game.gateway.ts
+    // This method is kept for reference but should not be called
+    // The server handles attack timing, damage calculation, and cooldowns
   }
 
   /**
@@ -379,6 +543,13 @@ export class SwarmAI extends Player {
    */
   public calculateAttackDamage(): number {
     return this.baseAttackDamage;
+  }
+
+  /**
+   * Get attack cooldown for server-side timing
+   */
+  public getAttackCooldown(): number {
+    return this.settings.attackCooldown;
   }
 
   /**
@@ -393,6 +564,13 @@ export class SwarmAI extends Player {
    */
   public getCurrentTarget(): Player | null {
     return this.currentTarget;
+  }
+
+  /**
+   * Get attack range for server-side collision detection
+   */
+  public getAttackRange(): number {
+    return this.attackRange;
   }
 
   /**

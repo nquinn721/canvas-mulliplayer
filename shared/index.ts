@@ -42,3 +42,9 @@ export {
   type StreakBonuses,
   type TimeBasedMultipliers,
 } from "./config/ScoringConfig";
+export {
+  getSwarmConfig,
+  getSwarmDifficultyIndicator,
+  SWARM_CONFIGS,
+  type SwarmDifficultyConfig,
+} from "./config/SwarmConfig";

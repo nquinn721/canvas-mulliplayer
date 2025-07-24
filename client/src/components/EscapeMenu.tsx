@@ -70,7 +70,7 @@ const EscapeMenu: React.FC<EscapeMenuProps> = ({
   };
 
   return (
-    <div className="modal-overlay" onClick={handleBackdropClick}>
+    <div className="escape-modal-overlay" onClick={handleBackdropClick}>
       <div className="modal-content">
         <button className="modal-close" onClick={onClose}>
           <FontAwesomeIcon icon={faTimes} />

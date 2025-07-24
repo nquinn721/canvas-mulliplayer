@@ -19,10 +19,11 @@ import {
   Projectile,
   Wall,
   XP_REWARDS,
+  getSwarmConfig,
 } from "@shared";
 import { EnhancedAIEnemy } from "@shared/classes/EnhancedAIEnemy";
-import { SwarmAI } from "@shared/classes/SwarmAI";
 import { PowerUpType } from "@shared/classes/PowerUp";
+import { SwarmAI } from "@shared/classes/SwarmAI";
 import { Server, Socket } from "socket.io";
 import { AuthService } from "../services/auth.service";
 import { ErrorLoggerService } from "../services/error-logger.service";
@@ -76,6 +77,8 @@ export class GameGateway
   private aiEnemyCounter = 1;
   private lastMeteorSpawn = Date.now();
   private meteorSpawnInterval = 8000; // 8 seconds
+  private lastSwarmSpawn = 0; // Track when we last spawned swarms
+  private swarmSpawnInterval = 8000; // 8 seconds minimum between swarm spawns (reduced from 15)
 
   // World bounds
   private readonly WORLD_WIDTH = 5000;
@@ -107,7 +110,7 @@ export class GameGateway
     this.generateWalls();
     this.spawnPowerUps();
     this.spawnAIEnemies();
-    this.spawnSwarmEnemies();
+    // Swarm enemies spawn dynamically based on player proximity
     // Start heartbeat monitoring
     this.startHeartbeatMonitoring();
     // Don't start game loop until players join
@@ -240,6 +243,7 @@ export class GameGateway
     @ConnectedSocket() client: Socket
   ) {
     try {
+      console.log(`Player attempting to join game: ${client.id}`);
       const clientData = this.connectedClients.get(client.id);
 
       // Determine player name priority: authenticated username > provided name > default
@@ -284,6 +288,23 @@ export class GameGateway
 
       // Check if we should start the game loop when first player joins
       this.checkGameLoopState();
+
+      console.log(`=== PLAYER JOIN SUMMARY ===`);
+      console.log(`Player: ${playerName} (ID: ${client.id})`);
+      console.log(`Total players: ${this.players.size}`);
+      console.log(`Total swarm enemies: ${this.swarmEnemies.size}`);
+      console.log(`Game loop active: ${this.gameLoopActive}`);
+      console.log(`Player position: (${player.x}, ${player.y})`);
+      console.log(`=== END SUMMARY ===`);
+
+      // Force spawn swarms immediately when a player joins if none exist
+      if (this.swarmEnemies.size === 0) {
+        console.log("Force spawning swarms immediately for new player");
+        this.forceSpawnSwarms();
+        console.log(
+          `After force spawn: ${this.swarmEnemies.size} swarm enemies exist`
+        );
+      }
 
       // Send current AI difficulty status to the new player
       client.emit("aiDifficultyStatus", {
@@ -1069,6 +1090,8 @@ export class GameGateway
         return;
       }
 
+      console.log("STARTING GAME LOOP - Real players connected!");
+
       this.gameLoopInterval = setInterval(() => {
         try {
           this.updateGame();
@@ -1097,6 +1120,18 @@ export class GameGateway
 
     // Skip expensive operations if no real players are connected
     const hasRealPlayers = this.players.size > 0;
+
+    // Debug logging every few seconds
+    const currentTime = Date.now();
+    if (currentTime % 5000 < 20) {
+      // Log every ~5 seconds
+      console.log(`=== GAME UPDATE ===`);
+      console.log(
+        `Players: ${this.players.size}, Swarms: ${this.swarmEnemies.size}, AI: ${this.aiEnemies.size}`
+      );
+      console.log(`Real players present: ${hasRealPlayers}`);
+      console.log(`===================`);
+    }
 
     // Update player shields
     this.players.forEach((player) => {
@@ -1502,7 +1537,24 @@ export class GameGateway
 
   private updateSwarmEnemies(deltaTime: number) {
     const currentTime = Date.now();
-    
+
+    // Debug logging
+    if (this.swarmEnemies.size === 0 && this.players.size > 0) {
+      console.log(
+        `No swarms exist but ${this.players.size} players are present - should spawn swarms`
+      );
+    }
+
+    // Dynamic spawning: Check if we should spawn new swarms
+    this.checkAndSpawnSwarmEnemies();
+
+    // Maintain minimum swarm count for more action
+    this.maintainMinimumSwarmCount();
+
+    if (this.swarmEnemies.size > 0) {
+      console.log(`Updating ${this.swarmEnemies.size} swarm enemies`);
+    }
+
     this.swarmEnemies.forEach((swarmEnemy, swarmId) => {
       // Create swarm context for AI behavior
       const swarmContext = {
@@ -1512,17 +1564,18 @@ export class GameGateway
         worldWidth: this.WORLD_WIDTH,
         worldHeight: this.WORLD_HEIGHT,
         walls: this.walls,
-        checkWallCollision: (x: number, y: number, radius: number) => this.checkWallCollision(x, y, radius),
+        checkWallCollision: (x: number, y: number, radius: number) =>
+          this.checkWallCollision(x, y, radius),
         closestPlayer: this.findClosestPlayerToSwarm(swarmEnemy),
         distanceToPlayer: 0,
-        currentTime
+        currentTime,
       };
-      
+
       // Calculate distance to closest player
       if (swarmContext.closestPlayer) {
         swarmContext.distanceToPlayer = Math.sqrt(
           Math.pow(swarmContext.closestPlayer.x - swarmEnemy.x, 2) +
-          Math.pow(swarmContext.closestPlayer.y - swarmEnemy.y, 2)
+            Math.pow(swarmContext.closestPlayer.y - swarmEnemy.y, 2)
         );
       } else {
         swarmContext.distanceToPlayer = Infinity;
@@ -1534,31 +1587,67 @@ export class GameGateway
       // Check for attack collisions with players
       this.players.forEach((player, playerId) => {
         if (player.health <= 0) return;
-        
+
         const distance = Math.sqrt(
-          Math.pow(player.x - swarmEnemy.x, 2) + Math.pow(player.y - swarmEnemy.y, 2)
+          Math.pow(player.x - swarmEnemy.x, 2) +
+            Math.pow(player.y - swarmEnemy.y, 2)
         );
-        
-        // Swarm enemies deal damage on contact
-        if (distance < swarmEnemy.radius + player.radius) {
-          const damage = swarmEnemy.calculateAttackDamage();
-          player.takeDamage(damage);
-          
-          // Emit damage event
-          this.server.emit("playerDamaged", {
-            playerId,
-            damage,
-            attackerId: swarmId,
-            attackerType: "swarm",
-            x: player.x,
-            y: player.y
-          });
-          
-          // Push swarm enemy back slightly to prevent spam damage
-          const pushAngle = Math.atan2(swarmEnemy.y - player.y, swarmEnemy.x - player.x);
-          const pushDistance = 20;
-          swarmEnemy.x += Math.cos(pushAngle) * pushDistance;
-          swarmEnemy.y += Math.sin(pushAngle) * pushDistance;
+
+        // Swarm enemies attack when within attack range (not just collision)
+        const attackRange = swarmEnemy.getAttackRange();
+        if (distance <= attackRange) {
+          // Check attack cooldown using swarm's lastAttackTime
+          const currentTime = Date.now();
+          const timeSinceLastAttack = currentTime - swarmEnemy.lastAttackTime;
+          const attackCooldown = swarmEnemy.getAttackCooldown();
+
+          // Balanced attack logic - reasonable cooldown requirement
+          const shouldAttack =
+            timeSinceLastAttack >= attackCooldown * 0.8 || // Need 80% of cooldown (96ms instead of 120ms)
+            swarmEnemy.lastAttackTime === 0;
+
+          // Only log attacks when they actually execute (reduce spam)
+          if (shouldAttack) {
+            console.log(
+              `[SWARM ATTACK] ${swarmId} attacking ${player.name}: distance=${distance.toFixed(1)}, damage=${swarmEnemy.calculateAttackDamage()}`
+            );
+          }
+
+          if (shouldAttack) {
+            const damage = swarmEnemy.calculateAttackDamage();
+            const wasKilled = player.takeDamage(damage);
+
+            // Update last attack time
+            swarmEnemy.lastAttackTime = currentTime;
+
+            console.log(
+              `[SWARM ATTACK EXECUTED] ${swarmId} hit player ${player.name} for ${damage} damage! Player health: ${player.health}`
+            );
+
+            // Emit damage event
+            this.server.emit("playerDamaged", {
+              playerId,
+              damage,
+              attackerId: swarmId,
+              attackerType: "swarm",
+              x: player.x,
+              y: player.y,
+            });
+
+            // If player was killed, give XP to all nearby swarm enemies
+            if (wasKilled) {
+              console.log(`Player ${player.name} was killed by swarm`);
+            }
+
+            // Push swarm enemy back slightly to prevent spam damage
+            const pushAngle = Math.atan2(
+              swarmEnemy.y - player.y,
+              swarmEnemy.x - player.x
+            );
+            const pushDistance = 3; // Minimal push distance for maximum aggression
+            swarmEnemy.x += Math.cos(pushAngle) * pushDistance;
+            swarmEnemy.y += Math.sin(pushAngle) * pushDistance;
+          }
         }
       });
 
@@ -1577,11 +1666,11 @@ export class GameGateway
               // Award XP for killing swarm enemy (less than regular AI)
               const swarmKillXP = 10; // 10 XP for swarm kill
               shooterPlayer.addExperience(swarmKillXP);
-              
+
               console.log(
                 `Player ${shooterPlayer.name} killed swarm enemy and gained ${swarmKillXP} XP`
               );
-              
+
               // Emit kill event for client notification
               this.server.emit("enemyKilled", {
                 killerId: projectile.ownerId,
@@ -1591,12 +1680,11 @@ export class GameGateway
                 xpGained: swarmKillXP,
               });
             }
-            
+
             // Remove dead swarm enemy
             this.swarmEnemies.delete(swarmId);
-            
-            // Respawn swarm enemies periodically
-            this.maybeRespawnSwarmEnemy();
+
+            // Dynamic spawning will handle creating new swarms when needed
           }
 
           this.projectiles.delete(projectileId);
@@ -1611,6 +1699,66 @@ export class GameGateway
         }
       });
     });
+
+    // Cleanup swarm enemies that are too far from all players
+    this.cleanupDistantSwarmEnemies();
+  }
+
+  private cleanupDistantSwarmEnemies() {
+    const maxDistanceFromAnyPlayer = 2000; // Increased significantly - only cleanup swarms that are very far
+    const swarmsToRemove: string[] = [];
+
+    this.swarmEnemies.forEach((swarmEnemy, swarmId) => {
+      let closestPlayerDistance = Infinity;
+
+      // Find closest player to this swarm enemy
+      this.players.forEach((player) => {
+        if (player.health <= 0) return;
+
+        const distance = Math.sqrt(
+          Math.pow(player.x - swarmEnemy.x, 2) +
+            Math.pow(player.y - swarmEnemy.y, 2)
+        );
+
+        if (distance < closestPlayerDistance) {
+          closestPlayerDistance = distance;
+        }
+      });
+
+      // Mark for removal if too far from all players
+      if (closestPlayerDistance > maxDistanceFromAnyPlayer) {
+        swarmsToRemove.push(swarmId);
+      }
+    });
+
+    // Remove distant swarm enemies
+    swarmsToRemove.forEach((swarmId) => {
+      console.log(`Removing distant swarm ${swarmId} - too far from players`);
+      this.swarmEnemies.delete(swarmId);
+    });
+
+    if (swarmsToRemove.length > 0) {
+      console.log(
+        `Cleaned up ${swarmsToRemove.length} distant swarms. Remaining: ${this.swarmEnemies.size}`
+      );
+    }
+  }
+
+  private maintainMinimumSwarmCount() {
+    // Ensure there are always some swarms active when players are present
+    const minSwarmCount = Math.min(6, this.players.size * 2); // At least 2 swarms per player, max 6
+    const currentTime = Date.now();
+
+    if (this.swarmEnemies.size < minSwarmCount && this.players.size > 0) {
+      // Only spawn if enough time has passed since last spawn (prevent spam)
+      if (currentTime - this.lastSwarmSpawn > 3000) {
+        // 3 second cooldown for maintenance spawning
+        console.log(
+          `Maintaining minimum swarm count: spawning to reach ${minSwarmCount} swarms (currently ${this.swarmEnemies.size})`
+        );
+        this.forceSpawnSwarms();
+      }
+    }
   }
 
   private findClosestPlayerToSwarm(swarmEnemy: SwarmAI): Player | null {
@@ -1619,11 +1767,12 @@ export class GameGateway
 
     this.players.forEach((player) => {
       if (player.health <= 0) return; // Skip dead players
-      
+
       const distance = Math.sqrt(
-        Math.pow(player.x - swarmEnemy.x, 2) + Math.pow(player.y - swarmEnemy.y, 2)
+        Math.pow(player.x - swarmEnemy.x, 2) +
+          Math.pow(player.y - swarmEnemy.y, 2)
       );
-      
+
       if (distance < closestDistance) {
         closestDistance = distance;
         closestPlayer = player;
@@ -1637,22 +1786,23 @@ export class GameGateway
     // Keep a minimum number of swarm enemies active
     const minSwarmCount = 6;
     const maxSwarmCount = 12;
-    
+
     if (this.swarmEnemies.size < minSwarmCount && this.players.size > 0) {
       // Spawn new swarm enemy near a random player
       const playerArray = Array.from(this.players.values());
-      const randomPlayer = playerArray[Math.floor(Math.random() * playerArray.length)];
-      
+      const randomPlayer =
+        playerArray[Math.floor(Math.random() * playerArray.length)];
+
       // Spawn at a distance from the player
       const spawnDistance = 200 + Math.random() * 100; // 200-300 pixels away
       const spawnAngle = Math.random() * Math.PI * 2;
       const spawnX = randomPlayer.x + Math.cos(spawnAngle) * spawnDistance;
       const spawnY = randomPlayer.y + Math.sin(spawnAngle) * spawnDistance;
-      
+
       // Clamp to world bounds
       const clampedX = Math.max(50, Math.min(this.WORLD_WIDTH - 50, spawnX));
       const clampedY = Math.max(50, Math.min(this.WORLD_HEIGHT - 50, spawnY));
-      
+
       // Create new swarm enemy
       const swarmId = `swarm_${this.aiEnemyCounter++}`;
       const swarmEnemy = new SwarmAI(
@@ -1662,7 +1812,7 @@ export class GameGateway
         this.preferredAIDifficulty,
         "#cc2244"
       );
-      
+
       this.swarmEnemies.set(swarmId, swarmEnemy);
     }
   }
@@ -1852,18 +2002,18 @@ export class GameGateway
     for (let group = 0; group < swarmGroups; group++) {
       // Find a spawn position for the group center
       const groupCenter = this.getRandomSpawnPosition();
-      
+
       for (let i = 0; i < enemiesPerGroup; i++) {
         const swarmId = `swarm_${this.aiEnemyCounter++}`;
-        
+
         // Spawn group members near the center with some spread
         const spread = 50; // 50 pixel spread around group center
         const angle = (i / enemiesPerGroup) * Math.PI * 2;
         const distance = Math.random() * spread;
-        
+
         const x = groupCenter.x + Math.cos(angle) * distance;
         const y = groupCenter.y + Math.sin(angle) * distance;
-        
+
         // Clamp to world bounds
         const clampedX = Math.max(50, Math.min(this.WORLD_WIDTH - 50, x));
         const clampedY = Math.max(50, Math.min(this.WORLD_HEIGHT - 50, y));
@@ -1879,6 +2029,274 @@ export class GameGateway
         this.swarmEnemies.set(swarmId, swarmEnemy);
       }
     }
+  }
+
+  private forceSpawnSwarms() {
+    const swarmConfig = getSwarmConfig(this.preferredAIDifficulty);
+
+    // Spawn multiple groups of swarms immediately for better action
+    const swarmGroups = 2; // Increased from 1 - spawn 2 groups
+    const enemiesPerGroup = swarmConfig.groupSize;
+
+    console.log(
+      `Force spawning ${swarmGroups * enemiesPerGroup} swarm enemies immediately (${swarmGroups} groups of ${enemiesPerGroup})`
+    );
+
+    for (let group = 0; group < swarmGroups; group++) {
+      // Get a spawn position
+      const groupCenter = this.getSwarmSpawnPosition();
+
+      for (let i = 0; i < enemiesPerGroup; i++) {
+        const swarmId = `swarm_${this.aiEnemyCounter++}`;
+
+        // Spawn group members near the center with some spread
+        const spread = swarmConfig.groupSpread;
+        const angle = (i / enemiesPerGroup) * Math.PI * 2;
+        const distance = Math.random() * spread;
+
+        let x = groupCenter.x + Math.cos(angle) * distance;
+        let y = groupCenter.y + Math.sin(angle) * distance;
+
+        // Clamp to world bounds
+        let clampedX = Math.max(50, Math.min(this.WORLD_WIDTH - 50, x));
+        let clampedY = Math.max(50, Math.min(this.WORLD_HEIGHT - 50, y));
+
+        // Check for wall collision and adjust if needed
+        let positionAttempts = 0;
+        while (
+          this.checkWallCollision(
+            clampedX,
+            clampedY,
+            swarmConfig.radius + 10
+          ) &&
+          positionAttempts < 10
+        ) {
+          // Try a new position with smaller spread
+          const newAngle = Math.random() * Math.PI * 2;
+          const newDistance = Math.random() * (spread * 0.5); // Use smaller spread for retries
+          x = groupCenter.x + Math.cos(newAngle) * newDistance;
+          y = groupCenter.y + Math.sin(newAngle) * newDistance;
+          clampedX = Math.max(50, Math.min(this.WORLD_WIDTH - 50, x));
+          clampedY = Math.max(50, Math.min(this.WORLD_HEIGHT - 50, y));
+          positionAttempts++;
+        }
+
+        if (positionAttempts >= 10) {
+          console.log(
+            `Warning: Could not find wall-free position for force-spawned swarm ${swarmId}, using fallback`
+          );
+          const safePos = this.getRandomSpawnPosition();
+          clampedX = safePos.x;
+          clampedY = safePos.y;
+        }
+
+        const swarmEnemy = new SwarmAI(
+          swarmId,
+          clampedX,
+          clampedY,
+          this.preferredAIDifficulty,
+          "#cc2244"
+        );
+
+        this.swarmEnemies.set(swarmId, swarmEnemy);
+        console.log(
+          `Force spawned swarm enemy ${swarmId} at (${clampedX}, ${clampedY})`
+        );
+      }
+    }
+
+    // Update last spawn time
+    this.lastSwarmSpawn = Date.now();
+  }
+
+  private checkAndSpawnSwarmEnemies() {
+    const currentTime = Date.now();
+
+    // Get swarm config for current difficulty
+    const swarmConfig = getSwarmConfig(this.preferredAIDifficulty);
+
+    // Don't spawn if at max capacity or too many AI enemies total
+    const maxSwarms = 15; // Increased from 8 - allow up to 15 swarm enemies at once
+    if (this.swarmEnemies.size >= maxSwarms || this.aiEnemies.size > 8) return;
+
+    // Check if enough time has passed since last spawn
+    if (currentTime - this.lastSwarmSpawn < this.swarmSpawnInterval) return;
+
+    // Check if any player is in a spawn zone OR if we haven't spawned in a while
+    let shouldSpawn = false;
+    const spawnDistance = 400; // Increased from 300 - larger trigger zone but they spawn further away
+
+    // Force spawn if no swarms exist and players are present
+    if (this.swarmEnemies.size === 0 && this.players.size > 0) {
+      shouldSpawn = true;
+      console.log(
+        "Force spawning swarms - no swarms exist and players are present"
+      );
+    } else {
+      // Check spawn zones
+      this.players.forEach((player) => {
+        if (player.health <= 0) return;
+
+        // Check if player is near world edges (common spawn areas for swarms)
+        const nearLeftEdge = player.x < spawnDistance;
+        const nearRightEdge = player.x > this.WORLD_WIDTH - spawnDistance;
+        const nearTopEdge = player.y < spawnDistance;
+        const nearBottomEdge = player.y > this.WORLD_HEIGHT - spawnDistance;
+
+        // Check if player is in center area (another spawn zone)
+        const centerX = this.WORLD_WIDTH / 2;
+        const centerY = this.WORLD_HEIGHT / 2;
+        const distanceFromCenter = Math.sqrt(
+          Math.pow(player.x - centerX, 2) + Math.pow(player.y - centerY, 2)
+        );
+        const nearCenter = distanceFromCenter < spawnDistance;
+
+        if (
+          nearLeftEdge ||
+          nearRightEdge ||
+          nearTopEdge ||
+          nearBottomEdge ||
+          nearCenter
+        ) {
+          shouldSpawn = true;
+        }
+      });
+    }
+    if (shouldSpawn) {
+      // Get swarm config for current difficulty
+      const swarmConfig = getSwarmConfig(this.preferredAIDifficulty);
+
+      // Spawn 2 swarm groups when triggered (increased from 1)
+      const swarmGroups = 2;
+      const enemiesPerGroup = swarmConfig.groupSize;
+
+      console.log(
+        `Spawning ${swarmGroups} swarm groups: ${swarmGroups * enemiesPerGroup} total enemies with difficulty ${this.preferredAIDifficulty}`
+      );
+
+      for (let group = 0; group < swarmGroups; group++) {
+        // Find a spawn position away from players but not too far
+        const groupCenter = this.getSwarmSpawnPosition();
+
+        for (let i = 0; i < enemiesPerGroup; i++) {
+          const swarmId = `swarm_${this.aiEnemyCounter++}`;
+
+          // Spawn group members near the center with some spread
+          const spread = swarmConfig.groupSpread;
+          const angle = (i / enemiesPerGroup) * Math.PI * 2;
+          const distance = Math.random() * spread;
+
+          let x = groupCenter.x + Math.cos(angle) * distance;
+          let y = groupCenter.y + Math.sin(angle) * distance;
+
+          // Clamp to world bounds
+          let clampedX = Math.max(50, Math.min(this.WORLD_WIDTH - 50, x));
+          let clampedY = Math.max(50, Math.min(this.WORLD_HEIGHT - 50, y));
+
+          // Check for wall collision and adjust if needed
+          let positionAttempts = 0;
+          while (
+            this.checkWallCollision(
+              clampedX,
+              clampedY,
+              swarmConfig.radius + 10
+            ) &&
+            positionAttempts < 10
+          ) {
+            // Try a new position with smaller spread
+            const newAngle = Math.random() * Math.PI * 2;
+            const newDistance = Math.random() * (spread * 0.5); // Use smaller spread for retries
+            x = groupCenter.x + Math.cos(newAngle) * newDistance;
+            y = groupCenter.y + Math.sin(newAngle) * newDistance;
+            clampedX = Math.max(50, Math.min(this.WORLD_WIDTH - 50, x));
+            clampedY = Math.max(50, Math.min(this.WORLD_HEIGHT - 50, y));
+            positionAttempts++;
+          }
+
+          if (positionAttempts >= 10) {
+            console.log(
+              `Warning: Could not find wall-free position for swarm ${swarmId}, using fallback`
+            );
+            const safePos = this.getRandomSpawnPosition();
+            clampedX = safePos.x;
+            clampedY = safePos.y;
+          }
+
+          const swarmEnemy = new SwarmAI(
+            swarmId,
+            clampedX,
+            clampedY,
+            this.preferredAIDifficulty,
+            "#cc2244"
+          );
+
+          this.swarmEnemies.set(swarmId, swarmEnemy);
+          console.log(
+            `Spawned swarm enemy ${swarmId} at (${clampedX}, ${clampedY}) with difficulty ${this.preferredAIDifficulty}`
+          );
+        }
+      }
+
+      // Update last spawn time
+      this.lastSwarmSpawn = currentTime;
+    }
+  }
+
+  private getSwarmSpawnPosition(): { x: number; y: number } {
+    // Get swarm config for spawn distances
+    const swarmConfig = getSwarmConfig(this.preferredAIDifficulty);
+
+    // Find a position that's not too close to players but not at world edge
+    let attempts = 0;
+    const maxAttempts = 50; // Increased attempts to find valid position
+    const minDistanceFromPlayer = swarmConfig.spawnDistance.min;
+    const maxDistanceFromPlayer = swarmConfig.spawnDistance.max;
+    const swarmRadius = swarmConfig.radius;
+    const safeDistance = 20; // Extra buffer from walls
+
+    while (attempts < maxAttempts) {
+      const x = Math.random() * (this.WORLD_WIDTH - 200) + 100;
+      const y = Math.random() * (this.WORLD_HEIGHT - 200) + 100;
+
+      let validPosition = true;
+
+      // Check wall collision first
+      if (this.checkWallCollision(x, y, swarmRadius + safeDistance)) {
+        validPosition = false;
+        attempts++;
+        continue;
+      }
+
+      // Check distance from all players
+      this.players.forEach((player) => {
+        const distance = Math.sqrt(
+          Math.pow(player.x - x, 2) + Math.pow(player.y - y, 2)
+        );
+
+        if (
+          distance < minDistanceFromPlayer ||
+          distance > maxDistanceFromPlayer
+        ) {
+          validPosition = false;
+        }
+      });
+
+      if (validPosition) {
+        console.log(
+          `Found valid swarm spawn position at (${x.toFixed(1)}, ${y.toFixed(1)}) after ${attempts + 1} attempts`
+        );
+        return { x, y };
+      }
+
+      attempts++;
+    }
+
+    // Fallback: Use safe spawn position method
+    console.log(
+      `Could not find valid swarm spawn position after ${maxAttempts} attempts, using safe fallback`
+    );
+    const safePos = this.getRandomSpawnPosition();
+    return { x: safePos.x, y: safePos.y };
   }
 
   private checkPowerUpCollision(

@@ -445,6 +445,39 @@ export class SocketService {
       }
     );
 
+    // Player damage events
+    this.socket.on(
+      "playerDamaged",
+      (data: {
+        playerId: string;
+        damage: number;
+        attackerId: string;
+        attackerType: string;
+        x: number;
+        y: number;
+      }) => {
+        // Only process damage for the current player
+        if (data.playerId === this.gameStore.playerId) {
+          // Track damage taken in stats
+          this.gameStore.addDamageTaken(data.damage);
+
+          // Create explosion effect at the damage location
+          this.gameStore.particleSystem.createExplosion(
+            data.x,
+            data.y,
+            "laser"
+          );
+
+          // Play hurt sound effect
+          soundService.playSound("hurt", 0.6);
+
+          console.log(
+            `Player took ${data.damage} damage from ${data.attackerType} ${data.attackerId}`
+          );
+        }
+      }
+    );
+
     // Error handling
     this.socket.on("connect_error", (error) => {
       console.error("Connection error:", error);

@@ -15,7 +15,7 @@ interface DeathMenuProps {
 
 const DeathMenu: React.FC<DeathMenuProps> = ({ onRespawn, onReturnToHome }) => {
   return (
-    <div className="modal-overlay">
+    <div className="death-modal-overlay">
       <div className="modal-content death-menu">
         <div className="modal-header death-menu-header">
           <h2>

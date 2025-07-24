@@ -104,7 +104,7 @@ export class RendererService {
   }
 
   private drawWalls() {
-    this.gameStore.gameState.walls.forEach((wall) => {
+    this.gameStore.gameState.walls.forEach((wall: any) => {
       if (this.gameStore.isWallInView(wall)) {
         this.drawSpaceRockWall(wall.x, wall.y, wall.width, wall.height);
       }
@@ -548,7 +548,7 @@ export class RendererService {
   }
 
   private drawPlayers() {
-    Object.values(this.gameStore.gameState.players).forEach((player) => {
+    Object.values(this.gameStore.gameState.players).forEach((player: any) => {
       // Don't render dead players (health <= 0)
       if (player.health <= 0) return;
 
@@ -591,50 +591,54 @@ export class RendererService {
     // Check if aiEnemies exists in gameState
     if (!this.gameStore.gameState.aiEnemies) return;
 
-    Object.values(this.gameStore.gameState.aiEnemies).forEach((aiEnemy) => {
-      // Don't render dead AI enemies (health <= 0)
-      if (aiEnemy.health <= 0) return;
+    Object.values(this.gameStore.gameState.aiEnemies).forEach(
+      (aiEnemy: any) => {
+        // Don't render dead AI enemies (health <= 0)
+        if (aiEnemy.health <= 0) return;
 
-      if (this.gameStore.isPlayerInView(aiEnemy)) {
-        this.drawAISpaceship(aiEnemy);
+        if (this.gameStore.isPlayerInView(aiEnemy)) {
+          this.drawAISpaceship(aiEnemy);
 
-        // AI name (above health bar)
-        this.ctx.font = "12px Arial";
-        this.ctx.textAlign = "center";
+          // AI name (above health bar)
+          this.ctx.font = "12px Arial";
+          this.ctx.textAlign = "center";
 
-        // Name background/outline for better visibility
-        this.ctx.strokeStyle = "#000";
-        this.ctx.lineWidth = 3;
-        this.ctx.strokeText(aiEnemy.name, aiEnemy.x, aiEnemy.y - 60);
+          // Name background/outline for better visibility
+          this.ctx.strokeStyle = "#000";
+          this.ctx.lineWidth = 3;
+          this.ctx.strokeText(aiEnemy.name, aiEnemy.x, aiEnemy.y - 60);
 
-        // Name text with red color for AI
-        this.ctx.fillStyle = "#ff6666";
-        this.ctx.fillText(aiEnemy.name, aiEnemy.x, aiEnemy.y - 60);
+          // Name text with red color for AI
+          this.ctx.fillStyle = "#ff6666";
+          this.ctx.fillText(aiEnemy.name, aiEnemy.x, aiEnemy.y - 60);
 
-        // Health bar
-        this.drawHealthBar(aiEnemy);
+          // Health bar
+          this.drawHealthBar(aiEnemy);
 
-        // Shield effect (if AI has shield)
-        this.drawShieldEffect(aiEnemy);
+          // Shield effect (if AI has shield)
+          this.drawShieldEffect(aiEnemy);
+        }
       }
-    });
+    );
   }
 
   private drawSwarmEnemies() {
     // Check if swarmEnemies exists in gameState
     if (!this.gameStore.gameState.swarmEnemies) return;
 
-    Object.values(this.gameStore.gameState.swarmEnemies).forEach((swarmEnemy: any) => {
-      // Don't render dead swarm enemies (health <= 0)
-      if (swarmEnemy.health <= 0) return;
+    Object.values(this.gameStore.gameState.swarmEnemies).forEach(
+      (swarmEnemy: any) => {
+        // Don't render dead swarm enemies (health <= 0)
+        if (swarmEnemy.health <= 0) return;
 
-      if (this.gameStore.isPlayerInView(swarmEnemy)) {
-        this.drawSwarmSpaceship(swarmEnemy);
-        
-        // NO name or health bar for swarm enemies as per requirements
-        // They should look like anonymous monster drones
+        if (this.gameStore.isPlayerInView(swarmEnemy)) {
+          this.drawSwarmSpaceship(swarmEnemy);
+
+          // NO name or health bar for swarm enemies as per requirements
+          // They should look like anonymous monster drones
+        }
       }
-    });
+    );
   }
 
   private drawSpaceship(player: any) {
@@ -894,105 +898,12 @@ export class RendererService {
     this.ctx.beginPath();
     this.ctx.arc(2 * scale, 0, 3 * scale, 0, Math.PI * 2);
     this.ctx.fill();
-    
+
     // Inner glow
     this.ctx.fillStyle = "#ffffff";
     this.ctx.shadowBlur = 0;
     this.ctx.beginPath();
     this.ctx.arc(2 * scale, 0, 1 * scale, 0, Math.PI * 2);
-    this.ctx.fill();
-
-    this.ctx.restore();
-  }
-
-  private drawSwarmSpaceship(swarmEnemy: any) {
-    this.ctx.save();
-
-    // Move to swarm position and rotate to face direction
-    this.ctx.translate(swarmEnemy.x, swarmEnemy.y);
-    this.ctx.rotate(swarmEnemy.angle);
-
-    const swarmColor = "#cc2244"; // Dark red color for swarm enemies
-    const accentColor = "#992233"; // Even darker red accent
-    const spikesColor = "#ff4455"; // Bright red for spikes
-
-    // Main body - smaller and more angular than regular AI
-    this.ctx.fillStyle = swarmColor;
-    this.ctx.strokeStyle = "#000";
-    this.ctx.lineWidth = 1;
-    this.ctx.beginPath();
-    this.ctx.moveTo(10, 0); // Nose (smaller than AI)
-    this.ctx.lineTo(-8, -6); // Top back
-    this.ctx.lineTo(-6, 0); // Back center
-    this.ctx.lineTo(-8, 6); // Bottom back
-    this.ctx.closePath();
-    this.ctx.fill();
-    this.ctx.stroke();
-
-    // Monster spikes on top and bottom
-    this.ctx.fillStyle = spikesColor;
-    // Top spikes
-    this.ctx.beginPath();
-    this.ctx.moveTo(-2, -6);
-    this.ctx.lineTo(0, -10);
-    this.ctx.lineTo(2, -6);
-    this.ctx.closePath();
-    this.ctx.fill();
-
-    this.ctx.beginPath();
-    this.ctx.moveTo(4, -6);
-    this.ctx.lineTo(6, -9);
-    this.ctx.lineTo(8, -6);
-    this.ctx.closePath();
-    this.ctx.fill();
-
-    // Bottom spikes
-    this.ctx.beginPath();
-    this.ctx.moveTo(-2, 6);
-    this.ctx.lineTo(0, 10);
-    this.ctx.lineTo(2, 6);
-    this.ctx.closePath();
-    this.ctx.fill();
-
-    this.ctx.beginPath();
-    this.ctx.moveTo(4, 6);
-    this.ctx.lineTo(6, 9);
-    this.ctx.lineTo(8, 6);
-    this.ctx.closePath();
-    this.ctx.fill();
-
-    // Side spikes for extra monster look
-    this.ctx.beginPath();
-    this.ctx.moveTo(-8, -3);
-    this.ctx.lineTo(-12, -2);
-    this.ctx.lineTo(-8, -1);
-    this.ctx.closePath();
-    this.ctx.fill();
-
-    this.ctx.beginPath();
-    this.ctx.moveTo(-8, 1);
-    this.ctx.lineTo(-12, 2);
-    this.ctx.lineTo(-8, 3);
-    this.ctx.closePath();
-    this.ctx.fill();
-
-    // Glowing "eyes" - smaller and meaner looking
-    this.ctx.fillStyle = "#ff0000";
-    this.ctx.shadowColor = "#ff0000";
-    this.ctx.shadowBlur = 3;
-    this.ctx.beginPath();
-    this.ctx.arc(2, -2, 1.5, 0, Math.PI * 2);
-    this.ctx.fill();
-    this.ctx.beginPath();
-    this.ctx.arc(2, 2, 1.5, 0, Math.PI * 2);
-    this.ctx.fill();
-    this.ctx.shadowBlur = 0;
-
-    // Central core - pulsing effect for alive/aggressive look
-    const pulseIntensity = 0.5 + 0.5 * Math.sin(Date.now() * 0.01);
-    this.ctx.fillStyle = `rgba(255, 68, 68, ${pulseIntensity})`;
-    this.ctx.beginPath();
-    this.ctx.arc(0, 0, 2, 0, Math.PI * 2);
     this.ctx.fill();
 
     this.ctx.restore();
@@ -1273,7 +1184,7 @@ export class RendererService {
 
   private drawProjectiles() {
     // Draw server projectiles only
-    this.gameStore.gameState.projectiles.forEach((proj) => {
+    this.gameStore.gameState.projectiles.forEach((proj: any) => {
       if (this.gameStore.isProjectileInView(proj)) {
         // Create a temporary projectile instance for rendering if needed
         const projectile = this.gameStore.projectileInstances.get(proj.id);
@@ -1371,7 +1282,7 @@ export class RendererService {
 
   private drawMeteors() {
     // Draw meteors from game state
-    this.gameStore.gameState.meteors?.forEach((meteor) => {
+    this.gameStore.gameState.meteors?.forEach((meteor: any) => {
       // Check if meteor is in view
       const cameraX = this.gameStore.camera.x;
       const cameraY = this.gameStore.camera.y;
