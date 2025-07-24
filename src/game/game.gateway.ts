@@ -21,6 +21,7 @@ import {
   XP_REWARDS,
 } from "@shared";
 import { EnhancedAIEnemy } from "@shared/classes/EnhancedAIEnemy";
+import { SwarmAI } from "@shared/classes/SwarmAI";
 import { PowerUpType } from "@shared/classes/PowerUp";
 import { Server, Socket } from "socket.io";
 import { AuthService } from "../services/auth.service";
@@ -63,6 +64,7 @@ export class GameGateway
 
   private players: Map<string, Player> = new Map();
   private aiEnemies: Map<string, EnhancedAIEnemy> = new Map();
+  private swarmEnemies: Map<string, SwarmAI> = new Map();
   private projectiles: Map<string, Projectile> = new Map();
   private meteors: Map<string, Meteor> = new Map();
   private powerUps: Map<string, PowerUp> = new Map();
@@ -105,6 +107,7 @@ export class GameGateway
     this.generateWalls();
     this.spawnPowerUps();
     this.spawnAIEnemies();
+    this.spawnSwarmEnemies();
     // Start heartbeat monitoring
     this.startHeartbeatMonitoring();
     // Don't start game loop until players join
@@ -441,6 +444,7 @@ export class GameGateway
     this.players.clear();
     this.connectedClients.clear();
     this.aiEnemies.clear();
+    this.swarmEnemies.clear();
     this.projectiles.clear();
     this.meteors.clear();
     this.powerUps.clear();
@@ -1102,6 +1106,7 @@ export class GameGateway
     // Update AI enemies (only if we have real players to interact with)
     if (hasRealPlayers) {
       this.updateAIEnemies(deltaTime);
+      this.updateSwarmEnemies(deltaTime);
     }
 
     // Update projectiles
@@ -1495,6 +1500,173 @@ export class GameGateway
     this.projectiles.set(projectileId, projectile);
   }
 
+  private updateSwarmEnemies(deltaTime: number) {
+    const currentTime = Date.now();
+    
+    this.swarmEnemies.forEach((swarmEnemy, swarmId) => {
+      // Create swarm context for AI behavior
+      const swarmContext = {
+        deltaTime,
+        players: this.players,
+        swarmMembers: this.swarmEnemies,
+        worldWidth: this.WORLD_WIDTH,
+        worldHeight: this.WORLD_HEIGHT,
+        walls: this.walls,
+        checkWallCollision: (x: number, y: number, radius: number) => this.checkWallCollision(x, y, radius),
+        closestPlayer: this.findClosestPlayerToSwarm(swarmEnemy),
+        distanceToPlayer: 0,
+        currentTime
+      };
+      
+      // Calculate distance to closest player
+      if (swarmContext.closestPlayer) {
+        swarmContext.distanceToPlayer = Math.sqrt(
+          Math.pow(swarmContext.closestPlayer.x - swarmEnemy.x, 2) +
+          Math.pow(swarmContext.closestPlayer.y - swarmEnemy.y, 2)
+        );
+      } else {
+        swarmContext.distanceToPlayer = Infinity;
+      }
+
+      // Update swarm AI behavior
+      swarmEnemy.update(swarmContext);
+
+      // Check for attack collisions with players
+      this.players.forEach((player, playerId) => {
+        if (player.health <= 0) return;
+        
+        const distance = Math.sqrt(
+          Math.pow(player.x - swarmEnemy.x, 2) + Math.pow(player.y - swarmEnemy.y, 2)
+        );
+        
+        // Swarm enemies deal damage on contact
+        if (distance < swarmEnemy.radius + player.radius) {
+          const damage = swarmEnemy.calculateAttackDamage();
+          player.takeDamage(damage);
+          
+          // Emit damage event
+          this.server.emit("playerDamaged", {
+            playerId,
+            damage,
+            attackerId: swarmId,
+            attackerType: "swarm",
+            x: player.x,
+            y: player.y
+          });
+          
+          // Push swarm enemy back slightly to prevent spam damage
+          const pushAngle = Math.atan2(swarmEnemy.y - player.y, swarmEnemy.x - player.x);
+          const pushDistance = 20;
+          swarmEnemy.x += Math.cos(pushAngle) * pushDistance;
+          swarmEnemy.y += Math.sin(pushAngle) * pushDistance;
+        }
+      });
+
+      // Check projectile collisions with swarm enemies
+      this.projectiles.forEach((projectile, projectileId) => {
+        if (projectile.ownerId === swarmId) return; // Don't hit own shots
+
+        if (swarmEnemy.containsPoint(projectile.x, projectile.y)) {
+          // Take damage
+          swarmEnemy.takeDamage(projectile.damage);
+
+          // Award XP to shooter if swarm dies
+          if (swarmEnemy.health <= 0) {
+            const shooterPlayer = this.players.get(projectile.ownerId);
+            if (shooterPlayer) {
+              // Award XP for killing swarm enemy (less than regular AI)
+              const swarmKillXP = 10; // 10 XP for swarm kill
+              shooterPlayer.addExperience(swarmKillXP);
+              
+              console.log(
+                `Player ${shooterPlayer.name} killed swarm enemy and gained ${swarmKillXP} XP`
+              );
+              
+              // Emit kill event for client notification
+              this.server.emit("enemyKilled", {
+                killerId: projectile.ownerId,
+                killerName: shooterPlayer.name,
+                targetId: swarmId,
+                targetType: "swarm",
+                xpGained: swarmKillXP,
+              });
+            }
+            
+            // Remove dead swarm enemy
+            this.swarmEnemies.delete(swarmId);
+            
+            // Respawn swarm enemies periodically
+            this.maybeRespawnSwarmEnemy();
+          }
+
+          this.projectiles.delete(projectileId);
+          this.server.emit("projectileHit", {
+            projectileId: projectileId,
+            x: projectile.x,
+            y: projectile.y,
+            targetId: swarmId,
+            damage: projectile.damage,
+            ownerId: projectile.ownerId,
+          });
+        }
+      });
+    });
+  }
+
+  private findClosestPlayerToSwarm(swarmEnemy: SwarmAI): Player | null {
+    let closestPlayer: Player | null = null;
+    let closestDistance = Infinity;
+
+    this.players.forEach((player) => {
+      if (player.health <= 0) return; // Skip dead players
+      
+      const distance = Math.sqrt(
+        Math.pow(player.x - swarmEnemy.x, 2) + Math.pow(player.y - swarmEnemy.y, 2)
+      );
+      
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestPlayer = player;
+      }
+    });
+
+    return closestPlayer;
+  }
+
+  private maybeRespawnSwarmEnemy() {
+    // Keep a minimum number of swarm enemies active
+    const minSwarmCount = 6;
+    const maxSwarmCount = 12;
+    
+    if (this.swarmEnemies.size < minSwarmCount && this.players.size > 0) {
+      // Spawn new swarm enemy near a random player
+      const playerArray = Array.from(this.players.values());
+      const randomPlayer = playerArray[Math.floor(Math.random() * playerArray.length)];
+      
+      // Spawn at a distance from the player
+      const spawnDistance = 200 + Math.random() * 100; // 200-300 pixels away
+      const spawnAngle = Math.random() * Math.PI * 2;
+      const spawnX = randomPlayer.x + Math.cos(spawnAngle) * spawnDistance;
+      const spawnY = randomPlayer.y + Math.sin(spawnAngle) * spawnDistance;
+      
+      // Clamp to world bounds
+      const clampedX = Math.max(50, Math.min(this.WORLD_WIDTH - 50, spawnX));
+      const clampedY = Math.max(50, Math.min(this.WORLD_HEIGHT - 50, spawnY));
+      
+      // Create new swarm enemy
+      const swarmId = `swarm_${this.aiEnemyCounter++}`;
+      const swarmEnemy = new SwarmAI(
+        swarmId,
+        clampedX,
+        clampedY,
+        this.preferredAIDifficulty,
+        "#cc2244"
+      );
+      
+      this.swarmEnemies.set(swarmId, swarmEnemy);
+    }
+  }
+
   private checkWallCollision(x: number, y: number, radius: number): boolean {
     const wallBuffer = 10; // Add 10px buffer around all walls for smoother collision
     return this.walls.some((wall) => {
@@ -1652,6 +1824,7 @@ export class GameGateway
 
   private spawnAIEnemies() {
     this.aiEnemies.clear();
+    this.swarmEnemies.clear();
 
     for (let i = 0; i < this.AI_ENEMY_COUNT; i++) {
       const spawnPosition = this.getRandomSpawnPosition();
@@ -1666,6 +1839,45 @@ export class GameGateway
       );
 
       this.aiEnemies.set(aiId, aiEnemy);
+    }
+  }
+
+  private spawnSwarmEnemies() {
+    this.swarmEnemies.clear();
+
+    // Spawn swarms in groups of 3-5 enemies
+    const swarmGroups = 2; // Number of swarm groups
+    const enemiesPerGroup = 4; // 4 enemies per group
+
+    for (let group = 0; group < swarmGroups; group++) {
+      // Find a spawn position for the group center
+      const groupCenter = this.getRandomSpawnPosition();
+      
+      for (let i = 0; i < enemiesPerGroup; i++) {
+        const swarmId = `swarm_${this.aiEnemyCounter++}`;
+        
+        // Spawn group members near the center with some spread
+        const spread = 50; // 50 pixel spread around group center
+        const angle = (i / enemiesPerGroup) * Math.PI * 2;
+        const distance = Math.random() * spread;
+        
+        const x = groupCenter.x + Math.cos(angle) * distance;
+        const y = groupCenter.y + Math.sin(angle) * distance;
+        
+        // Clamp to world bounds
+        const clampedX = Math.max(50, Math.min(this.WORLD_WIDTH - 50, x));
+        const clampedY = Math.max(50, Math.min(this.WORLD_HEIGHT - 50, y));
+
+        const swarmEnemy = new SwarmAI(
+          swarmId,
+          clampedX,
+          clampedY,
+          this.preferredAIDifficulty,
+          "#cc2244" // Dark red color for aggressive appearance
+        );
+
+        this.swarmEnemies.set(swarmId, swarmEnemy);
+      }
     }
   }
 
@@ -1834,6 +2046,12 @@ export class GameGateway
       serializedAIEnemies[id] = aiEnemy.serialize();
     }
 
+    // Serialize swarm AI enemies for network transmission
+    const serializedSwarmEnemies: { [id: string]: any } = {};
+    for (const [id, swarmEnemy] of this.swarmEnemies) {
+      serializedSwarmEnemies[id] = swarmEnemy.serialize();
+    }
+
     // Serialize power-ups for network transmission
     const serializedPowerUps: { [id: string]: any } = {};
     for (const [id, powerUp] of this.powerUps) {
@@ -1843,6 +2061,7 @@ export class GameGateway
     const gameState: GameState = {
       players: serializedPlayers,
       aiEnemies: serializedAIEnemies,
+      swarmEnemies: serializedSwarmEnemies,
       walls: this.walls,
       powerUps: serializedPowerUps,
       projectiles: Array.from(this.projectiles.values()).map((p) => ({

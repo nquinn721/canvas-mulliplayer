@@ -629,7 +629,10 @@ export class AuthService {
    * Recalculate all users' levels based on their experience using ExperienceConfig
    * This method fixes any inconsistent level data in the database
    */
-  async recalculateAllUserLevels(): Promise<{ updated: number; total: number }> {
+  async recalculateAllUserLevels(): Promise<{
+    updated: number;
+    total: number;
+  }> {
     const users = await this.userRepository.find({
       where: { isActive: true },
     });

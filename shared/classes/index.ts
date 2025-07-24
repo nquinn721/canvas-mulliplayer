@@ -5,3 +5,4 @@ export { Player } from "./Player";
 export type { KeyState } from "./Player";
 export { World } from "./World";
 export type { Wall } from "./World";
+export { SwarmAI } from "./SwarmAI";

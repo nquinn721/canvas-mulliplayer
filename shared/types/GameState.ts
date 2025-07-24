@@ -20,6 +20,7 @@ export interface MeteorData {
 export interface GameState {
   players: { [id: string]: any }; // Serialized Player objects
   aiEnemies: { [id: string]: any }; // Serialized AIEnemy objects
+  swarmEnemies: { [id: string]: any }; // Serialized SwarmAI objects
   projectiles: ProjectileData[];
   meteors: MeteorData[];
   walls: Wall[];

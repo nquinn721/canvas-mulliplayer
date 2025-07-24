@@ -12,6 +12,7 @@ import {
   ValidationPipe,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
+import { calculateLevelFromExperience } from "../../shared/config/ExperienceConfig";
 import { Roles } from "../decorators/roles.decorator";
 import {
   ExperienceUpdateDto,
@@ -25,7 +26,6 @@ import { UserRole } from "../entities/user.entity";
 import { JwtAuthGuard } from "../guards/jwt-auth.guard";
 import { RolesGuard } from "../guards/roles.guard";
 import { AuthService } from "../services/auth.service";
-import { calculateLevelFromExperience } from "../../shared/config/ExperienceConfig";
 
 @Controller("auth")
 export class AuthController {
@@ -416,16 +416,16 @@ export class AuthController {
     try {
       const experience = parseInt(req.params.experience) || 0;
       const level = calculateLevelFromExperience(experience);
-      
+
       // Get some example level calculations
       const examples = [];
       for (let exp of [0, 100, 250, 500, 1000, 2000, 5000]) {
         examples.push({
           experience: exp,
-          level: calculateLevelFromExperience(exp)
+          level: calculateLevelFromExperience(exp),
         });
       }
-      
+
       res.json({
         success: true,
         data: {
@@ -435,14 +435,14 @@ export class AuthController {
           config: {
             baseExperienceRequired: 100,
             experienceMultiplier: 1.5,
-            formula: "exponential"
-          }
-        }
+            formula: "exponential",
+          },
+        },
       });
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: error.message
+        message: error.message,
       });
     }
   }
@@ -452,8 +452,10 @@ export class AuthController {
   async debugMyLevel(@Request() req) {
     try {
       const user = await this.authService.getUserById(req.user.id);
-      const calculatedLevel = calculateLevelFromExperience(user.experience || 0);
-      
+      const calculatedLevel = calculateLevelFromExperience(
+        user.experience || 0
+      );
+
       return {
         success: true,
         data: {
@@ -465,10 +467,10 @@ export class AuthController {
           },
           calculated: {
             level: calculatedLevel,
-            levelMatches: (user.playerLevel || 1) === calculatedLevel
+            levelMatches: (user.playerLevel || 1) === calculatedLevel,
           },
-          shouldUpdate: (user.playerLevel || 1) !== calculatedLevel
-        }
+          shouldUpdate: (user.playerLevel || 1) !== calculatedLevel,
+        },
       };
     } catch (error) {
       throw new HttpException(
@@ -486,11 +488,13 @@ export class AuthController {
   async fixMyLevel(@Request() req) {
     try {
       const user = await this.authService.getUserById(req.user.id);
-      const calculatedLevel = calculateLevelFromExperience(user.experience || 0);
-      
+      const calculatedLevel = calculateLevelFromExperience(
+        user.experience || 0
+      );
+
       if (user.playerLevel !== calculatedLevel) {
         await this.authService.updateUserLevel(user.id, calculatedLevel);
-        
+
         return {
           success: true,
           message: "Level updated successfully",
@@ -499,8 +503,8 @@ export class AuthController {
             username: user.username,
             oldLevel: user.playerLevel || 1,
             newLevel: calculatedLevel,
-            experience: user.experience || 0
-          }
+            experience: user.experience || 0,
+          },
         };
       } else {
         return {
@@ -510,8 +514,8 @@ export class AuthController {
             userId: user.id,
             username: user.username,
             level: calculatedLevel,
-            experience: user.experience || 0
-          }
+            experience: user.experience || 0,
+          },
         };
       }
     } catch (error) {

@@ -14,6 +14,7 @@ export class GameStore {
   gameState: GameState = {
     players: {},
     aiEnemies: {},
+    swarmEnemies: {},
     projectiles: [],
     meteors: [],
     walls: [],
@@ -1036,6 +1037,7 @@ export class GameStore {
     this.gameState = {
       players: {},
       aiEnemies: {},
+      swarmEnemies: {},
       projectiles: [],
       meteors: [],
       walls: [],

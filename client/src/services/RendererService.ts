@@ -38,6 +38,7 @@ export class RendererService {
     this.drawPowerUps();
     this.drawPlayers();
     this.drawAIEnemies();
+    this.drawSwarmEnemies();
     this.drawProjectiles();
     this.drawMeteors();
     this.drawParticles();
@@ -619,6 +620,23 @@ export class RendererService {
     });
   }
 
+  private drawSwarmEnemies() {
+    // Check if swarmEnemies exists in gameState
+    if (!this.gameStore.gameState.swarmEnemies) return;
+
+    Object.values(this.gameStore.gameState.swarmEnemies).forEach((swarmEnemy: any) => {
+      // Don't render dead swarm enemies (health <= 0)
+      if (swarmEnemy.health <= 0) return;
+
+      if (this.gameStore.isPlayerInView(swarmEnemy)) {
+        this.drawSwarmSpaceship(swarmEnemy);
+        
+        // NO name or health bar for swarm enemies as per requirements
+        // They should look like anonymous monster drones
+      }
+    });
+  }
+
   private drawSpaceship(player: any) {
     this.ctx.save();
 
@@ -802,6 +820,179 @@ export class RendererService {
     this.ctx.fillStyle = "#ff0000";
     this.ctx.beginPath();
     this.ctx.arc(4, 0, 2, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    this.ctx.restore();
+  }
+
+  private drawSwarmSpaceship(swarmEnemy: any) {
+    this.ctx.save();
+
+    // Move to swarm position and rotate to face direction
+    this.ctx.translate(swarmEnemy.x, swarmEnemy.y);
+    this.ctx.rotate(swarmEnemy.angle);
+
+    const shipColor = "#cc2244"; // Dark red color for swarm enemies
+    const accentColor = "#992233"; // Even darker red accent
+
+    // Smaller, more angular/spiky design for monster-like appearance
+    const scale = 0.6; // Smaller than regular ships
+
+    // Main body - angular/jagged shape
+    this.ctx.fillStyle = shipColor;
+    this.ctx.strokeStyle = "#fff";
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.moveTo(15 * scale, 0); // Nose
+    this.ctx.lineTo(-8 * scale, -8 * scale); // Top back left
+    this.ctx.lineTo(-12 * scale, -4 * scale); // Top notch
+    this.ctx.lineTo(-6 * scale, 0); // Back center
+    this.ctx.lineTo(-12 * scale, 4 * scale); // Bottom notch
+    this.ctx.lineTo(-8 * scale, 8 * scale); // Bottom back left
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.stroke();
+
+    // Spiky wing extensions
+    this.ctx.fillStyle = accentColor;
+    this.ctx.beginPath();
+    this.ctx.moveTo(-2 * scale, -8 * scale);
+    this.ctx.lineTo(4 * scale, -12 * scale); // Top spike
+    this.ctx.lineTo(8 * scale, -6 * scale);
+    this.ctx.lineTo(2 * scale, -4 * scale);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(-2 * scale, 8 * scale);
+    this.ctx.lineTo(4 * scale, 12 * scale); // Bottom spike
+    this.ctx.lineTo(8 * scale, 6 * scale);
+    this.ctx.lineTo(2 * scale, 4 * scale);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    // Additional spikes for monster appearance
+    this.ctx.fillStyle = "#aa1122";
+    this.ctx.beginPath();
+    this.ctx.moveTo(8 * scale, -2 * scale);
+    this.ctx.lineTo(18 * scale, -4 * scale); // Top front spike
+    this.ctx.lineTo(12 * scale, 0);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(8 * scale, 2 * scale);
+    this.ctx.lineTo(18 * scale, 4 * scale); // Bottom front spike
+    this.ctx.lineTo(12 * scale, 0);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    // Menacing "eye" or core - glowing effect
+    this.ctx.fillStyle = "#ff0000";
+    this.ctx.shadowColor = "#ff0000";
+    this.ctx.shadowBlur = 8;
+    this.ctx.beginPath();
+    this.ctx.arc(2 * scale, 0, 3 * scale, 0, Math.PI * 2);
+    this.ctx.fill();
+    
+    // Inner glow
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.shadowBlur = 0;
+    this.ctx.beginPath();
+    this.ctx.arc(2 * scale, 0, 1 * scale, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    this.ctx.restore();
+  }
+
+  private drawSwarmSpaceship(swarmEnemy: any) {
+    this.ctx.save();
+
+    // Move to swarm position and rotate to face direction
+    this.ctx.translate(swarmEnemy.x, swarmEnemy.y);
+    this.ctx.rotate(swarmEnemy.angle);
+
+    const swarmColor = "#cc2244"; // Dark red color for swarm enemies
+    const accentColor = "#992233"; // Even darker red accent
+    const spikesColor = "#ff4455"; // Bright red for spikes
+
+    // Main body - smaller and more angular than regular AI
+    this.ctx.fillStyle = swarmColor;
+    this.ctx.strokeStyle = "#000";
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.moveTo(10, 0); // Nose (smaller than AI)
+    this.ctx.lineTo(-8, -6); // Top back
+    this.ctx.lineTo(-6, 0); // Back center
+    this.ctx.lineTo(-8, 6); // Bottom back
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.stroke();
+
+    // Monster spikes on top and bottom
+    this.ctx.fillStyle = spikesColor;
+    // Top spikes
+    this.ctx.beginPath();
+    this.ctx.moveTo(-2, -6);
+    this.ctx.lineTo(0, -10);
+    this.ctx.lineTo(2, -6);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(4, -6);
+    this.ctx.lineTo(6, -9);
+    this.ctx.lineTo(8, -6);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    // Bottom spikes
+    this.ctx.beginPath();
+    this.ctx.moveTo(-2, 6);
+    this.ctx.lineTo(0, 10);
+    this.ctx.lineTo(2, 6);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(4, 6);
+    this.ctx.lineTo(6, 9);
+    this.ctx.lineTo(8, 6);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    // Side spikes for extra monster look
+    this.ctx.beginPath();
+    this.ctx.moveTo(-8, -3);
+    this.ctx.lineTo(-12, -2);
+    this.ctx.lineTo(-8, -1);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(-8, 1);
+    this.ctx.lineTo(-12, 2);
+    this.ctx.lineTo(-8, 3);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    // Glowing "eyes" - smaller and meaner looking
+    this.ctx.fillStyle = "#ff0000";
+    this.ctx.shadowColor = "#ff0000";
+    this.ctx.shadowBlur = 3;
+    this.ctx.beginPath();
+    this.ctx.arc(2, -2, 1.5, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.beginPath();
+    this.ctx.arc(2, 2, 1.5, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.shadowBlur = 0;
+
+    // Central core - pulsing effect for alive/aggressive look
+    const pulseIntensity = 0.5 + 0.5 * Math.sin(Date.now() * 0.01);
+    this.ctx.fillStyle = `rgba(255, 68, 68, ${pulseIntensity})`;
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, 2, 0, Math.PI * 2);
     this.ctx.fill();
 
     this.ctx.restore();
