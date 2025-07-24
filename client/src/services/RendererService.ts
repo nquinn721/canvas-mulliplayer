@@ -1,6 +1,7 @@
 import { AbilityIconRenderer } from "../components/canvas";
 import { GameStore } from "../stores/GameStore";
 import { debugLogger } from "./DebugLogger";
+import { getDisplayNameWithFallback } from "../utils/displayName";
 
 export class RendererService {
   private gameStore: GameStore;
@@ -561,11 +562,12 @@ export class RendererService {
         // Name background/outline for better visibility
         this.ctx.strokeStyle = "#000";
         this.ctx.lineWidth = 3;
-        this.ctx.strokeText(player.name, player.x, player.y - 60);
+        const displayName = (player as any).displayName || (player as any).name || "Guest";
+        this.ctx.strokeText(displayName, (player as any).x, (player as any).y - 60);
 
         // Name text
         this.ctx.fillStyle = "#fff";
-        this.ctx.fillText(player.name, player.x, player.y - 60);
+        this.ctx.fillText(displayName, (player as any).x, (player as any).y - 60);
 
         // Health bar
         this.drawHealthBar(player);
@@ -1820,6 +1822,202 @@ export class RendererService {
     // this.drawLevelIndicator(x, y, iconSize, flashLevel, "#FFD700"); // Consistent gold color
   }
 
+  private drawTopLeftExperience() {
+    const player = this.gameStore.gameState.players[this.gameStore.playerId];
+    if (!player) return;
+
+    const margin = 20;
+    const containerWidth = 220;
+    const containerHeight = 60;
+    const x = margin;
+    const y = margin;
+
+    this.ctx.save();
+
+    // Menu-style background with modal styling
+    const bgGradient = this.ctx.createLinearGradient(
+      x,
+      y,
+      x,
+      y + containerHeight
+    );
+    bgGradient.addColorStop(0, "rgba(10, 10, 25, 0.95)");
+    bgGradient.addColorStop(1, "rgba(20, 20, 35, 0.9)");
+
+    this.ctx.fillStyle = bgGradient;
+    this.ctx.fillRect(x, y, containerWidth, containerHeight);
+
+    // Border with cyan accent like menus
+    this.ctx.strokeStyle = "rgba(0, 212, 255, 0.3)";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x, y, containerWidth, containerHeight);
+
+    // Inner border for depth
+    this.ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x + 1, y + 1, containerWidth - 2, containerHeight - 2);
+
+    // User icon (rounded avatar)
+    const iconSize = 40;
+    const iconX = x + 15;
+    const iconY = y + 10;
+
+    // Icon background circle with gradient
+    const iconGradient = this.ctx.createRadialGradient(
+      iconX + iconSize / 2,
+      iconY + iconSize / 2,
+      0,
+      iconX + iconSize / 2,
+      iconY + iconSize / 2,
+      iconSize / 2
+    );
+    iconGradient.addColorStop(0, "#4a90e2");
+    iconGradient.addColorStop(0.7, "#357abd");
+    iconGradient.addColorStop(1, "#1e3a8a");
+
+    this.ctx.fillStyle = iconGradient;
+    this.ctx.beginPath();
+    this.ctx.arc(
+      iconX + iconSize / 2,
+      iconY + iconSize / 2,
+      iconSize / 2,
+      0,
+      Math.PI * 2
+    );
+    this.ctx.fill();
+
+    // Icon border
+    this.ctx.strokeStyle = "rgba(0, 212, 255, 0.6)";
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.arc(
+      iconX + iconSize / 2,
+      iconY + iconSize / 2,
+      iconSize / 2,
+      0,
+      Math.PI * 2
+    );
+    this.ctx.stroke();
+
+    // User icon symbol (simplified person silhouette)
+    this.ctx.fillStyle = "#ffffff";
+    const centerX = iconX + iconSize / 2;
+    const centerY = iconY + iconSize / 2;
+
+    // Head
+    this.ctx.beginPath();
+    this.ctx.arc(centerX, centerY - 8, 6, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    // Body
+    this.ctx.fillRect(centerX - 4, centerY - 2, 8, 12);
+
+    // Arms
+    this.ctx.fillRect(centerX - 8, centerY + 2, 4, 8);
+    this.ctx.fillRect(centerX + 4, centerY + 2, 4, 8);
+
+    // Experience info section
+    const textX = iconX + iconSize + 15;
+    const textY = iconY + 12;
+
+    // Level display
+    this.ctx.fillStyle = "#000";
+    this.ctx.font = "bold 16px Arial";
+    this.ctx.textAlign = "left";
+    this.ctx.fillText(`Level ${player.level || 1}`, textX + 1, textY + 1);
+
+    this.ctx.fillStyle = "#00d4ff";
+    this.ctx.fillText(`Level ${player.level || 1}`, textX, textY);
+
+    // Experience points
+    this.ctx.fillStyle = "#000";
+    this.ctx.font = "12px Arial";
+    this.ctx.fillText(`${player.experience || 0} XP`, textX + 1, textY + 18);
+
+    this.ctx.fillStyle = "#ffd700";
+    this.ctx.fillText(`${player.experience || 0} XP`, textX, textY + 17);
+
+    // Experience progress bar
+    const barWidth = 120;
+    const barHeight = 6;
+    const barX = textX;
+    const barY = textY + 25;
+
+    // Calculate XP progress using new exponential system
+    const currentLevel = player.level || 1;
+
+    // Calculate current and next level XP requirements using exponential progression
+    let currentLevelXP = 0;
+    let nextLevelXP = 0;
+    const baseXP = 100;
+    const multiplier = 1.5;
+
+    // Calculate total XP needed for current level
+    for (let level = 1; level < currentLevel; level++) {
+      currentLevelXP += Math.floor(baseXP * Math.pow(multiplier, level - 1));
+    }
+
+    // Calculate XP needed for next level
+    nextLevelXP =
+      currentLevelXP +
+      Math.floor(baseXP * Math.pow(multiplier, currentLevel - 1));
+
+    const progressXP = (player.experience || 0) - currentLevelXP;
+    const xpNeededForLevel = nextLevelXP - currentLevelXP;
+    const progress = Math.max(0, Math.min(1, progressXP / xpNeededForLevel));
+
+    // Progress bar background
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    this.ctx.fillRect(barX, barY, barWidth, barHeight);
+
+    // Progress bar border
+    this.ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+    // Progress fill
+    const fillWidth = barWidth * progress;
+    if (fillWidth > 0) {
+      const progressGradient = this.ctx.createLinearGradient(
+        barX,
+        barY,
+        barX,
+        barY + barHeight
+      );
+      progressGradient.addColorStop(0, "#ffef94");
+      progressGradient.addColorStop(0.5, "#ffd700");
+      progressGradient.addColorStop(1, "#b8860b");
+
+      this.ctx.fillStyle = progressGradient;
+      this.ctx.fillRect(barX, barY, fillWidth, barHeight);
+
+      // Progress bar glow
+      this.ctx.shadowColor = "#ffd700";
+      this.ctx.shadowBlur = 8;
+      this.ctx.fillRect(barX, barY, fillWidth, barHeight);
+      this.ctx.shadowBlur = 0;
+    }
+
+    // Progress text (current/next XP)
+    this.ctx.fillStyle = "#000";
+    this.ctx.font = "10px Arial";
+    this.ctx.textAlign = "right";
+    this.ctx.fillText(
+      `${progressXP}/${nextLevelXP - currentLevelXP}`,
+      barX + barWidth + 1,
+      barY + barHeight + 1
+    );
+
+    this.ctx.fillStyle = "#cccccc";
+    this.ctx.fillText(
+      `${progressXP}/${nextLevelXP - currentLevelXP}`,
+      barX + barWidth,
+      barY + barHeight
+    );
+
+    this.ctx.restore();
+  }
+
   private drawBoostEnergyBar() {
     const player = this.gameStore.gameState.players[this.gameStore.playerId];
     if (!player) return;
@@ -2026,202 +2224,6 @@ export class RendererService {
       this.ctx.fillText("⚡", iconBgX + iconBgWidth / 2, y + barHeight / 2 + 5);
       this.ctx.shadowBlur = 0;
     }
-  }
-
-  private drawTopLeftExperience() {
-    const player = this.gameStore.gameState.players[this.gameStore.playerId];
-    if (!player) return;
-
-    const margin = 20;
-    const containerWidth = 220;
-    const containerHeight = 60;
-    const x = margin;
-    const y = margin;
-
-    this.ctx.save();
-
-    // Menu-style background with modal styling
-    const bgGradient = this.ctx.createLinearGradient(
-      x,
-      y,
-      x,
-      y + containerHeight
-    );
-    bgGradient.addColorStop(0, "rgba(10, 10, 25, 0.95)");
-    bgGradient.addColorStop(1, "rgba(20, 20, 35, 0.9)");
-
-    this.ctx.fillStyle = bgGradient;
-    this.ctx.fillRect(x, y, containerWidth, containerHeight);
-
-    // Border with cyan accent like menus
-    this.ctx.strokeStyle = "rgba(0, 212, 255, 0.3)";
-    this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(x, y, containerWidth, containerHeight);
-
-    // Inner border for depth
-    this.ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
-    this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(x + 1, y + 1, containerWidth - 2, containerHeight - 2);
-
-    // User icon (rounded avatar)
-    const iconSize = 40;
-    const iconX = x + 15;
-    const iconY = y + 10;
-
-    // Icon background circle with gradient
-    const iconGradient = this.ctx.createRadialGradient(
-      iconX + iconSize / 2,
-      iconY + iconSize / 2,
-      0,
-      iconX + iconSize / 2,
-      iconY + iconSize / 2,
-      iconSize / 2
-    );
-    iconGradient.addColorStop(0, "#4a90e2");
-    iconGradient.addColorStop(0.7, "#357abd");
-    iconGradient.addColorStop(1, "#1e3a8a");
-
-    this.ctx.fillStyle = iconGradient;
-    this.ctx.beginPath();
-    this.ctx.arc(
-      iconX + iconSize / 2,
-      iconY + iconSize / 2,
-      iconSize / 2,
-      0,
-      Math.PI * 2
-    );
-    this.ctx.fill();
-
-    // Icon border
-    this.ctx.strokeStyle = "rgba(0, 212, 255, 0.6)";
-    this.ctx.lineWidth = 2;
-    this.ctx.beginPath();
-    this.ctx.arc(
-      iconX + iconSize / 2,
-      iconY + iconSize / 2,
-      iconSize / 2,
-      0,
-      Math.PI * 2
-    );
-    this.ctx.stroke();
-
-    // User icon symbol (simplified person silhouette)
-    this.ctx.fillStyle = "#ffffff";
-    const centerX = iconX + iconSize / 2;
-    const centerY = iconY + iconSize / 2;
-
-    // Head
-    this.ctx.beginPath();
-    this.ctx.arc(centerX, centerY - 8, 6, 0, Math.PI * 2);
-    this.ctx.fill();
-
-    // Body
-    this.ctx.fillRect(centerX - 4, centerY - 2, 8, 12);
-
-    // Arms
-    this.ctx.fillRect(centerX - 8, centerY + 2, 4, 8);
-    this.ctx.fillRect(centerX + 4, centerY + 2, 4, 8);
-
-    // Experience info section
-    const textX = iconX + iconSize + 15;
-    const textY = iconY + 12;
-
-    // Level display
-    this.ctx.fillStyle = "#000";
-    this.ctx.font = "bold 16px Arial";
-    this.ctx.textAlign = "left";
-    this.ctx.fillText(`Level ${player.level || 1}`, textX + 1, textY + 1);
-
-    this.ctx.fillStyle = "#00d4ff";
-    this.ctx.fillText(`Level ${player.level || 1}`, textX, textY);
-
-    // Experience points
-    this.ctx.fillStyle = "#000";
-    this.ctx.font = "12px Arial";
-    this.ctx.fillText(`${player.experience || 0} XP`, textX + 1, textY + 18);
-
-    this.ctx.fillStyle = "#ffd700";
-    this.ctx.fillText(`${player.experience || 0} XP`, textX, textY + 17);
-
-    // Experience progress bar
-    const barWidth = 120;
-    const barHeight = 6;
-    const barX = textX;
-    const barY = textY + 25;
-
-    // Calculate XP progress using new exponential system
-    const currentLevel = player.level || 1;
-
-    // Calculate current and next level XP requirements using exponential progression
-    let currentLevelXP = 0;
-    let nextLevelXP = 0;
-    const baseXP = 100;
-    const multiplier = 1.5;
-
-    // Calculate total XP needed for current level
-    for (let level = 1; level < currentLevel; level++) {
-      currentLevelXP += Math.floor(baseXP * Math.pow(multiplier, level - 1));
-    }
-
-    // Calculate XP needed for next level
-    nextLevelXP =
-      currentLevelXP +
-      Math.floor(baseXP * Math.pow(multiplier, currentLevel - 1));
-
-    const progressXP = (player.experience || 0) - currentLevelXP;
-    const xpNeededForLevel = nextLevelXP - currentLevelXP;
-    const progress = Math.max(0, Math.min(1, progressXP / xpNeededForLevel));
-
-    // Progress bar background
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-    this.ctx.fillRect(barX, barY, barWidth, barHeight);
-
-    // Progress bar border
-    this.ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
-    this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(barX, barY, barWidth, barHeight);
-
-    // Progress fill
-    const fillWidth = barWidth * progress;
-    if (fillWidth > 0) {
-      const progressGradient = this.ctx.createLinearGradient(
-        barX,
-        barY,
-        barX,
-        barY + barHeight
-      );
-      progressGradient.addColorStop(0, "#ffef94");
-      progressGradient.addColorStop(0.5, "#ffd700");
-      progressGradient.addColorStop(1, "#b8860b");
-
-      this.ctx.fillStyle = progressGradient;
-      this.ctx.fillRect(barX, barY, fillWidth, barHeight);
-
-      // Progress bar glow
-      this.ctx.shadowColor = "#ffd700";
-      this.ctx.shadowBlur = 8;
-      this.ctx.fillRect(barX, barY, fillWidth, barHeight);
-      this.ctx.shadowBlur = 0;
-    }
-
-    // Progress text (current/next XP)
-    this.ctx.fillStyle = "#000";
-    this.ctx.font = "10px Arial";
-    this.ctx.textAlign = "right";
-    this.ctx.fillText(
-      `${progressXP}/${nextLevelXP - currentLevelXP}`,
-      barX + barWidth + 1,
-      barY + barHeight + 1
-    );
-
-    this.ctx.fillStyle = "#cccccc";
-    this.ctx.fillText(
-      `${progressXP}/${nextLevelXP - currentLevelXP}`,
-      barX + barWidth,
-      barY + barHeight
-    );
-
-    this.ctx.restore();
   }
 
   private drawExperienceBar() {
