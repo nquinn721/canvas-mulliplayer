@@ -39,6 +39,7 @@ export class RendererService {
     this.drawPlayers();
     this.drawAIEnemies();
     this.drawSwarmEnemies();
+    this.drawSwarmBases();
     this.drawProjectiles();
     this.drawMeteors();
     this.drawParticles();
@@ -639,6 +640,75 @@ export class RendererService {
         }
       }
     );
+  }
+
+  private drawSwarmBases() {
+    // Check if swarmBases exists in gameState
+    if (!this.gameStore.gameState.swarmBases) return;
+
+    Object.values(this.gameStore.gameState.swarmBases).forEach(
+      (base: any) => {
+        // Don't render destroyed bases
+        if (base.isDestroyed) return;
+
+        if (this.gameStore.isPlayerInView(base)) {
+          this.drawSwarmBase(base);
+        }
+      }
+    );
+  }
+
+  private drawSwarmBase(base: any) {
+    this.ctx.save();
+    this.ctx.translate(base.x, base.y);
+
+    // Main base structure - dark metallic color
+    this.ctx.fillStyle = '#2a2a2a';
+    this.ctx.strokeStyle = '#444444';
+    this.ctx.lineWidth = 2;
+    
+    // Draw main base body (hexagonal)
+    this.ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const angle = (i * Math.PI) / 3;
+      const x = Math.cos(angle) * base.radius;
+      const y = Math.sin(angle) * base.radius;
+      if (i === 0) {
+        this.ctx.moveTo(x, y);
+      } else {
+        this.ctx.lineTo(x, y);
+      }
+    }
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.stroke();
+
+    // Central core (spawning area)
+    this.ctx.fillStyle = '#cc2244';
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, base.radius * 0.4, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    // Energy lines radiating from center
+    this.ctx.strokeStyle = '#ff4466';
+    this.ctx.lineWidth = 1;
+    for (let i = 0; i < 6; i++) {
+      const angle = (i * Math.PI) / 3;
+      this.ctx.beginPath();
+      this.ctx.moveTo(Math.cos(angle) * base.radius * 0.4, Math.sin(angle) * base.radius * 0.4);
+      this.ctx.lineTo(Math.cos(angle) * base.radius * 0.8, Math.sin(angle) * base.radius * 0.8);
+      this.ctx.stroke();
+    }
+
+    // Health indicator (small ring around base, no health bar)
+    const healthPercent = base.health / base.maxHealth;
+    this.ctx.strokeStyle = healthPercent > 0.5 ? '#44ff44' : healthPercent > 0.25 ? '#ffff44' : '#ff4444';
+    this.ctx.lineWidth = 3;
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, base.radius + 5, 0, Math.PI * 2 * healthPercent);
+    this.ctx.stroke();
+
+    this.ctx.restore();
   }
 
   private drawSpaceship(player: any) {
@@ -1644,6 +1714,7 @@ export class RendererService {
     // Keep non-ability UI elements here
     this.drawBoostEnergyBar();
     this.drawTopLeftExperience();
+    this.drawTopRightStats();
     // this.drawCompactStats(); // Removed FPS and player count display
   }
 
@@ -1942,136 +2013,51 @@ export class RendererService {
     if (!experienceData) return;
 
     const margin = 20;
-    const containerWidth = 220;
-    const containerHeight = 60;
+    const containerWidth = 180;
+    const containerHeight = 50;
     const x = margin;
     const y = margin;
 
     this.ctx.save();
 
-    // Menu-style background with modal styling
-    const bgGradient = this.ctx.createLinearGradient(
-      x,
-      y,
-      x,
-      y + containerHeight
-    );
-    bgGradient.addColorStop(0, "rgba(10, 10, 25, 0.95)");
-    bgGradient.addColorStop(1, "rgba(20, 20, 35, 0.9)");
-
-    this.ctx.fillStyle = bgGradient;
+    // Simplified background
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
     this.ctx.fillRect(x, y, containerWidth, containerHeight);
 
-    // Border with cyan accent like menus
+    // Clean border
     this.ctx.strokeStyle = "rgba(0, 212, 255, 0.3)";
     this.ctx.lineWidth = 1;
     this.ctx.strokeRect(x, y, containerWidth, containerHeight);
+    // Level and XP text
+    const textX = x + 15;
+    const textY = y + 18;
 
-    // Inner border for depth
-    this.ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
-    this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(x + 1, y + 1, containerWidth - 2, containerHeight - 2);
-
-    // User icon (rounded avatar)
-    const iconSize = 40;
-    const iconX = x + 15;
-    const iconY = y + 10;
-
-    // Icon background circle with gradient
-    const iconGradient = this.ctx.createRadialGradient(
-      iconX + iconSize / 2,
-      iconY + iconSize / 2,
-      0,
-      iconX + iconSize / 2,
-      iconY + iconSize / 2,
-      iconSize / 2
-    );
-    iconGradient.addColorStop(0, "#4a90e2");
-    iconGradient.addColorStop(0.7, "#357abd");
-    iconGradient.addColorStop(1, "#1e3a8a");
-
-    this.ctx.fillStyle = iconGradient;
-    this.ctx.beginPath();
-    this.ctx.arc(
-      iconX + iconSize / 2,
-      iconY + iconSize / 2,
-      iconSize / 2,
-      0,
-      Math.PI * 2
-    );
-    this.ctx.fill();
-
-    // Icon border
-    this.ctx.strokeStyle = "rgba(0, 212, 255, 0.6)";
-    this.ctx.lineWidth = 2;
-    this.ctx.beginPath();
-    this.ctx.arc(
-      iconX + iconSize / 2,
-      iconY + iconSize / 2,
-      iconSize / 2,
-      0,
-      Math.PI * 2
-    );
-    this.ctx.stroke();
-
-    // User icon symbol (simplified person silhouette)
-    this.ctx.fillStyle = "#ffffff";
-    const centerX = iconX + iconSize / 2;
-    const centerY = iconY + iconSize / 2;
-
-    // Head
-    this.ctx.beginPath();
-    this.ctx.arc(centerX, centerY - 8, 6, 0, Math.PI * 2);
-    this.ctx.fill();
-
-    // Body
-    this.ctx.fillRect(centerX - 4, centerY - 2, 8, 12);
-
-    // Arms
-    this.ctx.fillRect(centerX - 8, centerY + 2, 4, 8);
-    this.ctx.fillRect(centerX + 4, centerY + 2, 4, 8);
-
-    // Experience info section
-    const textX = iconX + iconSize + 15;
-    const textY = iconY + 12;
-
-    // Level display (using ExperienceService data)
-    this.ctx.fillStyle = "#000";
+    // Level display
+    this.ctx.fillStyle = "#00d4ff";
     this.ctx.font = "bold 16px Arial";
     this.ctx.textAlign = "left";
-    this.ctx.fillText(`Level ${experienceData.level}`, textX + 1, textY + 1);
-
-    this.ctx.fillStyle = "#00d4ff";
     this.ctx.fillText(`Level ${experienceData.level}`, textX, textY);
 
-    // Experience points (using ExperienceService data)
-    this.ctx.fillStyle = "#000";
-    this.ctx.font = "12px Arial";
-    this.ctx.fillText(`${experienceData.experience} XP`, textX + 1, textY + 18);
-
+    // Experience points
     this.ctx.fillStyle = "#ffd700";
-    this.ctx.fillText(`${experienceData.experience} XP`, textX, textY + 17);
+    this.ctx.font = "12px Arial";
+    this.ctx.fillText(`${experienceData.experience} XP`, textX, textY + 18);
 
-    // Experience progress bar
-    const barWidth = 120;
+    // Experience progress bar (right side)
+    const barWidth = 60;
     const barHeight = 6;
-    const barX = textX;
-    const barY = textY + 25;
+    const barX = x + containerWidth - barWidth - 15;
+    const barY = y + 15;
 
-    // Use progress data from ExperienceService
+    // Progress calculation
     const progress = Math.max(
       0,
       Math.min(1, experienceData.progressPercent / 100)
     );
 
     // Progress bar background
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    this.ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
     this.ctx.fillRect(barX, barY, barWidth, barHeight);
-
-    // Progress bar border
-    this.ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
-    this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(barX, barY, barWidth, barHeight);
 
     // Progress fill
     const fillWidth = barWidth * progress;
@@ -2079,41 +2065,132 @@ export class RendererService {
       const progressGradient = this.ctx.createLinearGradient(
         barX,
         barY,
-        barX,
-        barY + barHeight
+        barX + barWidth,
+        barY
       );
-      progressGradient.addColorStop(0, "#ffef94");
-      progressGradient.addColorStop(0.5, "#ffd700");
-      progressGradient.addColorStop(1, "#b8860b");
+      progressGradient.addColorStop(0, "#ffd700");
+      progressGradient.addColorStop(1, "#ffef94");
 
       this.ctx.fillStyle = progressGradient;
       this.ctx.fillRect(barX, barY, fillWidth, barHeight);
-
-      // Progress bar glow
-      this.ctx.shadowColor = "#ffd700";
-      this.ctx.shadowBlur = 8;
-      this.ctx.fillRect(barX, barY, fillWidth, barHeight);
-      this.ctx.shadowBlur = 0;
     }
 
-    // Progress text (current/next XP using ExperienceService data)
-    this.ctx.fillStyle = "#000";
+    // Progress text (XP needed for next level)
+    this.ctx.fillStyle = "#cccccc";
     this.ctx.font = "10px Arial";
     this.ctx.textAlign = "right";
     this.ctx.fillText(
       `${experienceData.experienceToNextLevel}/${experienceData.experienceRequiredForNextLevel}`,
-      barX + barWidth + 1,
-      barY + barHeight + 1
-    );
-
-    this.ctx.fillStyle = "#cccccc";
-    this.ctx.fillText(
-      `${experienceData.experienceToNextLevel}/${experienceData.experienceRequiredForNextLevel}`,
       barX + barWidth,
-      barY + barHeight
+      barY + barHeight + 12
     );
 
     this.ctx.restore();
+  }
+
+  private drawTopRightStats() {
+    const player = this.gameStore.gameState.players[this.gameStore.playerId];
+    if (!player || player.health <= 0) return; // Don't show stats when dead
+
+    const margin = 20;
+    const containerWidth = 200;
+    const containerHeight = 50;
+    const x = this.gameStore.CANVAS_WIDTH - containerWidth - margin;
+    const y = margin;
+
+    this.ctx.save();
+
+    // Background
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+    this.ctx.fillRect(x, y, containerWidth, containerHeight);
+
+    // Border
+    this.ctx.strokeStyle = "rgba(0, 212, 255, 0.3)";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x, y, containerWidth, containerHeight);
+
+    // Stats layout - horizontal
+    const statSpacing = containerWidth / 2;
+    const textY = y + 18;
+
+    // Score
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.font = "bold 16px Arial";
+    this.ctx.textAlign = "center";
+    this.ctx.fillText(
+      this.gameStore.gameStats.score.toLocaleString(),
+      x + statSpacing * 0.5,
+      textY
+    );
+
+    this.ctx.fillStyle = "#00d4ff";
+    this.ctx.font = "10px Arial";
+    this.ctx.fillText("SCORE", x + statSpacing * 0.5, textY + 15);
+
+    // K/D/A
+    const kda = `${this.gameStore.gameStats.kills}/${this.gameStore.gameStats.deaths}/${this.gameStore.gameStats.assists}`;
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.font = "bold 16px Arial";
+    this.ctx.fillText(kda, x + statSpacing * 1.5, textY);
+
+    this.ctx.fillStyle = "#00d4ff";
+    this.ctx.font = "10px Arial";
+    this.ctx.fillText("K/D/A", x + statSpacing * 1.5, textY + 15);
+
+    // Connection indicator (small dot in top-right corner)
+    const dotX = x + containerWidth - 12;
+    const dotY = y + 8;
+    const dotRadius = 4;
+
+    this.ctx.beginPath();
+    this.ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+    this.ctx.fillStyle = this.gameStore.isConnected ? "#4caf50" : "#f44336";
+    this.ctx.fill();
+
+    // Connection glow
+    if (this.gameStore.isConnected) {
+      this.ctx.shadowColor = "#4caf50";
+      this.ctx.shadowBlur = 8;
+      this.ctx.beginPath();
+      this.ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.shadowBlur = 0;
+    }
+
+    // Kill streak notification (if active)
+    const currentStreak = this.gameStore.gameStats.currentKillStreak;
+    if (currentStreak >= 2) {
+      const streakY = y - 20;
+      const streakText = this.getStreakText(currentStreak);
+      const streakColor = this.getStreakColor(currentStreak);
+
+      this.ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
+      this.ctx.fillRect(x, streakY - 12, containerWidth, 16);
+
+      this.ctx.fillStyle = streakColor;
+      this.ctx.font = "bold 11px Arial";
+      this.ctx.textAlign = "center";
+      this.ctx.fillText(streakText, x + containerWidth / 2, streakY);
+    }
+
+    this.ctx.restore();
+  }
+
+  private getStreakColor(streak: number): string {
+    if (streak >= 7) return "#ff0080"; // Godlike - Pink
+    if (streak >= 5) return "#ff4500"; // Rampage - Orange Red
+    if (streak >= 3) return "#ffd700"; // Multi Kill - Gold
+    if (streak >= 2) return "#00ff00"; // Double Kill - Green
+    return "#ffffff"; // Default - White
+  }
+
+  private getStreakText(streak: number): string {
+    if (streak >= 7) return "GODLIKE!";
+    if (streak >= 5) return "RAMPAGE!";
+    if (streak >= 4) return "ULTRA KILL!";
+    if (streak >= 3) return "MULTI KILL!";
+    if (streak >= 2) return "DOUBLE KILL!";
+    return "";
   }
 
   private drawBoostEnergyBar() {

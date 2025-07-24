@@ -34,137 +34,137 @@ export interface SwarmDifficultyConfig {
 export const SWARM_CONFIGS: Record<string, SwarmDifficultyConfig> = {
   EASY: {
     health: 3,
-    speed: 120, // Increased from 50 - much faster base speed
-    rushSpeed: 180, // Increased from 65 - 50% faster when rushing
-    damage: 3,
-    detectionRange: 500, // Reduced from 800 - closer detection for more aggressive behavior
-    attackRange: 65, // Increased from 45 - much larger attack range
+    speed: 60, // Reduced from 120 - much slower and less aggressive
+    rushSpeed: 90, // Reduced from 180 - slower rush speed
+    damage: 1, // Reduced from 3 - much less damage
+    detectionRange: 400, // Reduced from 500 - shorter detection range
+    attackRange: 45, // Reduced from 65 - smaller attack range
     separationRadius: 35,
     cohesionRadius: 120,
     alignmentRadius: 100,
-    maxAcceleration: 0.8, // Increased from 0.25 - much faster acceleration
-    huntingForce: 1.2, // Increased from 0.6 - stronger hunting force
-    rushHuntingForce: 1.8, // Increased from 0.9 - much stronger rush force
+    maxAcceleration: 0.4, // Reduced from 0.8 - slower acceleration
+    huntingForce: 0.6, // Reduced from 1.2 - weaker hunting force
+    rushHuntingForce: 0.9, // Reduced from 1.8 - weaker rush force
     separationForce: 0.4,
     cohesionForce: 0.15,
     alignmentForce: 0.1,
-    rushTriggerDistance: 80, // Increased from 50 - easier to trigger rush
+    rushTriggerDistance: 60, // Reduced from 80 - harder to trigger rush
     rushDuration: 1500,
-    attackCooldown: 150, // Reduced from 400 - extremely fast attacks
+    attackCooldown: 600, // Increased from 150 - much slower attacks
     radius: 8,
     spawnDistance: {
       min: 200,
       max: 400,
     },
-    groupSize: 2,
+    groupSize: 1, // Reduced from 2 - smaller groups
     groupSpread: 50,
   },
   MEDIUM: {
     health: 5,
-    speed: 140, // Increased from 70 - much faster base speed
-    rushSpeed: 210, // Increased from 90 - 50% faster when rushing
-    damage: 5,
-    detectionRange: 600, // Reduced from 800 - closer detection for more aggressive behavior
-    attackRange: 75, // Increased from 50 - much larger attack range
+    speed: 80, // Reduced from 140 - slower base speed
+    rushSpeed: 120, // Reduced from 210 - slower rush speed
+    damage: 2, // Reduced from 5 - much less damage
+    detectionRange: 450, // Reduced from 600 - shorter detection range
+    attackRange: 50, // Reduced from 75 - smaller attack range
     separationRadius: 30,
     cohesionRadius: 100,
     alignmentRadius: 80,
-    maxAcceleration: 0.8, // Increased from 0.3 - much faster acceleration
-    huntingForce: 1.2, // Increased from 0.7 - stronger hunting force
-    rushHuntingForce: 1.8, // Increased from 1.1 - much stronger rush force
+    maxAcceleration: 0.5, // Reduced from 0.8 - slower acceleration
+    huntingForce: 0.7, // Reduced from 1.2 - weaker hunting force
+    rushHuntingForce: 1.1, // Reduced from 1.8 - weaker rush force
     separationForce: 0.35,
     cohesionForce: 0.12,
     alignmentForce: 0.08,
-    rushTriggerDistance: 70, // Increased from 45 - easier to trigger rush
+    rushTriggerDistance: 50, // Reduced from 70 - harder to trigger rush
     rushDuration: 2000,
-    attackCooldown: 120, // Reduced from 350 - extremely fast attacks
+    attackCooldown: 500, // Increased from 120 - much slower attacks
     radius: 9,
     spawnDistance: {
       min: 200,
       max: 400,
     },
-    groupSize: 3,
+    groupSize: 2, // Reduced from 3 - smaller groups
     groupSpread: 60,
   },
   HARD: {
     health: 7,
-    speed: 160, // Increased from 80 - much faster base speed
-    rushSpeed: 240, // Increased from 105 - 50% faster when rushing
-    damage: 7,
-    detectionRange: 700, // Reduced from 900 - closer detection for more aggressive behavior
-    attackRange: 85, // Increased from 55 - much larger attack range
+    speed: 100, // Reduced from 160 - slower base speed
+    rushSpeed: 150, // Reduced from 240 - slower rush speed
+    damage: 3, // Reduced from 7 - much less damage
+    detectionRange: 500, // Reduced from 700 - shorter detection range
+    attackRange: 55, // Reduced from 85 - smaller attack range
     separationRadius: 25,
     cohesionRadius: 90,
     alignmentRadius: 70,
-    maxAcceleration: 0.8, // Increased from 0.35 - much faster acceleration
-    huntingForce: 1.2, // Increased from 0.8 - stronger hunting force
-    rushHuntingForce: 1.8, // Increased from 1.3 - much stronger rush force
+    maxAcceleration: 0.6, // Reduced from 0.8 - slower acceleration
+    huntingForce: 0.8, // Reduced from 1.2 - weaker hunting force
+    rushHuntingForce: 1.3, // Reduced from 1.8 - weaker rush force
     separationForce: 0.3,
     cohesionForce: 0.1,
     alignmentForce: 0.07,
-    rushTriggerDistance: 60, // Increased from 40 - easier to trigger rush
+    rushTriggerDistance: 40, // Reduced from 60 - harder to trigger rush
     rushDuration: 2500,
-    attackCooldown: 100, // Reduced from 300 - extremely fast attacks
+    attackCooldown: 400, // Increased from 100 - much slower attacks
     radius: 10,
     spawnDistance: {
       min: 200,
       max: 450,
     },
-    groupSize: 4,
+    groupSize: 3, // Reduced from 4 - smaller groups
     groupSpread: 70,
   },
   EXPERT: {
     health: 10,
-    speed: 180, // Increased from 90 - much faster base speed
-    rushSpeed: 270, // Increased from 115 - 50% faster when rushing
-    damage: 10,
-    detectionRange: 800, // Reduced from 1000 - closer detection for more aggressive behavior
-    attackRange: 95, // Increased from 60 - much larger attack range
+    speed: 120, // Reduced from 180 - slower base speed
+    rushSpeed: 180, // Reduced from 270 - slower rush speed
+    damage: 4, // Reduced from 10 - much less damage
+    detectionRange: 550, // Reduced from 800 - shorter detection range
+    attackRange: 60, // Reduced from 95 - smaller attack range
     separationRadius: 20,
     cohesionRadius: 80,
     alignmentRadius: 60,
-    maxAcceleration: 0.8, // Increased from 0.4 - much faster acceleration
-    huntingForce: 1.2, // Increased from 0.85 - stronger hunting force
-    rushHuntingForce: 1.8, // Increased from 1.4 - much stronger rush force
+    maxAcceleration: 0.7, // Reduced from 0.8 - slower acceleration
+    huntingForce: 0.85, // Reduced from 1.2 - weaker hunting force
+    rushHuntingForce: 1.4, // Reduced from 1.8 - weaker rush force
     separationForce: 0.25,
     cohesionForce: 0.08,
     alignmentForce: 0.05,
-    rushTriggerDistance: 50, // Increased from 35 - easier to trigger rush
+    rushTriggerDistance: 35, // Reduced from 50 - harder to trigger rush
     rushDuration: 3000,
-    attackCooldown: 80, // Reduced from 250 - extremely fast attacks
+    attackCooldown: 300, // Increased from 80 - much slower attacks
     radius: 11,
     spawnDistance: {
       min: 200,
       max: 450,
     },
-    groupSize: 5,
+    groupSize: 4, // Reduced from 5 - smaller groups
     groupSpread: 80,
   },
   NIGHTMARE: {
     health: 15,
-    speed: 200, // Increased from 100 - much faster base speed
-    rushSpeed: 300, // Increased from 130 - 50% faster when rushing
-    damage: 15,
-    detectionRange: 900, // Reduced from 1200 - closer detection for more aggressive behavior
-    attackRange: 105, // Increased from 65 - much larger attack range
+    speed: 140, // Reduced from 200 - slower base speed
+    rushSpeed: 210, // Reduced from 300 - slower rush speed
+    damage: 5, // Reduced from 15 - much less damage
+    detectionRange: 600, // Reduced from 900 - shorter detection range
+    attackRange: 65, // Reduced from 105 - smaller attack range
     separationRadius: 18,
     cohesionRadius: 70,
     alignmentRadius: 50,
-    maxAcceleration: 0.8, // Increased from 0.45 - much faster acceleration
-    huntingForce: 1.2, // Increased from 0.9 - stronger hunting force
-    rushHuntingForce: 1.8, // Increased from 1.5 - much stronger rush force
+    maxAcceleration: 0.8, // Same as before - keep some challenge
+    huntingForce: 0.9, // Reduced from 1.2 - weaker hunting force
+    rushHuntingForce: 1.5, // Reduced from 1.8 - weaker rush force
     separationForce: 0.2,
     cohesionForce: 0.06,
     alignmentForce: 0.04,
-    rushTriggerDistance: 45, // Increased from 30 - easier to trigger rush
+    rushTriggerDistance: 30, // Reduced from 45 - harder to trigger rush
     rushDuration: 3500,
-    attackCooldown: 60, // Reduced from 200 - extremely fast attacks
+    attackCooldown: 200, // Increased from 60 - much slower attacks
     radius: 12,
     spawnDistance: {
       min: 200,
       max: 500,
     },
-    groupSize: 6,
+    groupSize: 5, // Reduced from 6 - smaller groups
     groupSpread: 90,
   },
 };

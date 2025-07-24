@@ -10,8 +10,31 @@ export { Meteor } from "./classes/Meteor";
 export { Player } from "./classes/Player";
 export type { KeyState } from "./classes/Player";
 export { PowerUp, PowerUpType } from "./classes/PowerUp";
+export { SwarmAI } from "./classes/SwarmAI";
+export { SwarmBase } from "./classes/SwarmBase";
 export { World } from "./classes/World";
-export type { Wall } from "./classes/World";
+export type { ExtendedWall, Wall } from "./classes/World";
+
+// Destructible environment classes
+export {
+  DestructibleWall,
+  WALL_TYPE_CONFIGS,
+  WallType,
+} from "./classes/DestructibleWall";
+export type {
+  DestructibleWallData,
+  WallParticle,
+  WallTypeConfig,
+} from "./classes/DestructibleWall";
+export {
+  EnvironmentalObstacle,
+  OBSTACLE_TYPE_CONFIGS,
+  ObstacleType,
+} from "./classes/EnvironmentalObstacle";
+export type {
+  EnvironmentalObstacleData,
+  ObstacleTypeConfig,
+} from "./classes/EnvironmentalObstacle";
 
 // Utilities
 export { PathfindingUtils } from "./utils/PathfindingUtils";
@@ -23,6 +46,30 @@ export { Projectile } from "./weapons/Projectile";
 export type { ProjectileData } from "./weapons/Projectile";
 
 // Configuration files
+export {
+  AUDIO_CONFIG,
+  calculateExplosionDamage,
+  calculateWeaponDamage,
+  EXPLOSION_CONFIG,
+  GAMEPLAY_CONFIG,
+  getSpawnConfiguration,
+  PARTICLE_CONFIG,
+  shouldTriggerChainReaction,
+  SPAWN_CONFIGURATIONS,
+  STRATEGIC_CONFIG,
+  VISUAL_EFFECTS_CONFIG,
+  WEAPON_DAMAGE_MULTIPLIERS,
+} from "./config/DestructibleEnvironmentConfig";
+export type {
+  AudioConfig,
+  ExplosionConfig,
+  GameplayConfig,
+  ParticleConfig,
+  SpawnRateConfig,
+  StrategicConfig,
+  VisualEffectsConfig,
+  WeaponDamageConfig,
+} from "./config/DestructibleEnvironmentConfig";
 export {
   calculateLevelFromExperience,
   EXPERIENCE_CONFIG,

@@ -15,7 +15,6 @@ import {
 } from "../stores";
 import DeathMenu from "./DeathMenu";
 import EscapeMenu from "./EscapeMenu";
-import { GameStats } from "./GameStats";
 
 interface GameComponentProps {
   playerName: string;
@@ -414,6 +413,15 @@ const GameComponent = observer(
               </span>
             </div>
             <div className="status-group">
+              <span className="status-label">Swarm Bases:</span>
+              <span className="status-value">
+                {Object.keys(gameStore?.gameState?.swarmBases || {}).filter(
+                  (baseId) =>
+                    !gameStore?.gameState?.swarmBases?.[baseId]?.isDestroyed
+                ).length || 0}
+              </span>
+            </div>
+            <div className="status-group">
               <span className="status-label">FPS:</span>
               <span className="status-value">{gameStore?.stats?.fps || 0}</span>
             </div>
@@ -446,22 +454,6 @@ const GameComponent = observer(
             }}
           />
         </div>
-
-        {/* Game Stats Display - Top Right Corner */}
-        {!isPlayerDead && (
-          <GameStats
-            score={gameStore?.gameStats.score || 0}
-            kills={gameStore?.gameStats.kills || 0}
-            deaths={gameStore?.gameStats.deaths || 0}
-            assists={gameStore?.gameStats.assists || 0}
-            currentStreak={gameStore?.gameStats.currentKillStreak || 0}
-            maxStreak={gameStore?.gameStats.maxKillStreak || 0}
-            kda={gameStore?.currentKDA || "0/0/0 (0.00)"}
-            hitStreak={gameStore?.gameStats.hitStreak || 0}
-            survivalBonusText={gameStore?.survivalBonusText || ""}
-            survivalMultiplier={gameStore?.currentSurvivalMultiplier || 1.0}
-          />
-        )}
 
         {/* Death Menu */}
         {isPlayerDead && (

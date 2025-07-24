@@ -6,6 +6,7 @@
 export interface CombatRewards {
   playerKill: number;
   aiEnemyKill: number;
+  swarmEnemyKill: number; // XP for killing swarm enemies
   playerAssist: number; // For future implementation
   aiEnemyAssist: number; // For future implementation
 }
@@ -32,6 +33,7 @@ export const EXPERIENCE_CONFIG: ExperienceConfig = {
   combat: {
     playerKill: 50, // 50 XP for killing a real player
     aiEnemyKill: 20, // 20 XP for killing an AI enemy
+    swarmEnemyKill: 10, // 10 XP for killing a swarm enemy (weaker but numerous)
     playerAssist: 15, // 15 XP for assisting in player kill (future feature)
     aiEnemyAssist: 5, // 5 XP for assisting in AI kill (future feature)
   },

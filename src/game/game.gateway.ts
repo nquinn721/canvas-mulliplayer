@@ -10,16 +10,24 @@ import {
   WebSocketServer,
 } from "@nestjs/websockets";
 import {
+  DestructibleWall,
+  EnvironmentalObstacle,
   GameState,
   Laser,
   Meteor,
   Missile,
+  ObstacleType,
   Player,
   PowerUp,
   Projectile,
+  SwarmBase,
   Wall,
+  WallType,
   XP_REWARDS,
+  calculateExplosionDamage,
+  calculateWeaponDamage,
   getSwarmConfig,
+  shouldTriggerChainReaction,
 } from "@shared";
 import { EnhancedAIEnemy } from "@shared/classes/EnhancedAIEnemy";
 import { PowerUpType } from "@shared/classes/PowerUp";
@@ -66,10 +74,14 @@ export class GameGateway
   private players: Map<string, Player> = new Map();
   private aiEnemies: Map<string, EnhancedAIEnemy> = new Map();
   private swarmEnemies: Map<string, SwarmAI> = new Map();
+  private swarmBases: Map<string, SwarmBase> = new Map();
   private projectiles: Map<string, Projectile> = new Map();
   private meteors: Map<string, Meteor> = new Map();
   private powerUps: Map<string, PowerUp> = new Map();
   private walls: Wall[] = [];
+  private destructibleWalls: Map<string, DestructibleWall> = new Map();
+  private environmentalObstacles: Map<string, EnvironmentalObstacle> =
+    new Map();
   private gameLoopInterval: NodeJS.Timeout;
   private projectileIdCounter = 0;
   private powerUpIdCounter = 0;
@@ -78,12 +90,14 @@ export class GameGateway
   private lastMeteorSpawn = Date.now();
   private meteorSpawnInterval = 8000; // 8 seconds
   private lastSwarmSpawn = 0; // Track when we last spawned swarms
-  private swarmSpawnInterval = 8000; // 8 seconds minimum between swarm spawns (reduced from 15)
+  private swarmSpawnInterval = 15000; // 15 seconds minimum between swarm spawns (increased from 8)
 
   // World bounds
   private readonly WORLD_WIDTH = 5000;
   private readonly WORLD_HEIGHT = 5000;
-  private readonly WALL_COUNT = 60;
+  private readonly WALL_COUNT = 40; // Reduced regular walls
+  private readonly DESTRUCTIBLE_WALL_COUNT = 15; // New destructible walls
+  private readonly OBSTACLE_COUNT = 10; // Environmental obstacles
   private readonly POWERUP_COUNT = 20;
   private readonly AI_ENEMY_COUNT = 5; // Number of AI enemies to spawn
   private preferredAIDifficulty:
@@ -110,7 +124,8 @@ export class GameGateway
     this.generateWalls();
     this.spawnPowerUps();
     this.spawnAIEnemies();
-    // Swarm enemies spawn dynamically based on player proximity
+    this.spawnSwarmBases(); // Spawn 5 swarm bases
+    // Swarm enemies now spawn only from bases
     // Start heartbeat monitoring
     this.startHeartbeatMonitoring();
     // Don't start game loop until players join
@@ -244,13 +259,19 @@ export class GameGateway
   ) {
     try {
       console.log(`Player attempting to join game: ${client.id}`);
+      console.log(`Received playerName from client: "${data.playerName}"`);
       const clientData = this.connectedClients.get(client.id);
+      console.log(`Client data:`, {
+        isAuthenticated: clientData?.isAuthenticated,
+        isGuest: clientData?.isGuest,
+        storedPlayerName: clientData?.playerName
+      });
 
-      // Determine player name priority: authenticated username > provided name > default
+      // Determine player name priority: provided name for guests, authenticated username for logged in users
       let playerName: string;
 
-      if (clientData?.isAuthenticated && clientData.playerName) {
-        // Use authenticated username as ship name
+      if (clientData?.isAuthenticated && !clientData.isGuest && clientData.playerName) {
+        // Use authenticated username as ship name (only for non-guest authenticated users)
         playerName = clientData.playerName;
       } else if (data.playerName) {
         // Use provided player name (for guests or override)
@@ -260,6 +281,8 @@ export class GameGateway
         playerName = `Player ${this.playerNameCounter++}`;
       }
 
+      console.log(`Final determined playerName: "${playerName}"`);
+
       // Update client tracking with final player name
       if (clientData) {
         clientData.playerName = playerName;
@@ -268,9 +291,26 @@ export class GameGateway
       // Check if player already exists (reconnection case)
       let player = this.players.get(client.id);
       if (player) {
-        // Player reconnecting, just update the name if needed
-        player.name = playerName;
-        console.log(`${playerName} reconnected`);
+        // For guest users with different names, treat as new player (force respawn)
+        if (clientData?.isGuest && player.name !== playerName) {
+          console.log(`Guest user ${player.name} changing name to ${playerName} - creating new player`);
+          // Remove old player
+          this.players.delete(client.id);
+          // Create new player with fresh properties
+          const spawnPosition = this.getRandomSpawnPosition();
+          player = new Player(
+            client.id,
+            playerName,
+            spawnPosition.x,
+            spawnPosition.y
+          );
+          this.players.set(client.id, player);
+          console.log(`${playerName} joined as new guest player at (${spawnPosition.x}, ${spawnPosition.y})`);
+        } else {
+          // Normal reconnection, just update the name if needed
+          player.name = playerName;
+          console.log(`${playerName} reconnected`);
+        }
       } else {
         // New player joining
         const spawnPosition = this.getRandomSpawnPosition();
@@ -289,22 +329,7 @@ export class GameGateway
       // Check if we should start the game loop when first player joins
       this.checkGameLoopState();
 
-      console.log(`=== PLAYER JOIN SUMMARY ===`);
-      console.log(`Player: ${playerName} (ID: ${client.id})`);
-      console.log(`Total players: ${this.players.size}`);
-      console.log(`Total swarm enemies: ${this.swarmEnemies.size}`);
-      console.log(`Game loop active: ${this.gameLoopActive}`);
-      console.log(`Player position: (${player.x}, ${player.y})`);
-      console.log(`=== END SUMMARY ===`);
-
-      // Force spawn swarms immediately when a player joins if none exist
-      if (this.swarmEnemies.size === 0) {
-        console.log("Force spawning swarms immediately for new player");
-        this.forceSpawnSwarms();
-        console.log(
-          `After force spawn: ${this.swarmEnemies.size} swarm enemies exist`
-        );
-      }
+      // Swarm bases will spawn swarms automatically - no need for manual spawning
 
       // Send current AI difficulty status to the new player
       client.emit("aiDifficultyStatus", {
@@ -1144,6 +1169,9 @@ export class GameGateway
       this.updateSwarmEnemies(deltaTime);
     }
 
+    // Update destructible objects and their particles
+    this.updateDestructibleObjects(deltaTime);
+
     // Update projectiles
     const projectilesToRemove: string[] = [];
 
@@ -1173,15 +1201,29 @@ export class GameGateway
         return;
       }
 
-      // Check wall collisions
-      if (this.checkProjectileWallCollision(projectile)) {
+      // Check wall and destructible object collisions
+      const collisionResult = this.checkProjectileWallCollision(projectile);
+      if (collisionResult.collision) {
         projectilesToRemove.push(id);
-        this.server.emit("projectileHit", {
-          projectileId: id,
-          x: projectile.x,
-          y: projectile.y,
-          wallHit: true,
-        });
+
+        if (collisionResult.regularWall) {
+          // Hit regular wall
+          this.server.emit("projectileHit", {
+            projectileId: id,
+            x: projectile.x,
+            y: projectile.y,
+            wallHit: true,
+          });
+        } else if (collisionResult.destructibleWall) {
+          // Hit destructible wall
+          this.handleDestructibleWallHit(
+            projectile,
+            collisionResult.destructibleWall
+          );
+        } else if (collisionResult.obstacle) {
+          // Hit environmental obstacle
+          this.handleObstacleHit(projectile, collisionResult.obstacle);
+        }
         return;
       }
 
@@ -1270,6 +1312,60 @@ export class GameGateway
             x: projectile.x,
             y: projectile.y,
             targetId: aiId,
+            damage: projectile.damage,
+            ownerId: projectile.ownerId,
+          });
+        }
+      });
+
+      // Check swarm base collisions
+      this.swarmBases.forEach((base, baseId) => {
+        if (base.isDestroyed) return;
+
+        const distance = Math.sqrt(
+          (base.x - projectile.x) ** 2 + (base.y - projectile.y) ** 2
+        );
+
+        if (distance <= base.radius) {
+          // Base was hit
+          const wasDestroyed = base.takeDamage(projectile.damage);
+
+          if (wasDestroyed) {
+            console.log(`Swarm base ${baseId} destroyed!`);
+            
+            // Remove all swarms from this base
+            const swarmsToRemove: string[] = [];
+            this.swarmEnemies.forEach((swarm, swarmId) => {
+              if (swarm.baseId === baseId) {
+                swarmsToRemove.push(swarmId);
+              }
+            });
+            
+            swarmsToRemove.forEach(swarmId => {
+              this.swarmEnemies.delete(swarmId);
+            });
+
+            // Give XP to the killer
+            const killer = this.players.get(projectile.ownerId);
+            if (killer) {
+              killer.addExperience(XP_REWARDS.aiEnemyKill * 3); // 60 XP for destroying a base
+              console.log(`Player ${killer.name} destroyed swarm base and gained ${XP_REWARDS.aiEnemyKill * 3} XP`);
+
+              // Emit kill event to the killer
+              this.server.to(killer.id).emit("playerKill", {
+                killType: "swarmBase",
+                victim: "Swarm Base",
+                xpGained: XP_REWARDS.aiEnemyKill * 3,
+              });
+            }
+          }
+
+          projectilesToRemove.push(id);
+          this.server.emit("projectileHit", {
+            projectileId: id,
+            x: projectile.x,
+            y: projectile.y,
+            targetId: baseId,
             damage: projectile.damage,
             ownerId: projectile.ownerId,
           });
@@ -1538,23 +1634,10 @@ export class GameGateway
   private updateSwarmEnemies(deltaTime: number) {
     const currentTime = Date.now();
 
-    // Debug logging
-    if (this.swarmEnemies.size === 0 && this.players.size > 0) {
-      console.log(
-        `No swarms exist but ${this.players.size} players are present - should spawn swarms`
-      );
-    }
+    // Update swarm bases and spawn new swarms
+    this.updateSwarmBases(currentTime);
 
-    // Dynamic spawning: Check if we should spawn new swarms
-    this.checkAndSpawnSwarmEnemies();
-
-    // Maintain minimum swarm count for more action
-    this.maintainMinimumSwarmCount();
-
-    if (this.swarmEnemies.size > 0) {
-      console.log(`Updating ${this.swarmEnemies.size} swarm enemies`);
-    }
-
+    // Update existing swarm enemies
     this.swarmEnemies.forEach((swarmEnemy, swarmId) => {
       // Create swarm context for AI behavior
       const swarmContext = {
@@ -1636,7 +1719,7 @@ export class GameGateway
 
             // If player was killed, give XP to all nearby swarm enemies
             if (wasKilled) {
-              console.log(`Player ${player.name} was killed by swarm`);
+              // Player was killed by swarm - could add logging here if needed
             }
 
             // Push swarm enemy back slightly to prevent spam damage
@@ -1663,13 +1746,8 @@ export class GameGateway
           if (swarmEnemy.health <= 0) {
             const shooterPlayer = this.players.get(projectile.ownerId);
             if (shooterPlayer) {
-              // Award XP for killing swarm enemy (less than regular AI)
-              const swarmKillXP = 10; // 10 XP for swarm kill
-              shooterPlayer.addExperience(swarmKillXP);
-
-              console.log(
-                `Player ${shooterPlayer.name} killed swarm enemy and gained ${swarmKillXP} XP`
-              );
+              // Award XP for killing swarm enemy (configured amount)
+              shooterPlayer.addExperience(XP_REWARDS.swarmEnemyKill);
 
               // Emit kill event for client notification
               this.server.emit("enemyKilled", {
@@ -1677,7 +1755,7 @@ export class GameGateway
                 killerName: shooterPlayer.name,
                 targetId: swarmId,
                 targetType: "swarm",
-                xpGained: swarmKillXP,
+                xpGained: XP_REWARDS.swarmEnemyKill,
               });
             }
 
@@ -1733,32 +1811,13 @@ export class GameGateway
 
     // Remove distant swarm enemies
     swarmsToRemove.forEach((swarmId) => {
-      console.log(`Removing distant swarm ${swarmId} - too far from players`);
       this.swarmEnemies.delete(swarmId);
     });
-
-    if (swarmsToRemove.length > 0) {
-      console.log(
-        `Cleaned up ${swarmsToRemove.length} distant swarms. Remaining: ${this.swarmEnemies.size}`
-      );
-    }
   }
 
   private maintainMinimumSwarmCount() {
-    // Ensure there are always some swarms active when players are present
-    const minSwarmCount = Math.min(6, this.players.size * 2); // At least 2 swarms per player, max 6
-    const currentTime = Date.now();
-
-    if (this.swarmEnemies.size < minSwarmCount && this.players.size > 0) {
-      // Only spawn if enough time has passed since last spawn (prevent spam)
-      if (currentTime - this.lastSwarmSpawn > 3000) {
-        // 3 second cooldown for maintenance spawning
-        console.log(
-          `Maintaining minimum swarm count: spawning to reach ${minSwarmCount} swarms (currently ${this.swarmEnemies.size})`
-        );
-        this.forceSpawnSwarms();
-      }
-    }
+    // Swarms now spawn only from bases - this method is disabled
+    return;
   }
 
   private findClosestPlayerToSwarm(swarmEnemy: SwarmAI): Player | null {
@@ -1782,10 +1841,56 @@ export class GameGateway
     return closestPlayer;
   }
 
+  private updateSwarmBases(currentTime: number) {
+    this.swarmBases.forEach((base, baseId) => {
+      if (base.isDestroyed) return;
+
+      // Check if base should spawn a new swarm
+      if (base.shouldSpawn()) {
+        // Limit swarms per base (max 3 active swarms per base)
+        const activeSwarms = Array.from(this.swarmEnemies.values()).filter(
+          swarm => swarm.baseId === baseId
+        );
+
+        if (activeSwarms.length < 3) {
+          this.spawnSwarmFromBase(base);
+          base.markSpawned();
+        }
+      }
+    });
+  }
+
+  private spawnSwarmFromBase(base: SwarmBase) {
+    const swarmId = `swarm_${this.aiEnemyCounter++}`;
+    
+    // Spawn swarm near the base
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 30 + Math.random() * 20; // 30-50 pixels from base center
+    const x = base.x + Math.cos(angle) * distance;
+    const y = base.y + Math.sin(angle) * distance;
+
+    // Create swarm with base patrol behavior
+    const swarmEnemy = new SwarmAI(
+      swarmId,
+      x,
+      y,
+      this.preferredAIDifficulty,
+      "#cc2244", // Dark red color
+      base.id,
+      base.x,
+      base.y
+    );
+
+    this.swarmEnemies.set(swarmId, swarmEnemy);
+    base.spawnedSwarms.add(swarmId);
+
+    console.log(`Spawned swarm ${swarmId} from base ${base.id} at (${x.toFixed(1)}, ${y.toFixed(1)})`);
+  }
+
   private maybeRespawnSwarmEnemy() {
     // Keep a minimum number of swarm enemies active
-    const minSwarmCount = 6;
-    const maxSwarmCount = 12;
+    const minSwarmCount = 2; // Reduced from 6 - fewer minimum swarms
+    const maxSwarmCount = 6; // Reduced from 12 - fewer maximum swarms
 
     if (this.swarmEnemies.size < minSwarmCount && this.players.size > 0) {
       // Spawn new swarm enemy near a random player
@@ -1819,7 +1924,9 @@ export class GameGateway
 
   private checkWallCollision(x: number, y: number, radius: number): boolean {
     const wallBuffer = 10; // Add 10px buffer around all walls for smoother collision
-    return this.walls.some((wall) => {
+
+    // Check regular walls
+    const wallCollision = this.walls.some((wall) => {
       return (
         x - radius < wall.x + wall.width + wallBuffer &&
         x + radius > wall.x - wallBuffer &&
@@ -1827,17 +1934,329 @@ export class GameGateway
         y + radius > wall.y - wallBuffer
       );
     });
+
+    if (wallCollision) return true;
+
+    // Check destructible walls
+    const destructibleCollision = Array.from(
+      this.destructibleWalls.values()
+    ).some((wall) => {
+      return (
+        x - radius < wall.x + wall.width + wallBuffer &&
+        x + radius > wall.x - wallBuffer &&
+        y - radius < wall.y + wall.height + wallBuffer &&
+        y + radius > wall.y - wallBuffer
+      );
+    });
+
+    if (destructibleCollision) return true;
+
+    // Check environmental obstacles
+    const obstacleCollision = Array.from(
+      this.environmentalObstacles.values()
+    ).some((obstacle) => {
+      return obstacle.containsPoint(x, y, radius + wallBuffer);
+    });
+
+    return obstacleCollision;
   }
 
-  private checkProjectileWallCollision(projectile: Projectile): boolean {
+  private checkProjectileWallCollision(projectile: Projectile): {
+    collision: boolean;
+    destructibleWall?: DestructibleWall;
+    obstacle?: EnvironmentalObstacle;
+    regularWall?: boolean;
+  } {
     const wallBuffer = 5; // Smaller buffer for projectiles since they're smaller
-    return this.walls.some((wall) => {
+
+    // Check regular walls first
+    const regularWallHit = this.walls.some((wall) => {
       return (
         projectile.x >= wall.x - wallBuffer &&
         projectile.x <= wall.x + wall.width + wallBuffer &&
         projectile.y >= wall.y - wallBuffer &&
         projectile.y <= wall.y + wall.height + wallBuffer
       );
+    });
+
+    if (regularWallHit) {
+      return { collision: true, regularWall: true };
+    }
+
+    // Check destructible walls
+    for (const wall of this.destructibleWalls.values()) {
+      if (
+        projectile.x >= wall.x - wallBuffer &&
+        projectile.x <= wall.x + wall.width + wallBuffer &&
+        projectile.y >= wall.y - wallBuffer &&
+        projectile.y <= wall.y + wall.height + wallBuffer
+      ) {
+        return { collision: true, destructibleWall: wall };
+      }
+    }
+
+    // Check environmental obstacles
+    for (const obstacle of this.environmentalObstacles.values()) {
+      if (obstacle.containsPoint(projectile.x, projectile.y, wallBuffer)) {
+        return { collision: true, obstacle: obstacle };
+      }
+    }
+
+    return { collision: false };
+  }
+
+  private handleDestructibleWallHit(
+    projectile: Projectile,
+    wall: DestructibleWall
+  ): void {
+    // Calculate damage based on weapon type
+    const weaponType = projectile.type as "laser" | "missile";
+    const damage = this.calculateWeaponDamage(
+      projectile.damage,
+      weaponType,
+      "destructible_wall"
+    );
+
+    // Apply damage to wall
+    const destroyed = wall.takeDamage(damage);
+
+    // Emit wall hit event
+    this.server.emit("wallHit", {
+      projectileId: projectile.id,
+      wallId: wall.id,
+      x: projectile.x,
+      y: projectile.y,
+      damage: damage,
+      destroyed: destroyed,
+      wallHealth: wall.currentHealth,
+      wallMaxHealth: wall.maxHealth,
+    });
+
+    if (destroyed) {
+      // Remove wall and create destruction particles
+      this.destructibleWalls.delete(wall.id);
+
+      // Give XP to the shooter
+      const shooter = this.players.get(projectile.ownerId);
+      if (shooter) {
+        const xpReward = Math.round(10 * 0.5); // 5 XP for wall destruction
+        shooter.addExperience(xpReward);
+      }
+
+      this.server.emit("wallDestroyed", {
+        wallId: wall.id,
+        x: wall.x,
+        y: wall.y,
+        particles: wall.createDestructionParticles(),
+      });
+    }
+  }
+
+  private handleObstacleHit(
+    projectile: Projectile,
+    obstacle: EnvironmentalObstacle
+  ): void {
+    // Calculate damage based on weapon type
+    const weaponType = projectile.type as "laser" | "missile";
+    const damage = this.calculateWeaponDamage(
+      projectile.damage,
+      weaponType,
+      "environmental_obstacle"
+    );
+
+    // Apply damage to obstacle
+    const result = obstacle.takeDamage(damage);
+
+    // Emit obstacle hit event
+    this.server.emit("obstacleHit", {
+      projectileId: projectile.id,
+      obstacleId: obstacle.id,
+      x: projectile.x,
+      y: projectile.y,
+      damage: damage,
+      destroyed: result.destroyed,
+      obstacleHealth: obstacle.currentHealth,
+      obstacleMaxHealth: obstacle.maxHealth,
+    });
+
+    if (result.destroyed) {
+      // Remove obstacle
+      this.environmentalObstacles.delete(obstacle.id);
+
+      // Give XP to the shooter
+      const shooter = this.players.get(projectile.ownerId);
+      if (shooter) {
+        const xpReward = Math.round(25 * 0.5); // 12.5 XP for obstacle destruction
+        shooter.addExperience(xpReward);
+      }
+
+      // Handle explosion if obstacle is explosive
+      if (result.explosion) {
+        this.handleExplosion(
+          result.explosion.x,
+          result.explosion.y,
+          result.explosion.radius,
+          result.explosion.damage,
+          projectile.ownerId
+        );
+      }
+
+      this.server.emit("obstacleDestroyed", {
+        obstacleId: obstacle.id,
+        x: obstacle.x,
+        y: obstacle.y,
+        particles: obstacle.createDestructionParticles(),
+        explosion: result.explosion,
+      });
+    }
+  }
+
+  private handleExplosion(
+    x: number,
+    y: number,
+    radius: number,
+    damage: number,
+    ownerId: string
+  ): void {
+    // Find all players and AI within explosion radius
+    const affectedEntities: Array<{
+      id: string;
+      entity: Player | EnhancedAIEnemy | SwarmAI;
+      distance: number;
+    }> = [];
+
+    // Check players
+    this.players.forEach((player, playerId) => {
+      const distance = Math.sqrt((player.x - x) ** 2 + (player.y - y) ** 2);
+      if (distance <= radius) {
+        affectedEntities.push({ id: playerId, entity: player, distance });
+      }
+    });
+
+    // Check AI enemies
+    this.aiEnemies.forEach((ai, aiId) => {
+      const distance = Math.sqrt((ai.x - x) ** 2 + (ai.y - y) ** 2);
+      if (distance <= radius) {
+        affectedEntities.push({ id: aiId, entity: ai, distance });
+      }
+    });
+
+    // Check swarm enemies
+    this.swarmEnemies.forEach((swarm, swarmId) => {
+      const distance = Math.sqrt((swarm.x - x) ** 2 + (swarm.y - y) ** 2);
+      if (distance <= radius) {
+        affectedEntities.push({ id: swarmId, entity: swarm, distance });
+      }
+    });
+
+    // Apply damage to affected entities
+    affectedEntities.forEach(({ id, entity, distance }) => {
+      const explosionDamage = this.calculateExplosionDamage(
+        distance,
+        radius,
+        damage
+      );
+      if (explosionDamage > 0) {
+        const isDead = entity.takeDamage(explosionDamage);
+
+        if (isDead && entity instanceof Player) {
+          // Handle player death from explosion
+          // Give XP to the explosion owner (if it's not self-damage)
+          if (ownerId !== id) {
+            const killer = this.players.get(ownerId);
+            if (killer) {
+              killer.addExperience(XP_REWARDS.playerKill);
+              console.log(
+                `Player ${killer.name} killed ${entity.name} with explosion and gained ${XP_REWARDS.playerKill} XP`
+              );
+
+              // Emit kill event to the killer
+              this.server.to(killer.id).emit("playerKill", {
+                killType: "explosion",
+                victim: entity.name,
+                xpGained: XP_REWARDS.playerKill,
+              });
+            }
+          }
+        } else if (isDead && entity instanceof EnhancedAIEnemy) {
+          // Handle AI death from explosion
+          this.aiEnemies.delete(id);
+          const killer = this.players.get(ownerId);
+          if (killer) {
+            killer.addExperience(XP_REWARDS.aiEnemyKill);
+          }
+        } else if (isDead && entity instanceof SwarmAI) {
+          // Handle swarm death from explosion
+          this.swarmEnemies.delete(id);
+          const killer = this.players.get(ownerId);
+          if (killer) {
+            killer.addExperience(XP_REWARDS.swarmEnemyKill);
+          }
+        }
+      }
+    });
+
+    // Check for chain reactions with other explosive obstacles
+    this.environmentalObstacles.forEach((obstacle, obstacleId) => {
+      const distance = Math.sqrt((obstacle.x - x) ** 2 + (obstacle.y - y) ** 2);
+      if (distance <= radius && this.shouldTriggerChainReaction()) {
+        // Trigger chain explosion
+        const result = obstacle.takeDamage(damage);
+        if (result.destroyed && result.explosion) {
+          this.environmentalObstacles.delete(obstacleId);
+          this.handleExplosion(
+            result.explosion.x,
+            result.explosion.y,
+            result.explosion.radius,
+            result.explosion.damage,
+            ownerId
+          );
+        }
+      }
+    });
+
+    // Emit explosion event
+    this.server.emit("explosion", {
+      x,
+      y,
+      radius,
+      damage,
+      affectedEntities: affectedEntities.map((e) => ({
+        id: e.id,
+        damage: this.calculateExplosionDamage(e.distance, radius, damage),
+      })),
+    });
+  }
+
+  private calculateWeaponDamage(
+    baseDamage: number,
+    weaponType: "laser" | "missile",
+    targetType: "destructible_wall" | "environmental_obstacle"
+  ): number {
+    return calculateWeaponDamage(baseDamage, weaponType, targetType);
+  }
+
+  private calculateExplosionDamage(
+    distance: number,
+    explosionRadius: number,
+    baseDamage: number
+  ): number {
+    return calculateExplosionDamage(distance, explosionRadius, baseDamage);
+  }
+
+  private shouldTriggerChainReaction(): boolean {
+    return shouldTriggerChainReaction();
+  }
+
+  private updateDestructibleObjects(deltaTime: number): void {
+    // Update destructible wall particles
+    this.destructibleWalls.forEach((wall) => {
+      wall.updateParticles(deltaTime);
+    });
+
+    // Update environmental obstacles and their particles
+    this.environmentalObstacles.forEach((obstacle) => {
+      obstacle.update(deltaTime);
     });
   }
 
@@ -1870,7 +2289,10 @@ export class GameGateway
 
   private generateWalls() {
     this.walls = [];
+    this.destructibleWalls.clear();
+    this.environmentalObstacles.clear();
 
+    // Generate regular indestructible walls
     for (let i = 0; i < this.WALL_COUNT; i++) {
       let wall: Wall;
       let attempts = 0;
@@ -1900,16 +2322,18 @@ export class GameGateway
           };
         }
 
-        // Check if this wall overlaps with existing walls (with larger spacing to prevent narrow gaps)
-        validPosition = !this.walls.some((existingWall) => {
-          const spacing = 120; // Increased spacing to prevent players getting stuck in narrow gaps
-          return !(
-            wall.x + wall.width + spacing < existingWall.x ||
-            wall.x > existingWall.x + existingWall.width + spacing ||
-            wall.y + wall.height + spacing < existingWall.y ||
-            wall.y > existingWall.y + existingWall.height + spacing
-          );
-        });
+        // Check if this wall overlaps with existing objects
+        validPosition = !this.getAllCollisionObjects().some(
+          (existingObject) => {
+            const spacing = 120; // Increased spacing to prevent narrow gaps
+            return !(
+              wall.x + wall.width + spacing < existingObject.x ||
+              wall.x > existingObject.x + existingObject.width + spacing ||
+              wall.y + wall.height + spacing < existingObject.y ||
+              wall.y > existingObject.y + existingObject.height + spacing
+            );
+          }
+        );
 
         attempts++;
       } while (!validPosition && attempts < 50);
@@ -1918,6 +2342,165 @@ export class GameGateway
         this.walls.push(wall);
       }
     }
+
+    // Generate destructible walls
+    for (let i = 0; i < this.DESTRUCTIBLE_WALL_COUNT; i++) {
+      let attempts = 0;
+      let validPosition = false;
+      let destructibleWall: DestructibleWall;
+
+      do {
+        // Random wall type with weighted distribution
+        const wallTypes = Object.values(WallType);
+        const weights = [0.3, 0.2, 0.15, 0.15, 0.1, 0.1]; // Concrete most common
+        const randomValue = Math.random();
+        let cumulative = 0;
+        let selectedType = WallType.CONCRETE;
+
+        for (let j = 0; j < wallTypes.length; j++) {
+          cumulative += weights[j];
+          if (randomValue <= cumulative) {
+            selectedType = wallTypes[j];
+            break;
+          }
+        }
+
+        destructibleWall = DestructibleWall.generateRandom(
+          `destructible_wall_${i}`,
+          this.WORLD_WIDTH,
+          this.WORLD_HEIGHT,
+          selectedType
+        );
+
+        // Check if this wall overlaps with existing objects
+        validPosition = !this.getAllCollisionObjects().some(
+          (existingObject) => {
+            const spacing = 100; // Spacing for destructible walls
+            return !(
+              destructibleWall.x + destructibleWall.width + spacing <
+                existingObject.x ||
+              destructibleWall.x >
+                existingObject.x + existingObject.width + spacing ||
+              destructibleWall.y + destructibleWall.height + spacing <
+                existingObject.y ||
+              destructibleWall.y >
+                existingObject.y + existingObject.height + spacing
+            );
+          }
+        );
+
+        attempts++;
+      } while (!validPosition && attempts < 50);
+
+      if (validPosition) {
+        this.destructibleWalls.set(destructibleWall.id, destructibleWall);
+      }
+    }
+
+    // Generate environmental obstacles
+    for (let i = 0; i < this.OBSTACLE_COUNT; i++) {
+      let attempts = 0;
+      let validPosition = false;
+      let obstacle: EnvironmentalObstacle;
+
+      do {
+        // Random obstacle type with weighted distribution
+        const obstacleTypes = Object.values(ObstacleType);
+        const weights = [0.25, 0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.05]; // Asteroids and debris most common
+        const randomValue = Math.random();
+        let cumulative = 0;
+        let selectedType = ObstacleType.ASTEROID;
+
+        for (let j = 0; j < obstacleTypes.length; j++) {
+          cumulative += weights[j];
+          if (randomValue <= cumulative) {
+            selectedType = obstacleTypes[j];
+            break;
+          }
+        }
+
+        obstacle = EnvironmentalObstacle.generateRandom(
+          `obstacle_${i}`,
+          this.WORLD_WIDTH,
+          this.WORLD_HEIGHT,
+          selectedType
+        );
+
+        // Check if this obstacle overlaps with existing objects
+        validPosition = !this.getAllCollisionObjects().some(
+          (existingObject) => {
+            const spacing = 120; // More spacing for obstacles
+            const obstacleWidth = obstacle.getWidth();
+            const obstacleHeight = obstacle.getHeight();
+
+            return !(
+              obstacle.x - obstacleWidth / 2 + obstacleWidth + spacing <
+                existingObject.x ||
+              obstacle.x - obstacleWidth / 2 >
+                existingObject.x + existingObject.width + spacing ||
+              obstacle.y - obstacleHeight / 2 + obstacleHeight + spacing <
+                existingObject.y ||
+              obstacle.y - obstacleHeight / 2 >
+                existingObject.y + existingObject.height + spacing
+            );
+          }
+        );
+
+        attempts++;
+      } while (!validPosition && attempts < 50);
+
+      if (validPosition) {
+        this.environmentalObstacles.set(obstacle.id, obstacle);
+      }
+    }
+
+    console.log(
+      `Generated environment: ${this.walls.length} walls, ${this.destructibleWalls.size} destructible walls, ${this.environmentalObstacles.size} obstacles`
+    );
+  }
+
+  // Get all collision objects for overlap checking during generation
+  private getAllCollisionObjects(): Array<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }> {
+    const objects: Array<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }> = [];
+
+    // Add regular walls
+    objects.push(...this.walls);
+
+    // Add destructible walls
+    objects.push(
+      ...Array.from(this.destructibleWalls.values()).map((wall) => ({
+        x: wall.x,
+        y: wall.y,
+        width: wall.width,
+        height: wall.height,
+      }))
+    );
+
+    // Add environmental obstacles (convert to rectangular bounds)
+    objects.push(
+      ...Array.from(this.environmentalObstacles.values()).map((obstacle) => {
+        const width = obstacle.getWidth();
+        const height = obstacle.getHeight();
+        return {
+          x: obstacle.x - width / 2,
+          y: obstacle.y - height / 2,
+          width: width,
+          height: height,
+        };
+      })
+    );
+
+    return objects;
   }
 
   private spawnPowerUps() {
@@ -1974,7 +2557,7 @@ export class GameGateway
 
   private spawnAIEnemies() {
     this.aiEnemies.clear();
-    this.swarmEnemies.clear();
+    // Don't clear swarm enemies here - they're managed by bases now
 
     for (let i = 0; i < this.AI_ENEMY_COUNT; i++) {
       const spawnPosition = this.getRandomSpawnPosition();
@@ -1990,6 +2573,60 @@ export class GameGateway
 
       this.aiEnemies.set(aiId, aiEnemy);
     }
+  }
+
+  private spawnSwarmBases() {
+    this.swarmBases.clear();
+    this.swarmEnemies.clear(); // Clear existing swarms
+
+    const BASE_COUNT = 5;
+    console.log(`Spawning ${BASE_COUNT} swarm bases`);
+
+    for (let i = 0; i < BASE_COUNT; i++) {
+      let attempts = 0;
+      let position;
+      
+      // Find a good position for the base (away from walls and other bases)
+      do {
+        position = this.getRandomSpawnPosition();
+        attempts++;
+      } while (attempts < 20 && !this.isValidBasePosition(position.x, position.y));
+
+      const baseId = `base_${i + 1}`;
+      const base = new SwarmBase(baseId, position.x, position.y);
+      this.swarmBases.set(baseId, base);
+
+      console.log(`Spawned swarm base ${baseId} at (${position.x.toFixed(1)}, ${position.y.toFixed(1)})`);
+    }
+  }
+
+  private isValidBasePosition(x: number, y: number): boolean {
+    const MIN_DISTANCE_FROM_WALLS = 100;
+    const MIN_DISTANCE_FROM_OTHER_BASES = 200;
+
+    // Check distance from walls
+    for (const wall of this.walls) {
+      const dx = Math.abs(x - (wall.x + wall.width / 2));
+      const dy = Math.abs(y - (wall.y + wall.height / 2));
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < MIN_DISTANCE_FROM_WALLS) {
+        return false;
+      }
+    }
+
+    // Check distance from other bases
+    for (const base of this.swarmBases.values()) {
+      const dx = x - base.x;
+      const dy = y - base.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < MIN_DISTANCE_FROM_OTHER_BASES) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   private spawnSwarmEnemies() {
@@ -2034,8 +2671,8 @@ export class GameGateway
   private forceSpawnSwarms() {
     const swarmConfig = getSwarmConfig(this.preferredAIDifficulty);
 
-    // Spawn multiple groups of swarms immediately for better action
-    const swarmGroups = 2; // Increased from 1 - spawn 2 groups
+    // Spawn fewer groups of swarms for less overwhelming gameplay
+    const swarmGroups = 1; // Reduced from 2 - spawn only 1 group
     const enemiesPerGroup = swarmConfig.groupSize;
 
     console.log(
@@ -2470,17 +3107,46 @@ export class GameGateway
       serializedSwarmEnemies[id] = swarmEnemy.serialize();
     }
 
+    // Serialize swarm bases for network transmission
+    const serializedSwarmBases: { [id: string]: any } = {};
+    for (const [id, base] of this.swarmBases) {
+      serializedSwarmBases[id] = {
+        id: base.id,
+        x: base.x,
+        y: base.y,
+        health: base.health,
+        maxHealth: base.maxHealth,
+        isDestroyed: base.isDestroyed,
+        radius: base.radius
+      };
+    }
+
     // Serialize power-ups for network transmission
     const serializedPowerUps: { [id: string]: any } = {};
     for (const [id, powerUp] of this.powerUps) {
       serializedPowerUps[id] = powerUp.serialize();
     }
 
+    // Serialize destructible walls for network transmission
+    const serializedDestructibleWalls: { [id: string]: any } = {};
+    for (const [id, wall] of this.destructibleWalls) {
+      serializedDestructibleWalls[id] = wall.serialize();
+    }
+
+    // Serialize environmental obstacles for network transmission
+    const serializedObstacles: { [id: string]: any } = {};
+    for (const [id, obstacle] of this.environmentalObstacles) {
+      serializedObstacles[id] = obstacle.serialize();
+    }
+
     const gameState: GameState = {
       players: serializedPlayers,
       aiEnemies: serializedAIEnemies,
       swarmEnemies: serializedSwarmEnemies,
+      swarmBases: serializedSwarmBases,
       walls: this.walls,
+      destructibleWalls: serializedDestructibleWalls,
+      environmentalObstacles: serializedObstacles,
       powerUps: serializedPowerUps,
       projectiles: Array.from(this.projectiles.values()).map((p) => ({
         id: p.id,

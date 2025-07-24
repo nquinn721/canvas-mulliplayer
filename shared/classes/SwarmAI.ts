@@ -61,6 +61,15 @@ export class SwarmAI extends Player {
   private lastTargetUpdate: number = 0;
   private targetUpdateInterval: number = 200; // Update target every 200ms
 
+  // Base patrol properties
+  public baseId: string | null = null; // ID of the base this swarm belongs to
+  public baseX: number = 0; // Base position for patrolling
+  public baseY: number = 0;
+  public patrolRadius: number = 150; // Patrol around base
+  public patrolAngle: number = Math.random() * Math.PI * 2; // Random starting angle
+  public patrolSpeed: number = 0.02; // Speed of patrol rotation
+  public isPatrolling: boolean = true; // Whether currently patrolling or attacking
+
   // Movement properties
   private velocityX: number = 0;
   private velocityY: number = 0;
@@ -79,7 +88,10 @@ export class SwarmAI extends Player {
     x: number,
     y: number,
     difficulty: string = "MEDIUM",
-    color: string = "#cc2244" // Darker red for aggressive appearance
+    color: string = "#cc2244", // Darker red for aggressive appearance
+    baseId?: string,
+    baseX?: number,
+    baseY?: number
   ) {
     const swarmConfig = getSwarmConfig(difficulty);
 
@@ -98,6 +110,11 @@ export class SwarmAI extends Player {
     this.detectionRange = swarmConfig.detectionRange;
     this.attackRange = swarmConfig.attackRange;
     this.baseAttackDamage = swarmConfig.damage;
+
+    // Set up base patrol if base info provided
+    if (baseId && baseX !== undefined && baseY !== undefined) {
+      this.setupBasePatrol(baseId, baseX, baseY);
+    }
     this.attackCooldown = swarmConfig.attackCooldown;
 
     // Swarm behavior properties from config
@@ -115,6 +132,50 @@ export class SwarmAI extends Player {
   }
 
   /**
+   * Set up base patrol behavior
+   */
+  setupBasePatrol(baseId: string, baseX: number, baseY: number): void {
+    this.baseId = baseId;
+    this.baseX = baseX;
+    this.baseY = baseY;
+    this.isPatrolling = true;
+    
+    // Start at a random position around the base
+    const angle = Math.random() * Math.PI * 2;
+    const distance = this.patrolRadius * 0.7;
+    this.x = baseX + Math.cos(angle) * distance;
+    this.y = baseY + Math.sin(angle) * distance;
+    this.patrolAngle = angle;
+  }
+
+  /**
+   * Get patrol target position
+   */
+  getPatrolTarget(): { x: number; y: number } {
+    this.patrolAngle += this.patrolSpeed;
+    const distance = this.patrolRadius * 0.7;
+    return {
+      x: this.baseX + Math.cos(this.patrolAngle) * distance,
+      y: this.baseY + Math.sin(this.patrolAngle) * distance
+    };
+  }
+
+  /**
+   * Check if swarm should return to patrol (player moved away)
+   */
+  shouldReturnToPatrol(context: SwarmContext): boolean {
+    if (!this.baseId) return false; // No base to patrol
+    if (!this.currentTarget) return true; // No target, should patrol
+    
+    // Return to patrol if target is too far from base
+    const dx = this.currentTarget.x - this.baseX;
+    const dy = this.currentTarget.y - this.baseY;
+    const distanceFromBase = Math.sqrt(dx * dx + dy * dy);
+    
+    return distanceFromBase > this.patrolRadius * 1.5; // Give some buffer
+  }
+
+  /**
    * Main update method for swarm AI behavior
    */
   update(context: SwarmContext): void {
@@ -124,7 +185,7 @@ export class SwarmAI extends Player {
     if (currentTime % 10000 < 50) {
       // Log every ~10 seconds instead of 3 seconds
       console.log(
-        `Swarm ${this.id} status: pos=(${this.x.toFixed(1)}, ${this.y.toFixed(1)}), distanceToPlayer=${context.distanceToPlayer.toFixed(1)}, detectionRange=${this.detectionRange}, hasTarget=${!!this.currentTarget}, rushMode=${this.rushMode}`
+        `Swarm ${this.id} status: pos=(${this.x.toFixed(1)}, ${this.y.toFixed(1)}), distanceToPlayer=${context.distanceToPlayer.toFixed(1)}, detectionRange=${this.detectionRange}, hasTarget=${!!this.currentTarget}, rushMode=${this.rushMode}, isPatrolling=${this.isPatrolling}`
       );
     }
 
@@ -134,129 +195,156 @@ export class SwarmAI extends Player {
       this.lastTargetUpdate = currentTime;
     }
 
-    // Calculate swarm behaviors
-    const swarmForces = this.calculateSwarmForces(context);
-    const huntForce = this.calculateHuntForce(context);
-    const wallAvoidanceForce = this.calculateWallAvoidanceForce(context);
-
-    // Combine forces with different weights
-    let totalForceX = 0;
-    let totalForceY = 0;
-
-    // Check if any player is within detection range using context.closestPlayer
+    // Check if any player is within detection range
     const hasNearbyPlayer =
       context.distanceToPlayer < this.detectionRange &&
       context.closestPlayer &&
       context.closestPlayer.health > 0;
 
-    // Always update target to closest player within detection range for consistency
-    if (hasNearbyPlayer) {
-      this.currentTarget = context.closestPlayer;
+    // Base patrol logic
+    if (this.baseId) {
+      if (hasNearbyPlayer && !this.shouldReturnToPatrol(context)) {
+        // Switch to attack mode
+        this.isPatrolling = false;
+        this.currentTarget = context.closestPlayer;
+      } else {
+        // Switch to patrol mode
+        this.isPatrolling = true;
+        this.currentTarget = null;
+      }
     } else {
-      this.currentTarget = null; // Clear target if no players in range
+      // No base - use original swarm behavior
+      if (hasNearbyPlayer) {
+        this.currentTarget = context.closestPlayer;
+      } else {
+        this.currentTarget = null;
+      }
     }
 
-    if (hasNearbyPlayer) {
-      // Enter rush mode immediately when detecting a player
-      if (!this.rushMode) {
-        this.enterRushMode(currentTime);
-        // Rush mode entry logged at reduced frequency
+    // Calculate movement forces based on current behavior
+    let totalForceX = 0;
+    let totalForceY = 0;
+
+    if (this.isPatrolling && this.baseId) {
+      // Patrol around base
+      const patrolTarget = this.getPatrolTarget();
+      const dx = patrolTarget.x - this.x;
+      const dy = patrolTarget.y - this.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance > 0) {
+        totalForceX = (dx / distance) * 0.5; // Gentle patrol movement
+        totalForceY = (dy / distance) * 0.5;
       }
-
-      // AGGRESSIVE BITING BEHAVIOR - Direct charge at player
-      const distanceToTarget = context.distanceToPlayer;
-      const attackRange = this.attackRange;
-
-      if (distanceToTarget > attackRange) {
-        // CHARGE PHASE: When far from target, charge directly with maximum force
-        this.wasInAttackRange = false; // Reset attack range tracking when outside range
-
-        const huntingForceMultiplier = this.rushMode ? 5.0 : 3.0; // Much stronger direct charge
-        totalForceX +=
-          huntForce.x * this.settings.huntingForce * huntingForceMultiplier;
-        totalForceY +=
-          huntForce.y * this.settings.huntingForce * huntingForceMultiplier;
-
-        // Add wall avoidance force with high priority during charge
-        totalForceX += wallAvoidanceForce.x * 2.0; // High priority for wall avoidance
-        totalForceY += wallAvoidanceForce.y * 2.0;
-
-        // Minimal swarm forces to prevent interference with charge
-        const swarmForceReduction = 0.1; // Reduce swarm forces to 10% when charging
-        totalForceX +=
-          swarmForces.separation.x *
-          this.settings.separationForce *
-          swarmForceReduction;
-        totalForceY +=
-          swarmForces.separation.y *
-          this.settings.separationForce *
-          swarmForceReduction;
-      } else {
-        // BITE PHASE: When in attack range, use "biting" pattern - short bursts toward player
-        const biteForceMultiplier = this.rushMode ? 4.0 : 2.5; // Strong bite force
-
-        // If we just entered attack range, allow immediate attack
-        if (!this.wasInAttackRange) {
-          // Force immediate attack by setting lastAttackTime way in the past
-          this.lastAttackTime = 0; // Set to 0 to guarantee immediate attack
-          // Removed spammy log - attack entry is handled by server logs
-        }
-        this.wasInAttackRange = true;
-
-        // Add some randomness to create erratic "biting" movement
-        const biteRandomness = 0.3;
-        const randomAngle = (Math.random() - 0.5) * biteRandomness;
-        const biteAngle = Math.atan2(huntForce.y, huntForce.x) + randomAngle;
-
-        totalForceX +=
-          Math.cos(biteAngle) *
-          this.settings.huntingForce *
-          biteForceMultiplier;
-        totalForceY +=
-          Math.sin(biteAngle) *
-          this.settings.huntingForce *
-          biteForceMultiplier;
-
-        // Add wall avoidance force during biting (lower priority)
-        totalForceX += wallAvoidanceForce.x * 1.0;
-        totalForceY += wallAvoidanceForce.y * 1.0;
-
-        // Reduce cohesion to prevent orbiting behavior
-        totalForceX +=
-          swarmForces.separation.x * this.settings.separationForce * 0.8;
-        totalForceY +=
-          swarmForces.separation.y * this.settings.separationForce * 0.8;
-        // No cohesion forces when biting to prevent orbiting
-      }
-
-      // Debug logging removed for cleaner console output
+      
+      // Add wall avoidance for patrol
+      const wallAvoidanceForce = this.calculateWallAvoidanceForce(context);
+      totalForceX += wallAvoidanceForce.x * 2; // Higher priority for walls
+      totalForceY += wallAvoidanceForce.y * 2;
     } else {
-      // Swarm behavior - stay together and patrol
-      this.wasInAttackRange = false; // Reset attack range tracking when not hunting
+      // Attack behavior - use original swarm logic
+      const swarmForces = this.calculateSwarmForces(context);
+      const huntForce = this.calculateHuntForce(context);
+      const wallAvoidanceForce = this.calculateWallAvoidanceForce(context);
 
-      totalForceX +=
-        swarmForces.separation.x * (this.settings.separationForce * 1.2);
-      totalForceY +=
-        swarmForces.separation.y * (this.settings.separationForce * 1.2);
-      totalForceX +=
-        swarmForces.cohesion.x * (this.settings.cohesionForce * 1.5);
-      totalForceY +=
-        swarmForces.cohesion.y * (this.settings.cohesionForce * 1.5);
-      totalForceX += swarmForces.alignment.x * this.settings.alignmentForce;
-      totalForceY += swarmForces.alignment.y * this.settings.alignmentForce;
+      // Combine forces with different weights
+      const hasNearbyPlayer =
+        context.distanceToPlayer < this.detectionRange &&
+        context.closestPlayer &&
+        context.closestPlayer.health > 0;
 
-      // Add wall avoidance during patrol mode
-      totalForceX += wallAvoidanceForce.x * 1.5;
-      totalForceY += wallAvoidanceForce.y * 1.5;
+      if (hasNearbyPlayer) {
+        // Enter rush mode immediately when detecting a player
+        if (!this.rushMode) {
+          this.enterRushMode(currentTime);
+        }
 
-      this.rushMode = false;
+        // AGGRESSIVE BITING BEHAVIOR - Direct charge at player
+        const distanceToTarget = context.distanceToPlayer;
+        const attackRange = this.attackRange;
+
+        if (distanceToTarget > attackRange) {
+          // CHARGE PHASE: When far from target, charge directly with maximum force
+          this.wasInAttackRange = false;
+
+          const huntingForceMultiplier = this.rushMode ? 5.0 : 3.0;
+          totalForceX +=
+            huntForce.x * this.settings.huntingForce * huntingForceMultiplier;
+          totalForceY +=
+            huntForce.y * this.settings.huntingForce * huntingForceMultiplier;
+
+          // Add wall avoidance force with high priority during charge
+          totalForceX += wallAvoidanceForce.x * 2.0;
+          totalForceY += wallAvoidanceForce.y * 2.0;
+
+          // Minimal swarm forces to prevent interference with charge
+          const swarmForceReduction = 0.1;
+          totalForceX +=
+            swarmForces.separation.x *
+            this.settings.separationForce *
+            swarmForceReduction;
+          totalForceY +=
+            swarmForces.separation.y *
+            this.settings.separationForce *
+            swarmForceReduction;
+        } else {
+          // BITE PHASE: When in attack range, use "biting" pattern
+          const biteForceMultiplier = this.rushMode ? 4.0 : 2.5;
+
+          if (!this.wasInAttackRange) {
+            this.lastAttackTime = 0;
+          }
+          this.wasInAttackRange = true;
+
+          // Add some randomness to create erratic "biting" movement
+          const biteRandomness = 0.3;
+          const randomAngle = (Math.random() - 0.5) * biteRandomness;
+          const biteAngle = Math.atan2(huntForce.y, huntForce.x) + randomAngle;
+
+          totalForceX +=
+            Math.cos(biteAngle) *
+            this.settings.huntingForce *
+            biteForceMultiplier;
+          totalForceY +=
+            Math.sin(biteAngle) *
+            this.settings.huntingForce *
+            biteForceMultiplier;
+
+          // Add wall avoidance force during biting
+          totalForceX += wallAvoidanceForce.x * 1.0;
+          totalForceY += wallAvoidanceForce.y * 1.0;
+
+          // Reduce cohesion to prevent orbiting behavior
+          totalForceX +=
+            swarmForces.separation.x * this.settings.separationForce * 0.8;
+          totalForceY +=
+            swarmForces.separation.y * this.settings.separationForce * 0.8;
+        }
+      } else {
+        // Swarm behavior - stay together and patrol
+        this.wasInAttackRange = false;
+
+        totalForceX +=
+          swarmForces.separation.x * (this.settings.separationForce * 1.2);
+        totalForceY +=
+          swarmForces.separation.y * (this.settings.separationForce * 1.2);
+        totalForceX +=
+          swarmForces.cohesion.x * (this.settings.cohesionForce * 1.5);
+        totalForceY +=
+          swarmForces.cohesion.y * (this.settings.cohesionForce * 1.5);
+        totalForceX += swarmForces.alignment.x * this.settings.alignmentForce;
+        totalForceY += swarmForces.alignment.y * this.settings.alignmentForce;
+
+        // Add wall avoidance during patrol mode
+        totalForceX += wallAvoidanceForce.x * 1.5;
+        totalForceY += wallAvoidanceForce.y * 1.5;
+
+        this.rushMode = false;
+      }
     }
 
     // Apply movement
     this.applyMovement(totalForceX, totalForceY, context);
-
-    // Note: Attack logic is handled entirely by the server in game.gateway.ts
-    // The client-side AI only handles movement and targeting behavior
 
     // Handle rush mode timeout
     if (

@@ -50,65 +50,43 @@ export const GameStats: React.FC<GameStatsProps> = observer(
 
     return (
       <div className={`game-stats ${className}`}>
-        <div className="stats-header">
-          <h3>Stats</h3>
-          <div className="connection-indicator">
+        <div className="stats-content">
+          {/* Score */}
+          <div className="stat-item">
+            <div className="stat-value">{score.toLocaleString()}</div>
+            <div className="stat-label">Score</div>
+          </div>
+
+          {/* KDA */}
+          <div className="stat-item">
+            <div className="stat-value">{kda}</div>
+            <div className="stat-label">K/D/A</div>
+          </div>
+
+          {/* Connection Status */}
+          <div className="connection-status">
             <div
               className={`connection-dot ${gameStore.isConnected ? "connected" : "disconnected"}`}
               title={
                 gameStore.isConnected
-                  ? `Connected (${gameStore.stats.ping || 0}ms)`
+                  ? `${gameStore.stats.ping || 0}ms`
                   : "Disconnected"
               }
             />
           </div>
         </div>
 
-        <div className="stats-content">
-          {/* Score Section */}
-          <div className="stat-group score-group">
-            <div className="stat-label">Score</div>
-            <div className="stat-value score-value">
-              {score.toLocaleString()}
-            </div>
+        {/* Streak Notification */}
+        {currentStreak >= 2 && (
+          <div className="streak-notification">
+            <span
+              className="streak-text"
+              style={{ color: getStreakColor(currentStreak) }}
+            >
+              {getStreakText(currentStreak)}
+            </span>
           </div>
-
-          {/* KDA Section */}
-          <div className="stat-group kda-group">
-            <div className="stat-label">K/D/A</div>
-            <div className="stat-value kda-value">{kda}</div>
-          </div>
-
-          {/* Kill Streak Section */}
-          {(currentStreak >= 2 || hitStreak >= 3) && (
-            <div className="stat-group streak-group">
-              <div className="stat-label">
-                {hitStreak >= 3 ? "Hit Streak" : "Streak"}
-              </div>
-              <div
-                className="stat-value streak-status"
-                style={{ color: getStreakColor(currentStreak) }}
-              >
-                {hitStreak >= 3
-                  ? `${hitStreak}x hits`
-                  : `${currentStreak}x kills`}
-              </div>
-            </div>
-          )}
-
-          {/* Survival Bonus Section */}
-          {survivalMultiplier > 1.0 && (
-            <div className="stat-group survival-group">
-              <div className="stat-label">Survival</div>
-              <div
-                className="stat-value survival-multiplier"
-                style={{ color: "#00ff88" }}
-              >
-                {survivalMultiplier.toFixed(1)}x
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     );
   }
