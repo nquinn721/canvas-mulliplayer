@@ -14,6 +14,9 @@ export const gameStore = new GameStore();
 export const soundStore = new SoundStore();
 export const gamePreferencesStore = new GamePreferencesStore();
 
+// Initialize ExperienceService with authStore
+gameStore.initializeExperienceService(authStore);
+
 // Create service instances
 export const scoreService = new ScoreService();
 export const gameSessionService = new GameSessionService();

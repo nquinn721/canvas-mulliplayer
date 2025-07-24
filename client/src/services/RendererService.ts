@@ -1,7 +1,6 @@
 import { AbilityIconRenderer } from "../components/canvas";
 import { GameStore } from "../stores/GameStore";
 import { debugLogger } from "./DebugLogger";
-import { getDisplayNameWithFallback } from "../utils/displayName";
 
 export class RendererService {
   private gameStore: GameStore;
@@ -562,12 +561,21 @@ export class RendererService {
         // Name background/outline for better visibility
         this.ctx.strokeStyle = "#000";
         this.ctx.lineWidth = 3;
-        const displayName = (player as any).displayName || (player as any).name || "Guest";
-        this.ctx.strokeText(displayName, (player as any).x, (player as any).y - 60);
+        const displayName =
+          (player as any).displayName || (player as any).name || "Guest";
+        this.ctx.strokeText(
+          displayName,
+          (player as any).x,
+          (player as any).y - 60
+        );
 
         // Name text
         this.ctx.fillStyle = "#fff";
-        this.ctx.fillText(displayName, (player as any).x, (player as any).y - 60);
+        this.ctx.fillText(
+          displayName,
+          (player as any).x,
+          (player as any).y - 60
+        );
 
         // Health bar
         this.drawHealthBar(player);
@@ -1826,6 +1834,11 @@ export class RendererService {
     const player = this.gameStore.gameState.players[this.gameStore.playerId];
     if (!player) return;
 
+    // Get experience data from ExperienceService (handles auth vs guest)
+    const experienceData =
+      this.gameStore.experienceService?.getCurrentExperienceData();
+    if (!experienceData) return;
+
     const margin = 20;
     const containerWidth = 220;
     const containerHeight = 60;
@@ -1920,22 +1933,22 @@ export class RendererService {
     const textX = iconX + iconSize + 15;
     const textY = iconY + 12;
 
-    // Level display
+    // Level display (using ExperienceService data)
     this.ctx.fillStyle = "#000";
     this.ctx.font = "bold 16px Arial";
     this.ctx.textAlign = "left";
-    this.ctx.fillText(`Level ${player.level || 1}`, textX + 1, textY + 1);
+    this.ctx.fillText(`Level ${experienceData.level}`, textX + 1, textY + 1);
 
     this.ctx.fillStyle = "#00d4ff";
-    this.ctx.fillText(`Level ${player.level || 1}`, textX, textY);
+    this.ctx.fillText(`Level ${experienceData.level}`, textX, textY);
 
-    // Experience points
+    // Experience points (using ExperienceService data)
     this.ctx.fillStyle = "#000";
     this.ctx.font = "12px Arial";
-    this.ctx.fillText(`${player.experience || 0} XP`, textX + 1, textY + 18);
+    this.ctx.fillText(`${experienceData.experience} XP`, textX + 1, textY + 18);
 
     this.ctx.fillStyle = "#ffd700";
-    this.ctx.fillText(`${player.experience || 0} XP`, textX, textY + 17);
+    this.ctx.fillText(`${experienceData.experience} XP`, textX, textY + 17);
 
     // Experience progress bar
     const barWidth = 120;
@@ -1943,28 +1956,11 @@ export class RendererService {
     const barX = textX;
     const barY = textY + 25;
 
-    // Calculate XP progress using new exponential system
-    const currentLevel = player.level || 1;
-
-    // Calculate current and next level XP requirements using exponential progression
-    let currentLevelXP = 0;
-    let nextLevelXP = 0;
-    const baseXP = 100;
-    const multiplier = 1.5;
-
-    // Calculate total XP needed for current level
-    for (let level = 1; level < currentLevel; level++) {
-      currentLevelXP += Math.floor(baseXP * Math.pow(multiplier, level - 1));
-    }
-
-    // Calculate XP needed for next level
-    nextLevelXP =
-      currentLevelXP +
-      Math.floor(baseXP * Math.pow(multiplier, currentLevel - 1));
-
-    const progressXP = (player.experience || 0) - currentLevelXP;
-    const xpNeededForLevel = nextLevelXP - currentLevelXP;
-    const progress = Math.max(0, Math.min(1, progressXP / xpNeededForLevel));
+    // Use progress data from ExperienceService
+    const progress = Math.max(
+      0,
+      Math.min(1, experienceData.progressPercent / 100)
+    );
 
     // Progress bar background
     this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
@@ -1998,19 +1994,19 @@ export class RendererService {
       this.ctx.shadowBlur = 0;
     }
 
-    // Progress text (current/next XP)
+    // Progress text (current/next XP using ExperienceService data)
     this.ctx.fillStyle = "#000";
     this.ctx.font = "10px Arial";
     this.ctx.textAlign = "right";
     this.ctx.fillText(
-      `${progressXP}/${nextLevelXP - currentLevelXP}`,
+      `${experienceData.experienceToNextLevel}/${experienceData.experienceRequiredForNextLevel}`,
       barX + barWidth + 1,
       barY + barHeight + 1
     );
 
     this.ctx.fillStyle = "#cccccc";
     this.ctx.fillText(
-      `${progressXP}/${nextLevelXP - currentLevelXP}`,
+      `${experienceData.experienceToNextLevel}/${experienceData.experienceRequiredForNextLevel}`,
       barX + barWidth,
       barY + barHeight
     );

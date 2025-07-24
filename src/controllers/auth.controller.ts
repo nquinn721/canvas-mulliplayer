@@ -14,6 +14,7 @@ import {
 import { AuthGuard } from "@nestjs/passport";
 import { Roles } from "../decorators/roles.decorator";
 import {
+  ExperienceUpdateDto,
   LoginDto,
   RegisterDto,
   ScoreUpdateDto,
@@ -24,6 +25,7 @@ import { UserRole } from "../entities/user.entity";
 import { JwtAuthGuard } from "../guards/jwt-auth.guard";
 import { RolesGuard } from "../guards/roles.guard";
 import { AuthService } from "../services/auth.service";
+import { calculateLevelFromExperience } from "../../shared/config/ExperienceConfig";
 
 @Controller("auth")
 export class AuthController {
@@ -238,6 +240,34 @@ export class AuthController {
     }
   }
 
+  @Post("update-experience")
+  @UseGuards(JwtAuthGuard)
+  async updateExperience(
+    @Request() req,
+    @Body(ValidationPipe) experienceUpdateDto: ExperienceUpdateDto
+  ) {
+    try {
+      const result = await this.authService.updateUserExperience(
+        req.user.id,
+        experienceUpdateDto.experience,
+        experienceUpdateDto.level
+      );
+      return {
+        success: true,
+        message: "Experience updated successfully",
+        user: result,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message || "Failed to update experience",
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
   @Post("update-score")
   @UseGuards(JwtAuthGuard)
   async updateScore(
@@ -356,6 +386,142 @@ export class AuthController {
         message: "Debug page not found",
         error: error.message,
       });
+    }
+  }
+
+  @Post("admin/recalculate-levels")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async recalculateAllUserLevels(@Request() req) {
+    try {
+      const result = await this.authService.recalculateAllUserLevels();
+      return {
+        success: true,
+        message: `Level recalculation completed: ${result.updated}/${result.total} users updated`,
+        data: result,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message || "Failed to recalculate user levels",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Get("debug-level/:experience")
+  async debugLevelCalculation(@Request() req, @Response() res) {
+    try {
+      const experience = parseInt(req.params.experience) || 0;
+      const level = calculateLevelFromExperience(experience);
+      
+      // Get some example level calculations
+      const examples = [];
+      for (let exp of [0, 100, 250, 500, 1000, 2000, 5000]) {
+        examples.push({
+          experience: exp,
+          level: calculateLevelFromExperience(exp)
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: {
+          input: { experience },
+          result: { level },
+          examples,
+          config: {
+            baseExperienceRequired: 100,
+            experienceMultiplier: 1.5,
+            formula: "exponential"
+          }
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  @Get("debug-my-level")
+  @UseGuards(JwtAuthGuard)
+  async debugMyLevel(@Request() req) {
+    try {
+      const user = await this.authService.getUserById(req.user.id);
+      const calculatedLevel = calculateLevelFromExperience(user.experience || 0);
+      
+      return {
+        success: true,
+        data: {
+          userId: user.id,
+          username: user.username,
+          currentData: {
+            experience: user.experience || 0,
+            storedLevel: user.playerLevel || 1,
+          },
+          calculated: {
+            level: calculatedLevel,
+            levelMatches: (user.playerLevel || 1) === calculatedLevel
+          },
+          shouldUpdate: (user.playerLevel || 1) !== calculatedLevel
+        }
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message || "Failed to debug user level",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post("fix-my-level")
+  @UseGuards(JwtAuthGuard)
+  async fixMyLevel(@Request() req) {
+    try {
+      const user = await this.authService.getUserById(req.user.id);
+      const calculatedLevel = calculateLevelFromExperience(user.experience || 0);
+      
+      if (user.playerLevel !== calculatedLevel) {
+        await this.authService.updateUserLevel(user.id, calculatedLevel);
+        
+        return {
+          success: true,
+          message: "Level updated successfully",
+          data: {
+            userId: user.id,
+            username: user.username,
+            oldLevel: user.playerLevel || 1,
+            newLevel: calculatedLevel,
+            experience: user.experience || 0
+          }
+        };
+      } else {
+        return {
+          success: true,
+          message: "Level is already correct",
+          data: {
+            userId: user.id,
+            username: user.username,
+            level: calculatedLevel,
+            experience: user.experience || 0
+          }
+        };
+      }
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message || "Failed to fix user level",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
   }
 

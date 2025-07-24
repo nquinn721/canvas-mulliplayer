@@ -149,3 +149,13 @@ export class ScoreUpdateDto {
   @Min(0, { message: "Deaths cannot be negative" })
   deaths?: number;
 }
+
+export class ExperienceUpdateDto {
+  @IsNumber({}, { message: "Experience must be a valid number" })
+  @Min(0, { message: "Experience cannot be negative" })
+  experience: number;
+
+  @IsNumber({}, { message: "Level must be a valid number" })
+  @Min(1, { message: "Level must be at least 1" })
+  level: number;
+}

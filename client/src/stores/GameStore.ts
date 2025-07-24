@@ -2,7 +2,9 @@ import { Camera, GameState, KeyState, Projectile } from "@shared";
 import { SCORING_CONFIG, ScoringUtils } from "@shared/config/ScoringConfig";
 import { makeAutoObservable, runInAction } from "mobx";
 import { Socket } from "socket.io-client";
+import { calculateLevelFromExperience } from "../../../shared/config/ExperienceConfig";
 import { debugLogger } from "../services/DebugLogger";
+import { ExperienceService } from "../services/ExperienceService";
 import { LatencyCompensationService } from "../services/LatencyCompensationService";
 import { soundService } from "../services/SoundService";
 import { ParticleSystem } from "../utils/ParticleSystem";
@@ -82,6 +84,9 @@ export class GameStore {
   // Latency compensation service
   latencyCompensation: LatencyCompensationService | null = null;
 
+  // Experience service for managing XP/levels
+  experienceService: ExperienceService | null = null;
+
   // Mouse state
   mousePosition = { x: 0, y: 0 };
   isMouseDown = false;
@@ -109,6 +114,41 @@ export class GameStore {
       this.WORLD_WIDTH,
       this.WORLD_HEIGHT
     );
+  }
+
+  // Initialize experience service with auth store
+  initializeExperienceService(authStore: any) {
+    this.experienceService = new ExperienceService(authStore);
+  }
+
+  // Test method to simulate gaining experience (for testing)
+  testGainExperience(amount: number = 50) {
+    if (this.experienceService) {
+      console.log(`Gaining ${amount} XP...`);
+      this.experienceService.addExperience(amount);
+    }
+  }
+
+  // Test method to validate level calculations across systems
+  testLevelCalculations() {
+    if (this.experienceService) {
+      const data = this.experienceService.getCurrentExperienceData();
+      console.log("=== Level Calculation Test ===");
+      console.log(`Current Experience: ${data.experience}`);
+      console.log(`Calculated Level: ${data.level}`);
+      console.log(`XP for Current Level: ${data.experienceToNextLevel}`);
+      console.log(
+        `XP Required for Next Level: ${data.experienceRequiredForNextLevel}`
+      );
+      console.log(`Progress: ${data.progressPercent.toFixed(1)}%`);
+
+      // Test a few level calculations
+      console.log("\n=== Level Progression Examples ===");
+      for (let xp of [0, 100, 250, 475, 812, 1368, 2202, 3453, 5329, 8143]) {
+        const level = calculateLevelFromExperience(xp);
+        console.log(`${xp} XP = Level ${level}`);
+      }
+    }
   }
 
   // Actions for updating state
@@ -244,7 +284,7 @@ export class GameStore {
     };
   }
 
-  addKill(isHeadshot: boolean = false) {
+  addKill(isHeadshot: boolean = false, isPlayerKill: boolean = true) {
     const currentTime = Date.now();
     this.gameStats.kills++;
     this.gameStats.currentKillStreak++;
@@ -262,6 +302,13 @@ export class GameStore {
 
     if (isHeadshot) {
       this.gameStats.headshots++;
+    }
+
+    // Award experience points based on kill type
+    if (this.experienceService) {
+      // Use constants from shared config - 50 XP for player kills, 20 XP for AI kills
+      const xpGained = isPlayerKill ? 50 : 20;
+      this.experienceService.addExperience(xpGained);
     }
 
     // Calculate score with time-based multipliers

@@ -10,6 +10,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import * as bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { Repository } from "typeorm";
+import { calculateLevelFromExperience } from "../../shared/config/ExperienceConfig";
 import {
   ChangePasswordDto,
   ForgotPasswordDto,
@@ -342,8 +343,31 @@ export class AuthService {
     const experienceGained = score + kills * 10;
     user.experience = (user.experience || 0) + experienceGained;
 
-    // Calculate level based on experience (simple formula: level = floor(experience / 1000) + 1)
-    user.playerLevel = Math.floor((user.experience || 0) / 1000) + 1;
+    // Calculate level based on experience using ExperienceConfig
+    user.playerLevel = calculateLevelFromExperience(user.experience || 0);
+
+    return this.userRepository.save(user);
+  }
+
+  async updateUserExperience(
+    userId: string,
+    experience: number,
+    level: number
+  ): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    if (user.isGuest) {
+      throw new BadRequestException(
+        "Guest users experience is not saved to server"
+      );
+    }
+
+    // Update experience and calculate level from experience using ExperienceConfig
+    user.experience = experience;
+    user.playerLevel = calculateLevelFromExperience(experience);
 
     return this.userRepository.save(user);
   }
@@ -466,8 +490,8 @@ export class AuthService {
     if (stats.score !== undefined) user.totalScore += stats.score;
     if (stats.experience !== undefined) {
       user.experience += stats.experience;
-      // Level up logic
-      const newLevel = Math.floor(user.experience / 1000) + 1;
+      // Level up logic using ExperienceConfig
+      const newLevel = calculateLevelFromExperience(user.experience);
       if (newLevel > user.playerLevel) {
         user.playerLevel = newLevel;
       }
@@ -592,5 +616,44 @@ export class AuthService {
     return await this.userRepository.find({
       order: { createdAt: "DESC" },
     });
+  }
+
+  /**
+   * Update a user's level directly
+   */
+  async updateUserLevel(userId: number, level: number): Promise<void> {
+    await this.userRepository.update(userId, { playerLevel: level });
+  }
+
+  /**
+   * Recalculate all users' levels based on their experience using ExperienceConfig
+   * This method fixes any inconsistent level data in the database
+   */
+  async recalculateAllUserLevels(): Promise<{ updated: number; total: number }> {
+    const users = await this.userRepository.find({
+      where: { isActive: true },
+    });
+
+    let updatedCount = 0;
+    const totalCount = users.length;
+
+    for (const user of users) {
+      if (user.isGuest) continue;
+
+      const correctLevel = calculateLevelFromExperience(user.experience || 0);
+      if (user.playerLevel !== correctLevel) {
+        user.playerLevel = correctLevel;
+        await this.userRepository.save(user);
+        updatedCount++;
+        console.log(
+          `Updated user ${user.username}: Experience ${user.experience} -> Level ${correctLevel} (was ${user.playerLevel})`
+        );
+      }
+    }
+
+    console.log(
+      `Level recalculation complete: ${updatedCount}/${totalCount} users updated`
+    );
+    return { updated: updatedCount, total: totalCount };
   }
 }

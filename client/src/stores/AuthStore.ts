@@ -1,6 +1,7 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import { makePersistable } from "mobx-persist-store";
 import { io, Socket } from "socket.io-client";
+import { calculateLevelFromExperience } from "../../../shared/config/ExperienceConfig";
 
 export interface AuthUser {
   id: string;
@@ -18,7 +19,6 @@ export interface AuthUser {
   kills?: number;
   experience?: number;
   totalPlayTime?: number;
-  level?: number;
   playerLevel?: number;
 }
 
@@ -62,6 +62,8 @@ export class AuthStore {
     }).then(() => {
       console.log("AuthStore hydrated from storage");
       runInAction(() => {
+        // Recalculate level after hydration to ensure consistency
+        this.recalculateUserLevel();
         this.isLoading = false;
       });
     });
@@ -175,7 +177,6 @@ export class AuthStore {
         kills: 0,
         experience: 0,
         totalPlayTime: 0,
-        level: 1,
         playerLevel: 1,
       };
 
@@ -385,6 +386,8 @@ export class AuthStore {
         runInAction(() => {
           // Backend returns user data directly in data.data
           this.user = data.data as any;
+          // Recalculate level from experience to ensure consistency
+          this.recalculateUserLevel();
           // mobx-persist-store automatically persists the state
         });
       } else {
@@ -394,6 +397,43 @@ export class AuthStore {
     } catch (error) {
       console.error("Failed to refresh profile:", error);
       this.logout();
+    }
+  }
+
+  async updateExperience(experience: number, level: number): Promise<boolean> {
+    if (!this.token || this.isGuest || this.user?.isGuest) return false;
+
+    try {
+      const response = await fetch(`${this.baseUrl}/auth/update-experience`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.token}`,
+        },
+        body: JSON.stringify({
+          experience,
+          level,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && this.user) {
+          runInAction(() => {
+            // Update local user data to match server
+            if (this.user) {
+              this.user.experience = experience;
+              this.user.playerLevel = level;
+            }
+          });
+          return true;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.warn("Failed to update experience on server:", error);
+      return false;
     }
   }
 
@@ -409,13 +449,39 @@ export class AuthStore {
     this.user = user;
     this.isAuthenticated = true;
     this.isGuest = user.isGuest || false;
+
+    // Ensure level is calculated correctly from experience
+    this.recalculateUserLevel();
+
     // mobx-persist-store automatically persists the state
+  }
+
+  // Recalculate user's level from experience using ExperienceConfig
+  private recalculateUserLevel(): void {
+    if (this.user && this.user.experience !== undefined && !this.user.isGuest) {
+      const calculatedLevel = calculateLevelFromExperience(
+        this.user.experience
+      );
+      if (this.user.playerLevel !== calculatedLevel) {
+        this.user.playerLevel = calculatedLevel;
+        console.log(
+          `Level recalculated from experience: Level ${calculatedLevel} (${this.user.experience} XP)`
+        );
+      }
+    }
   }
 
   // Public method for external services to set auth
   public setAuthenticationData(token: string, user: AuthUser): void {
     runInAction(() => {
       this.setAuth(token, user);
+    });
+  }
+
+  // Public method to recalculate user level (for ExperienceService)
+  public recalculateLevel(): void {
+    runInAction(() => {
+      this.recalculateUserLevel();
     });
   }
 
