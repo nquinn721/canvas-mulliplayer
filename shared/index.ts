@@ -95,3 +95,13 @@ export {
   SWARM_CONFIGS,
   type SwarmDifficultyConfig,
 } from "./config/SwarmConfig";
+export {
+  getSwarmBaseConfig,
+  getSwarmBaseConfigForDifficulty,
+  getSwarmBaseSpawnConfig,
+  SWARM_BASE_CONFIGS,
+  SWARM_BASE_SPAWN_CONFIGS,
+  type SwarmBaseConfig,
+  type SwarmBaseSpawnConfig,
+  type SwarmBaseType,
+} from "./config/SwarmBaseConfig";

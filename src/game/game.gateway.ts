@@ -26,6 +26,8 @@ import {
   XP_REWARDS,
   calculateExplosionDamage,
   calculateWeaponDamage,
+  getSwarmBaseConfigForDifficulty,
+  getSwarmBaseSpawnConfig,
   getSwarmConfig,
   shouldTriggerChainReaction,
 } from "@shared";
@@ -264,13 +266,17 @@ export class GameGateway
       console.log(`Client data:`, {
         isAuthenticated: clientData?.isAuthenticated,
         isGuest: clientData?.isGuest,
-        storedPlayerName: clientData?.playerName
+        storedPlayerName: clientData?.playerName,
       });
 
       // Determine player name priority: provided name for guests, authenticated username for logged in users
       let playerName: string;
 
-      if (clientData?.isAuthenticated && !clientData.isGuest && clientData.playerName) {
+      if (
+        clientData?.isAuthenticated &&
+        !clientData.isGuest &&
+        clientData.playerName
+      ) {
         // Use authenticated username as ship name (only for non-guest authenticated users)
         playerName = clientData.playerName;
       } else if (data.playerName) {
@@ -293,7 +299,9 @@ export class GameGateway
       if (player) {
         // For guest users with different names, treat as new player (force respawn)
         if (clientData?.isGuest && player.name !== playerName) {
-          console.log(`Guest user ${player.name} changing name to ${playerName} - creating new player`);
+          console.log(
+            `Guest user ${player.name} changing name to ${playerName} - creating new player`
+          );
           // Remove old player
           this.players.delete(client.id);
           // Create new player with fresh properties
@@ -305,7 +313,9 @@ export class GameGateway
             spawnPosition.y
           );
           this.players.set(client.id, player);
-          console.log(`${playerName} joined as new guest player at (${spawnPosition.x}, ${spawnPosition.y})`);
+          console.log(
+            `${playerName} joined as new guest player at (${spawnPosition.x}, ${spawnPosition.y})`
+          );
         } else {
           // Normal reconnection, just update the name if needed
           player.name = playerName;
@@ -1332,30 +1342,36 @@ export class GameGateway
 
           if (wasDestroyed) {
             console.log(`Swarm base ${baseId} destroyed!`);
-            
-            // Remove all swarms from this base
+
+            // Remove all swarms from this base using the proper cleanup function
             const swarmsToRemove: string[] = [];
             this.swarmEnemies.forEach((swarm, swarmId) => {
               if (swarm.baseId === baseId) {
                 swarmsToRemove.push(swarmId);
               }
             });
-            
-            swarmsToRemove.forEach(swarmId => {
-              this.swarmEnemies.delete(swarmId);
+
+            swarmsToRemove.forEach((swarmId) => {
+              this.removeSwarmEnemy(swarmId);
             });
+
+            // Clear the base's swarm tracking (redundant but ensures consistency)
+            base.spawnedSwarms.clear();
 
             // Give XP to the killer
             const killer = this.players.get(projectile.ownerId);
             if (killer) {
-              killer.addExperience(XP_REWARDS.aiEnemyKill * 3); // 60 XP for destroying a base
-              console.log(`Player ${killer.name} destroyed swarm base and gained ${XP_REWARDS.aiEnemyKill * 3} XP`);
+              // Use the base's configured XP reward
+              killer.addExperience(base.xpReward);
+              console.log(
+                `Player ${killer.name} destroyed swarm base and gained ${base.xpReward} XP`
+              );
 
               // Emit kill event to the killer
               this.server.to(killer.id).emit("playerKill", {
                 killType: "swarmBase",
                 victim: "Swarm Base",
-                xpGained: XP_REWARDS.aiEnemyKill * 3,
+                xpGained: base.xpReward,
               });
             }
           }
@@ -1759,8 +1775,8 @@ export class GameGateway
               });
             }
 
-            // Remove dead swarm enemy
-            this.swarmEnemies.delete(swarmId);
+            // Remove dead swarm enemy (properly removes from base tracking too)
+            this.removeSwarmEnemy(swarmId);
 
             // Dynamic spawning will handle creating new swarms when needed
           }
@@ -1811,7 +1827,7 @@ export class GameGateway
 
     // Remove distant swarm enemies
     swarmsToRemove.forEach((swarmId) => {
-      this.swarmEnemies.delete(swarmId);
+      this.removeSwarmEnemy(swarmId);
     });
   }
 
@@ -1823,6 +1839,13 @@ export class GameGateway
   private findClosestPlayerToSwarm(swarmEnemy: SwarmAI): Player | null {
     let closestPlayer: Player | null = null;
     let closestDistance = Infinity;
+
+    // Debug: Log all players being checked
+    const alivePlayers = Array.from(this.players.values()).filter(p => p.health > 0);
+    if (alivePlayers.length === 0) {
+      console.log(`[SWARM DETECTION] No alive players found for swarm ${swarmEnemy.id}`);
+      return null;
+    }
 
     this.players.forEach((player) => {
       if (player.health <= 0) return; // Skip dead players
@@ -1838,6 +1861,11 @@ export class GameGateway
       }
     });
 
+    // Debug log the result
+    if (closestPlayer) {
+      console.log(`[SWARM DETECTION] Swarm ${swarmEnemy.id} closest player: ${closestPlayer.name} at distance ${closestDistance.toFixed(1)}px`);
+    }
+
     return closestPlayer;
   }
 
@@ -1849,7 +1877,7 @@ export class GameGateway
       if (base.shouldSpawn()) {
         // Limit swarms per base (max 3 active swarms per base)
         const activeSwarms = Array.from(this.swarmEnemies.values()).filter(
-          swarm => swarm.baseId === baseId
+          (swarm) => swarm.baseId === baseId
         );
 
         if (activeSwarms.length < 3) {
@@ -1860,14 +1888,29 @@ export class GameGateway
     });
   }
 
+  private removeSwarmEnemy(swarmId: string): void {
+    const swarm = this.swarmEnemies.get(swarmId);
+    if (swarm) {
+      // Remove from base tracking if it belongs to a base
+      if (swarm.baseId) {
+        const base = this.swarmBases.get(swarm.baseId);
+        if (base) {
+          base.removeSwarm(swarmId);
+        }
+      }
+
+      // Remove from main swarm enemies map
+      this.swarmEnemies.delete(swarmId);
+    }
+  }
+
   private spawnSwarmFromBase(base: SwarmBase) {
     const swarmId = `swarm_${this.aiEnemyCounter++}`;
-    
-    // Spawn swarm near the base
-    const angle = Math.random() * Math.PI * 2;
-    const distance = 30 + Math.random() * 20; // 30-50 pixels from base center
-    const x = base.x + Math.cos(angle) * distance;
-    const y = base.y + Math.sin(angle) * distance;
+
+    // Use base's spawn position configuration
+    const spawnPos = base.getSpawnPosition();
+    const x = spawnPos.x;
+    const y = spawnPos.y;
 
     // Create swarm with base patrol behavior
     const swarmEnemy = new SwarmAI(
@@ -1881,10 +1924,15 @@ export class GameGateway
       base.y
     );
 
-    this.swarmEnemies.set(swarmId, swarmEnemy);
-    base.spawnedSwarms.add(swarmId);
+    // Set up base patrol with the base's patrol radius
+    swarmEnemy.setupBasePatrol(base.id, base.x, base.y, base.patrolRadius);
 
-    console.log(`Spawned swarm ${swarmId} from base ${base.id} at (${x.toFixed(1)}, ${y.toFixed(1)})`);
+    this.swarmEnemies.set(swarmId, swarmEnemy);
+    base.addSwarm(swarmId); // Use the new addSwarm method
+
+    console.log(
+      `Spawned swarm ${swarmId} from base ${base.id} at (${x.toFixed(1)}, ${y.toFixed(1)}) with patrol radius ${base.patrolRadius}`
+    );
   }
 
   private maybeRespawnSwarmEnemy() {
@@ -1958,7 +2006,21 @@ export class GameGateway
       return obstacle.containsPoint(x, y, radius + wallBuffer);
     });
 
-    return obstacleCollision;
+    if (obstacleCollision) return true;
+
+    // Check swarm bases - they are solid and block movement
+    const baseCollision = Array.from(this.swarmBases.values()).some((base) => {
+      if (base.isDestroyed) return false; // Destroyed bases don't block
+
+      const dx = x - base.x;
+      const dy = y - base.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // Check if entity would collide with the base (using base radius + entity radius + buffer)
+      return distance < base.radius + radius + wallBuffer;
+    });
+
+    return baseCollision;
   }
 
   private checkProjectileWallCollision(projectile: Projectile): {
@@ -2187,7 +2249,7 @@ export class GameGateway
           }
         } else if (isDead && entity instanceof SwarmAI) {
           // Handle swarm death from explosion
-          this.swarmEnemies.delete(id);
+          this.removeSwarmEnemy(id);
           const killer = this.players.get(ownerId);
           if (killer) {
             killer.addExperience(XP_REWARDS.swarmEnemyKill);
@@ -2579,40 +2641,51 @@ export class GameGateway
     this.swarmBases.clear();
     this.swarmEnemies.clear(); // Clear existing swarms
 
-    const BASE_COUNT = 5;
-    console.log(`Spawning ${BASE_COUNT} swarm bases`);
+    // Use difficulty-based spawn configuration
+    const spawnConfig = getSwarmBaseSpawnConfig(this.preferredAIDifficulty);
+    const BASE_COUNT = spawnConfig.baseCount;
+    console.log(
+      `Spawning ${BASE_COUNT} swarm bases for ${this.preferredAIDifficulty} difficulty`
+    );
 
     for (let i = 0; i < BASE_COUNT; i++) {
       let attempts = 0;
       let position;
-      
+
       // Find a good position for the base (away from walls and other bases)
       do {
         position = this.getRandomSpawnPosition();
         attempts++;
-      } while (attempts < 20 && !this.isValidBasePosition(position.x, position.y));
+      } while (
+        attempts < spawnConfig.spawnAttempts &&
+        !this.isValidBasePosition(position.x, position.y)
+      );
 
       const baseId = `base_${i + 1}`;
-      const base = new SwarmBase(baseId, position.x, position.y);
+      // All bases use the same DEFAULT type now
+      const base = new SwarmBase(baseId, position.x, position.y, "DEFAULT");
       this.swarmBases.set(baseId, base);
 
-      console.log(`Spawned swarm base ${baseId} at (${position.x.toFixed(1)}, ${position.y.toFixed(1)})`);
+      console.log(
+        `Spawned swarm base ${baseId} at (${position.x.toFixed(1)}, ${position.y.toFixed(1)})`
+      );
     }
   }
 
   private isValidBasePosition(x: number, y: number): boolean {
-    const MIN_DISTANCE_FROM_WALLS = 100;
-    const MIN_DISTANCE_FROM_OTHER_BASES = 200;
+    // Use configuration for positioning constraints
+    const baseConfig = getSwarmBaseConfigForDifficulty(
+      this.preferredAIDifficulty
+    );
+    const MIN_DISTANCE_FROM_OTHER_BASES = baseConfig.minDistanceFromOtherBases;
+    const BASE_RADIUS = baseConfig.radius;
+    const SAFE_DISTANCE = baseConfig.minDistanceFromWalls;
 
-    // Check distance from walls
-    for (const wall of this.walls) {
-      const dx = Math.abs(x - (wall.x + wall.width / 2));
-      const dy = Math.abs(y - (wall.y + wall.height / 2));
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      if (distance < MIN_DISTANCE_FROM_WALLS) {
-        return false;
-      }
+    // Check collision with walls and obstacles (but not other bases yet)
+    if (
+      this.checkWallCollisionExcludingBases(x, y, BASE_RADIUS + SAFE_DISTANCE)
+    ) {
+      return false;
     }
 
     // Check distance from other bases
@@ -2620,7 +2693,7 @@ export class GameGateway
       const dx = x - base.x;
       const dy = y - base.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      
+
       if (distance < MIN_DISTANCE_FROM_OTHER_BASES) {
         return false;
       }
@@ -2629,6 +2702,48 @@ export class GameGateway
     return true;
   }
 
+  private checkWallCollisionExcludingBases(
+    x: number,
+    y: number,
+    radius: number
+  ): boolean {
+    const wallBuffer = 10; // Add 10px buffer around all walls for smoother collision
+
+    // Check regular walls
+    const wallCollision = this.walls.some((wall) => {
+      return (
+        x - radius < wall.x + wall.width + wallBuffer &&
+        x + radius > wall.x - wallBuffer &&
+        y - radius < wall.y + wall.height + wallBuffer &&
+        y + radius > wall.y - wallBuffer
+      );
+    });
+
+    if (wallCollision) return true;
+
+    // Check destructible walls
+    const destructibleCollision = Array.from(
+      this.destructibleWalls.values()
+    ).some((wall) => {
+      return (
+        x - radius < wall.x + wall.width + wallBuffer &&
+        x + radius > wall.x - wallBuffer &&
+        y - radius < wall.y + wall.height + wallBuffer &&
+        y + radius > wall.y - wallBuffer
+      );
+    });
+
+    if (destructibleCollision) return true;
+
+    // Check environmental obstacles
+    const obstacleCollision = Array.from(
+      this.environmentalObstacles.values()
+    ).some((obstacle) => {
+      return obstacle.containsPoint(x, y, radius + wallBuffer);
+    });
+
+    return obstacleCollision;
+  }
   private spawnSwarmEnemies() {
     this.swarmEnemies.clear();
 
@@ -3117,7 +3232,7 @@ export class GameGateway
         health: base.health,
         maxHealth: base.maxHealth,
         isDestroyed: base.isDestroyed,
-        radius: base.radius
+        radius: base.radius,
       };
     }
 

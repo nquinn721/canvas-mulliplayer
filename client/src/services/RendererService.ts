@@ -646,16 +646,14 @@ export class RendererService {
     // Check if swarmBases exists in gameState
     if (!this.gameStore.gameState.swarmBases) return;
 
-    Object.values(this.gameStore.gameState.swarmBases).forEach(
-      (base: any) => {
-        // Don't render destroyed bases
-        if (base.isDestroyed) return;
+    Object.values(this.gameStore.gameState.swarmBases).forEach((base: any) => {
+      // Don't render destroyed bases
+      if (base.isDestroyed) return;
 
-        if (this.gameStore.isPlayerInView(base)) {
-          this.drawSwarmBase(base);
-        }
+      if (this.gameStore.isPlayerInView(base)) {
+        this.drawSwarmBase(base);
       }
-    );
+    });
   }
 
   private drawSwarmBase(base: any) {
@@ -663,10 +661,10 @@ export class RendererService {
     this.ctx.translate(base.x, base.y);
 
     // Main base structure - dark metallic color
-    this.ctx.fillStyle = '#2a2a2a';
-    this.ctx.strokeStyle = '#444444';
+    this.ctx.fillStyle = "#2a2a2a";
+    this.ctx.strokeStyle = "#444444";
     this.ctx.lineWidth = 2;
-    
+
     // Draw main base body (hexagonal)
     this.ctx.beginPath();
     for (let i = 0; i < 6; i++) {
@@ -684,25 +682,36 @@ export class RendererService {
     this.ctx.stroke();
 
     // Central core (spawning area)
-    this.ctx.fillStyle = '#cc2244';
+    this.ctx.fillStyle = "#cc2244";
     this.ctx.beginPath();
     this.ctx.arc(0, 0, base.radius * 0.4, 0, Math.PI * 2);
     this.ctx.fill();
 
     // Energy lines radiating from center
-    this.ctx.strokeStyle = '#ff4466';
+    this.ctx.strokeStyle = "#ff4466";
     this.ctx.lineWidth = 1;
     for (let i = 0; i < 6; i++) {
       const angle = (i * Math.PI) / 3;
       this.ctx.beginPath();
-      this.ctx.moveTo(Math.cos(angle) * base.radius * 0.4, Math.sin(angle) * base.radius * 0.4);
-      this.ctx.lineTo(Math.cos(angle) * base.radius * 0.8, Math.sin(angle) * base.radius * 0.8);
+      this.ctx.moveTo(
+        Math.cos(angle) * base.radius * 0.4,
+        Math.sin(angle) * base.radius * 0.4
+      );
+      this.ctx.lineTo(
+        Math.cos(angle) * base.radius * 0.8,
+        Math.sin(angle) * base.radius * 0.8
+      );
       this.ctx.stroke();
     }
 
     // Health indicator (small ring around base, no health bar)
     const healthPercent = base.health / base.maxHealth;
-    this.ctx.strokeStyle = healthPercent > 0.5 ? '#44ff44' : healthPercent > 0.25 ? '#ffff44' : '#ff4444';
+    this.ctx.strokeStyle =
+      healthPercent > 0.5
+        ? "#44ff44"
+        : healthPercent > 0.25
+          ? "#ffff44"
+          : "#ff4444";
     this.ctx.lineWidth = 3;
     this.ctx.beginPath();
     this.ctx.arc(0, 0, base.radius + 5, 0, Math.PI * 2 * healthPercent);

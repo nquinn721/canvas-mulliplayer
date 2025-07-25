@@ -442,19 +442,21 @@ export class AuthStore {
     runInAction(() => {
       this.clearAuth();
     });
-    
+
     // Force socket disconnection for proper cleanup when switching accounts
     // This ensures the server doesn't treat the new login as a reconnection
-    if (typeof window !== 'undefined' && window.location.pathname === '/game') {
+    if (typeof window !== "undefined" && window.location.pathname === "/game") {
       // If we're in the game, we'll return to home menu anyway
       // The socket will be cleaned up by the game component
     } else {
       // Force socket disconnection to ensure clean state for next login
-      import('../stores/index').then(({ socketService }) => {
-        if (socketService.isConnected) {
-          socketService.disconnect();
-        }
-      }).catch(console.error);
+      import("../stores/index")
+        .then(({ socketService }) => {
+          if (socketService.isConnected) {
+            socketService.disconnect();
+          }
+        })
+        .catch(console.error);
     }
   }
 

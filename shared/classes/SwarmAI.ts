@@ -134,12 +134,22 @@ export class SwarmAI extends Player {
   /**
    * Set up base patrol behavior
    */
-  setupBasePatrol(baseId: string, baseX: number, baseY: number): void {
+  setupBasePatrol(
+    baseId: string,
+    baseX: number,
+    baseY: number,
+    patrolRadius?: number
+  ): void {
     this.baseId = baseId;
     this.baseX = baseX;
     this.baseY = baseY;
     this.isPatrolling = true;
-    
+
+    // Use provided patrol radius or keep default
+    if (patrolRadius !== undefined) {
+      this.patrolRadius = patrolRadius;
+    }
+
     // Start at a random position around the base
     const angle = Math.random() * Math.PI * 2;
     const distance = this.patrolRadius * 0.7;
@@ -156,7 +166,7 @@ export class SwarmAI extends Player {
     const distance = this.patrolRadius * 0.7;
     return {
       x: this.baseX + Math.cos(this.patrolAngle) * distance,
-      y: this.baseY + Math.sin(this.patrolAngle) * distance
+      y: this.baseY + Math.sin(this.patrolAngle) * distance,
     };
   }
 
@@ -166,13 +176,15 @@ export class SwarmAI extends Player {
   shouldReturnToPatrol(context: SwarmContext): boolean {
     if (!this.baseId) return false; // No base to patrol
     if (!this.currentTarget) return true; // No target, should patrol
-    
+
     // Return to patrol if target is too far from base
+    // Use detection range instead of patrol radius for chase distance
     const dx = this.currentTarget.x - this.baseX;
     const dy = this.currentTarget.y - this.baseY;
     const distanceFromBase = Math.sqrt(dx * dx + dy * dy);
-    
-    return distanceFromBase > this.patrolRadius * 1.5; // Give some buffer
+
+    // Allow chasing up to 1.2x detection range from base (800px * 1.2 = 960px)
+    return distanceFromBase > this.detectionRange * 1.2;
   }
 
   /**
@@ -181,11 +193,17 @@ export class SwarmAI extends Player {
   update(context: SwarmContext): void {
     const currentTime = context.currentTime;
 
-    // Debug logging every 10 seconds (reduced frequency)
-    if (currentTime % 10000 < 50) {
-      // Log every ~10 seconds instead of 3 seconds
+    // Debug logging every 5 seconds for debugging chase issues
+    if (currentTime % 5000 < 50) {
+      const playerCount = context.players.size;
+      const hasPlayer = !!context.closestPlayer;
+      const playerName = context.closestPlayer?.name || "none";
+      const playerPos = context.closestPlayer
+        ? `(${context.closestPlayer.x.toFixed(1)}, ${context.closestPlayer.y.toFixed(1)})`
+        : "none";
+
       console.log(
-        `Swarm ${this.id} status: pos=(${this.x.toFixed(1)}, ${this.y.toFixed(1)}), distanceToPlayer=${context.distanceToPlayer.toFixed(1)}, detectionRange=${this.detectionRange}, hasTarget=${!!this.currentTarget}, rushMode=${this.rushMode}, isPatrolling=${this.isPatrolling}`
+        `[SWARM DEBUG] ${this.id}: pos=(${this.x.toFixed(1)}, ${this.y.toFixed(1)}), players=${playerCount}, closestPlayer=${playerName} at ${playerPos}, distanceToPlayer=${context.distanceToPlayer.toFixed(1)}, detectionRange=${this.detectionRange}, hasTarget=${!!this.currentTarget}, rushMode=${this.rushMode}, isPatrolling=${this.isPatrolling}, baseId=${this.baseId}`
       );
     }
 
@@ -231,12 +249,12 @@ export class SwarmAI extends Player {
       const dx = patrolTarget.x - this.x;
       const dy = patrolTarget.y - this.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      
+
       if (distance > 0) {
         totalForceX = (dx / distance) * 0.5; // Gentle patrol movement
         totalForceY = (dy / distance) * 0.5;
       }
-      
+
       // Add wall avoidance for patrol
       const wallAvoidanceForce = this.calculateWallAvoidanceForce(context);
       totalForceX += wallAvoidanceForce.x * 2; // Higher priority for walls
