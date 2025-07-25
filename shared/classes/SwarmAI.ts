@@ -193,20 +193,6 @@ export class SwarmAI extends Player {
   update(context: SwarmContext): void {
     const currentTime = context.currentTime;
 
-    // Debug logging every 5 seconds for debugging chase issues
-    if (currentTime % 5000 < 50) {
-      const playerCount = context.players.size;
-      const hasPlayer = !!context.closestPlayer;
-      const playerName = context.closestPlayer?.name || "none";
-      const playerPos = context.closestPlayer
-        ? `(${context.closestPlayer.x.toFixed(1)}, ${context.closestPlayer.y.toFixed(1)})`
-        : "none";
-
-      console.log(
-        `[SWARM DEBUG] ${this.id}: pos=(${this.x.toFixed(1)}, ${this.y.toFixed(1)}), players=${playerCount}, closestPlayer=${playerName} at ${playerPos}, distanceToPlayer=${context.distanceToPlayer.toFixed(1)}, detectionRange=${this.detectionRange}, hasTarget=${!!this.currentTarget}, rushMode=${this.rushMode}, isPatrolling=${this.isPatrolling}, baseId=${this.baseId}`
-      );
-    }
-
     // Update target periodically
     if (currentTime - this.lastTargetUpdate > this.targetUpdateInterval) {
       this.updateTarget(context);

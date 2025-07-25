@@ -17,6 +17,10 @@ export class SocketService {
   private static isConnecting: boolean = false;
   private static connectionPromise: Promise<void> | null = null;
 
+  // Rate limiting for player damage explosions
+  private lastPlayerDamageExplosionTime = 0;
+  private playerDamageExplosionCooldown = 1000; // Minimum 1 second between damage explosions
+
   constructor(gameStore: GameStore) {
     this.gameStore = gameStore;
 
@@ -461,12 +465,24 @@ export class SocketService {
           // Track damage taken in stats
           this.gameStore.addDamageTaken(data.damage);
 
-          // Create explosion effect at the damage location
-          this.gameStore.particleSystem.createExplosion(
-            data.x,
-            data.y,
-            "laser"
-          );
+          // Create explosion effect at the damage location (rate limited)
+          const now = Date.now();
+          if (
+            now - this.lastPlayerDamageExplosionTime >
+            this.playerDamageExplosionCooldown
+          ) {
+            console.log(
+              `Player damage explosion at (${data.x}, ${data.y}) from ${data.attackerType}`
+            );
+            this.gameStore.particleSystem.createExplosion(
+              data.x,
+              data.y,
+              "laser"
+            );
+            this.lastPlayerDamageExplosionTime = now;
+          } else {
+            console.log(`Player damage explosion throttled (too frequent)`);
+          }
 
           // Play hurt sound effect
           soundService.playSound("hurt", 0.6);

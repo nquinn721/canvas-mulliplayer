@@ -2,4 +2,5 @@
 // Wall interface and World class are now together
 
 export { Camera } from "../classes/Camera";
-export { Wall, World } from "../classes/World";
+export { World } from "../classes/World";
+export type { Wall } from "../classes/World";

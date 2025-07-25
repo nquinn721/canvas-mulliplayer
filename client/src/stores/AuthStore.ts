@@ -460,6 +460,11 @@ export class AuthStore {
     }
   }
 
+  forceLogout(): void {
+    // Force logout for debugging purposes - same as logout but more explicit
+    this.logout();
+  }
+
   // Helper methods
   private setAuth(token: string, user: AuthUser): void {
     this.token = token;

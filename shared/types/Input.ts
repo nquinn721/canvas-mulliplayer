@@ -1,7 +1,7 @@
 // This file has been deprecated - KeyState moved to Player class
 // Use shared/classes/Player.ts instead
 
-export { KeyState } from "../classes/Player";
+export type { KeyState } from "../classes/Player";
 
 // Game configuration constants
 export const GAME_CONFIG = {

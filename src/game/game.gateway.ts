@@ -1840,13 +1840,6 @@ export class GameGateway
     let closestPlayer: Player | null = null;
     let closestDistance = Infinity;
 
-    // Debug: Log all players being checked
-    const alivePlayers = Array.from(this.players.values()).filter(p => p.health > 0);
-    if (alivePlayers.length === 0) {
-      console.log(`[SWARM DETECTION] No alive players found for swarm ${swarmEnemy.id}`);
-      return null;
-    }
-
     this.players.forEach((player) => {
       if (player.health <= 0) return; // Skip dead players
 
@@ -1860,11 +1853,6 @@ export class GameGateway
         closestPlayer = player;
       }
     });
-
-    // Debug log the result
-    if (closestPlayer) {
-      console.log(`[SWARM DETECTION] Swarm ${swarmEnemy.id} closest player: ${closestPlayer.name} at distance ${closestDistance.toFixed(1)}px`);
-    }
 
     return closestPlayer;
   }

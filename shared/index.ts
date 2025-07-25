@@ -90,12 +90,6 @@ export {
   type TimeBasedMultipliers,
 } from "./config/ScoringConfig";
 export {
-  getSwarmConfig,
-  getSwarmDifficultyIndicator,
-  SWARM_CONFIGS,
-  type SwarmDifficultyConfig,
-} from "./config/SwarmConfig";
-export {
   getSwarmBaseConfig,
   getSwarmBaseConfigForDifficulty,
   getSwarmBaseSpawnConfig,
@@ -105,3 +99,9 @@ export {
   type SwarmBaseSpawnConfig,
   type SwarmBaseType,
 } from "./config/SwarmBaseConfig";
+export {
+  getSwarmConfig,
+  getSwarmDifficultyIndicator,
+  SWARM_CONFIGS,
+  type SwarmDifficultyConfig,
+} from "./config/SwarmConfig";

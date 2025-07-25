@@ -28,8 +28,13 @@ export class Game {
     this.rendererService = new RendererService(this.gameStore, canvas);
     this.inputService = new InputService(this.gameStore, canvas);
 
+    // 3D effects removed - using 2D particle system only
+
     // Connect input service to game loop for sound updates
     this.gameLoopService.setInputService(this.inputService);
+
+    // Add debug methods to window for testing
+    (window as any).gameStore = this.gameStore;
   }
 
   // Start the game

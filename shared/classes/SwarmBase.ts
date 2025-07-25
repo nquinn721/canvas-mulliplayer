@@ -1,4 +1,8 @@
-import { getSwarmBaseConfig, SwarmBaseConfig, SwarmBaseType } from "../config/SwarmBaseConfig";
+import {
+  getSwarmBaseConfig,
+  SwarmBaseConfig,
+  SwarmBaseType,
+} from "../config/SwarmBaseConfig";
 
 /**
  * SwarmBase - Stationary structures that spawn swarm enemies
@@ -24,15 +28,26 @@ export class SwarmBase {
   public lastDamageTime: number = 0;
   public isDestroyed: boolean = false;
   public spawnedSwarms: Set<string> = new Set(); // Track spawned swarms
+
+  // Animation properties (client-side only, safe for server)
+  public animationScale: number = 1.0; // Scale animation on damage
+  public animationFlash: number = 0.0; // Flash effect on damage (0-1)
+  public animationRotation: number = 0.0; // Rotation animation
+
   private config: SwarmBaseConfig;
 
-  constructor(id: string, x: number, y: number, type: SwarmBaseType = 'DEFAULT') {
+  constructor(
+    id: string,
+    x: number,
+    y: number,
+    type: SwarmBaseType = "DEFAULT"
+  ) {
     this.config = getSwarmBaseConfig(type);
-    
+
     this.id = id;
     this.x = x;
     this.y = y;
-    
+
     // Initialize from config
     this.health = this.config.health;
     this.maxHealth = this.config.maxHealth;
@@ -43,7 +58,7 @@ export class SwarmBase {
     this.spawnDistance = this.config.spawnDistance;
     this.spawnCooldownAfterDamage = this.config.spawnCooldownAfterDamage;
     this.xpReward = this.config.xpReward;
-    
+
     this.lastSpawnTime = Date.now();
   }
 
@@ -52,26 +67,26 @@ export class SwarmBase {
    */
   shouldSpawn(): boolean {
     if (this.isDestroyed) return false;
-    
+
     // Check if we have too many active swarms
     if (this.spawnedSwarms.size >= this.maxSpawnedSwarms) {
       return false;
     }
-    
+
     const now = Date.now();
-    
+
     // Check normal spawn interval
     const timeSinceLastSpawn = now - this.lastSpawnTime;
     if (timeSinceLastSpawn < this.spawnInterval) {
       return false;
     }
-    
+
     // Check cooldown after taking damage
     const timeSinceLastDamage = now - this.lastDamageTime;
     if (timeSinceLastDamage < this.spawnCooldownAfterDamage) {
       return false;
     }
-    
+
     return true;
   }
 
@@ -87,9 +102,14 @@ export class SwarmBase {
    */
   takeDamage(damage: number): boolean {
     if (this.isDestroyed) return false;
-    
+
     this.lastDamageTime = Date.now(); // Track when damage was taken
     this.health -= damage;
+
+    // Set animation flags (safe for both client and server)
+    this.animationFlash = 1.0; // Will be animated on client
+    this.animationScale = 1.2; // Will be animated on client
+
     if (this.health <= 0) {
       this.health = 0;
       this.isDestroyed = true;
@@ -117,10 +137,12 @@ export class SwarmBase {
    */
   getSpawnPosition(): { x: number; y: number } {
     const angle = Math.random() * Math.PI * 2;
-    const distance = this.spawnDistance.min + Math.random() * (this.spawnDistance.max - this.spawnDistance.min);
+    const distance =
+      this.spawnDistance.min +
+      Math.random() * (this.spawnDistance.max - this.spawnDistance.min);
     return {
       x: this.x + Math.cos(angle) * distance,
-      y: this.y + Math.sin(angle) * distance
+      y: this.y + Math.sin(angle) * distance,
     };
   }
 
@@ -131,7 +153,7 @@ export class SwarmBase {
     const distance = this.patrolRadius * 0.7; // Patrol at 70% of radius
     return {
       x: this.x + Math.cos(angle) * distance,
-      y: this.y + Math.sin(angle) * distance
+      y: this.y + Math.sin(angle) * distance,
     };
   }
 

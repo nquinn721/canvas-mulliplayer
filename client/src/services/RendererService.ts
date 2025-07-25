@@ -1,5 +1,6 @@
 import { AbilityIconRenderer } from "../components/canvas";
 import { GameStore } from "../stores/GameStore";
+import { animationService } from "./AnimationService";
 import { debugLogger } from "./DebugLogger";
 
 export class RendererService {
@@ -660,6 +661,33 @@ export class RendererService {
     this.ctx.save();
     this.ctx.translate(base.x, base.y);
 
+    // Apply animation transforms
+    if (base.animationScale !== 1.0) {
+      this.ctx.scale(base.animationScale, base.animationScale);
+
+      // Animate scale back to 1.0 smoothly
+      animationService.animateProperty(base, "animationScale", 1.0, 300, {
+        easing: (t: number) => 1 - Math.pow(1 - t, 3), // ease-out-cubic
+      });
+    }
+
+    // Apply rotation animation
+    if (base.animationRotation !== 0) {
+      this.ctx.rotate(base.animationRotation);
+    }
+
+    // Apply flash effect
+    if (base.animationFlash > 0) {
+      this.ctx.shadowColor = "#ff4466";
+      this.ctx.shadowBlur = 20 * base.animationFlash;
+      this.ctx.globalAlpha = 1 - base.animationFlash * 0.3;
+
+      // Animate flash back to 0 smoothly
+      animationService.animateProperty(base, "animationFlash", 0.0, 200, {
+        easing: (t: number) => 1 - Math.pow(1 - t, 2), // ease-out-quad
+      });
+    }
+
     // Main base structure - dark metallic color
     this.ctx.fillStyle = "#2a2a2a";
     this.ctx.strokeStyle = "#444444";
@@ -681,10 +709,12 @@ export class RendererService {
     this.ctx.fill();
     this.ctx.stroke();
 
-    // Central core (spawning area)
+    // Central core (spawning area) - add pulsing effect
+    const pulseTime = Date.now() * 0.003;
+    const pulseScale = 1 + Math.sin(pulseTime) * 0.1;
     this.ctx.fillStyle = "#cc2244";
     this.ctx.beginPath();
-    this.ctx.arc(0, 0, base.radius * 0.4, 0, Math.PI * 2);
+    this.ctx.arc(0, 0, base.radius * 0.4 * pulseScale, 0, Math.PI * 2);
     this.ctx.fill();
 
     // Energy lines radiating from center

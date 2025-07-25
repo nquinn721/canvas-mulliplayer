@@ -211,7 +211,11 @@ export class GameStore {
     if (currentPlayer && newPlayer && currentPlayer.level < newPlayer.level) {
       // Player leveled up! Play level-up sound
       soundService.playSound("levelup", 0.8);
+      this.triggerLevelUpEffect();
     }
+
+    // Check for destroyed entities for effects
+    this.detectDestroyedEntities(this.gameState, gameState);
 
     // Check for player spawn/respawn (first appearance or coming back to life)
     if (this.playerId && newPlayer) {
@@ -400,14 +404,24 @@ export class GameStore {
     this.calculateAndAddScore("powerUpCollection");
   }
 
-  addEnemyDestroyed() {
+  addEnemyDestroyed(enemyX?: number, enemyY?: number) {
     this.gameStats.enemiesDestroyed++;
     this.calculateAndAddScore("enemyDestroyed");
+
+    // Trigger explosion effect if position is provided
+    if (enemyX !== undefined && enemyY !== undefined) {
+      this.triggerEnemyKillEffect(enemyX, enemyY);
+    }
   }
 
-  addMeteorDestroyed() {
+  addMeteorDestroyed(meteorX?: number, meteorY?: number) {
     this.gameStats.meteorsDestroyed++;
     this.calculateAndAddScore("meteorDestroyed");
+
+    // Trigger explosion effect if position is provided
+    if (meteorX !== undefined && meteorY !== undefined) {
+      this.triggerMeteorImpactEffect(meteorX, meteorY);
+    }
   }
 
   // Calculate and add score based on action
@@ -568,6 +582,63 @@ export class GameStore {
     return Date.now() - this.gameStats.gameStartTime;
   }
 
+  // Effect triggers - keeping methods for compatibility
+  private triggerEnemyKillEffect(enemyX: number, enemyY: number) {
+    // Only 2D particle effects now
+    console.log("Enemy kill effect at", enemyX, enemyY);
+  }
+
+  private triggerMeteorImpactEffect(meteorX: number, meteorY: number) {
+    // Only 2D particle effects now
+    console.log("Meteor impact effect at", meteorX, meteorY);
+  }
+
+  private triggerLevelUpEffect() {
+    const currentPlayer = this.currentPlayer;
+    if (!currentPlayer) return;
+
+    // Only 2D particle effects now
+    console.log("Level up effect at", currentPlayer.x, currentPlayer.y);
+  }
+
+  private detectDestroyedEntities(
+    oldGameState: GameState,
+    newGameState: GameState
+  ) {
+    // Detect destroyed AI enemies
+    Object.keys(oldGameState.aiEnemies).forEach((enemyId) => {
+      if (!newGameState.aiEnemies[enemyId]) {
+        // Enemy was destroyed
+        const destroyedEnemy = oldGameState.aiEnemies[enemyId];
+        this.addEnemyDestroyed(destroyedEnemy.x, destroyedEnemy.y);
+      }
+    });
+
+    // Detect destroyed swarm enemies
+    Object.keys(oldGameState.swarmEnemies).forEach((swarmId) => {
+      if (!newGameState.swarmEnemies[swarmId]) {
+        // Swarm enemy was destroyed
+        const destroyedSwarm = oldGameState.swarmEnemies[swarmId];
+        // Only 2D particle effects now
+        console.log("Swarm destruction at", destroyedSwarm.x, destroyedSwarm.y);
+      }
+    });
+
+    // Detect destroyed meteors
+    const oldMeteorIds = new Set(oldGameState.meteors.map((m: any) => m.id));
+    const newMeteorIds = new Set(newGameState.meteors.map((m: any) => m.id));
+
+    oldGameState.meteors.forEach((meteor: any) => {
+      if (!newMeteorIds.has(meteor.id)) {
+        // Meteor was destroyed/exploded
+        this.addMeteorDestroyed(meteor.x, meteor.y);
+      }
+    });
+
+    // Power-ups don't need visual effects, just sound/score
+    // The existing canvas particle system handles power-up collection visuals
+  }
+
   get survivalBonusText(): string {
     if (this.gameStats.gameStartTime === 0) return "";
     return ScoringUtils.getSurvivalBonusText(this.survivalTime, SCORING_CONFIG);
@@ -575,6 +646,10 @@ export class GameStore {
 
   get currentSurvivalMultiplier(): number {
     return this.gameStats.survivalBonusMultiplier;
+  }
+
+  get ping(): number {
+    return this.stats.ping;
   }
 
   // Input management
@@ -625,7 +700,7 @@ export class GameStore {
           playersCount: Object.keys(this.gameState.players).length,
           timestamp: Date.now(),
         },
-        "HIGH"
+        "LOW" // Reduced from HIGH - this is expected during initialization
       );
     }
   }
@@ -777,6 +852,8 @@ export class GameStore {
     // Play laser sound
     soundService.playSound("laser", 0.2);
 
+    // Weapon trails removed
+
     return true; // Successfully fired
   }
 
@@ -819,6 +896,9 @@ export class GameStore {
 
     // Update cooldown
     this.lastMissileTime = currentTime;
+
+    // Missile trails removed
+
     return true; // Successfully fired missile
   }
 
@@ -957,12 +1037,17 @@ export class GameStore {
     return this.camera.isInView(powerUp);
   }
 
+  // Test method removed
+
   // Particle system methods
   updateParticles(deltaTime: number) {
     this.particleSystem.update(deltaTime);
   }
 
   createExplosion(x: number, y: number, type: "laser" | "missile" = "laser") {
+    console.log(
+      `2D Particle: Creating explosion at (${x}, ${y}) type: ${type}`
+    );
     this.particleSystem.createExplosion(x, y, type);
   }
 
@@ -996,8 +1081,10 @@ export class GameStore {
       projectileType = projectile.type;
     }
 
-    // Create explosion effect
+    // Create 2D explosion effect
     this.createExplosion(data.x, data.y, projectileType);
+
+    // 3D explosion effects removed
 
     // Remove the projectile
     this.removeProjectile(data.projectileId);
@@ -1012,11 +1099,10 @@ export class GameStore {
     wallHit?: boolean;
     damage?: number;
   }) {
-    // Create large explosion effect for meteor impact
+    // Create 2D explosion effect for meteor impact
     this.createExplosion(data.x, data.y, "missile");
 
-    // Add additional explosion effects for meteor impact
-    this.particleSystem.createExplosion(data.x, data.y, "missile");
+    // 3D explosion effects removed
   }
 
   // DEPRECATED: This method should not be used in the new socket connection standard

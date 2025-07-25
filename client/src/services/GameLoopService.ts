@@ -1,5 +1,6 @@
 import { getBoostStats } from "@shared/config";
 import { GameStore } from "../stores/GameStore";
+import { animationService } from "./AnimationService";
 import { InputService } from "./InputService";
 
 export class GameLoopService {
@@ -25,6 +26,12 @@ export class GameLoopService {
     this.isRunning = true;
     this.lastUpdateTime = performance.now();
     this.lastFpsUpdate = performance.now();
+
+    // Start animation service
+    animationService.start();
+
+    // Visual effects are now handled by the 2D particle system
+
     this.gameLoop();
   }
 
@@ -34,6 +41,9 @@ export class GameLoopService {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
     }
+
+    // Stop animation service
+    animationService.stop();
   }
 
   private gameLoop = () => {
@@ -57,6 +67,11 @@ export class GameLoopService {
 
     // Update time-based scoring tracking
     this.gameStore.updateTimeBasedTracking();
+
+    // Update animations
+    animationService.update(deltaTime);
+
+    // Camera updates are handled by the 2D renderer
 
     // Generate wind effects for moving players
     this.updateWindEffects();
